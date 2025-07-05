@@ -1,15 +1,12 @@
 <?php
 
 class BdpaDriveAPI {
-
     private $baseUrl;
     private $apiKey;
-    private $version;
 
     public function __construct($apiKey, $version = 'v1') {
         $this->baseUrl = "https://drive.api.hscc.bdpa.org/$version";
         $this->apiKey = $apiKey;
-        $this->version = $version;
     }
 
     private function request($method, $endpoint, $data = null, $query = []) {
@@ -39,17 +36,16 @@ class BdpaDriveAPI {
         return json_decode($response, true);
     }
 
-
     public function createUser($username, $email, $salt, $key) {
         return $this->request('POST', "/users", compact('username', 'email', 'salt', 'key'));
     }
 
-    public function getUserByUsername($username) {
+    public function getUser($username) {
         return $this->request('GET', "/users/" . urlencode($username));
     }
 
     public function updateUser($username, $fields) {
-        return $this->request('PUT', "/users/" . urlencode($username), $fields);
+        return $this->request('PATCH', "/users/" . urlencode($username), $fields);
     }
 
     public function deleteUser($username) {
@@ -57,7 +53,7 @@ class BdpaDriveAPI {
     }
 
     public function authenticateUser($username, $key) {
-        return $this->request('POST', "/users/" . urlencode($username) . "/auth", compact('key'));
+        return $this->request('POST', "/users/" . urlencode($username) . "/auth", ['key' => $key]);
     }
 
     public function listUsers($after = null) {
@@ -65,31 +61,88 @@ class BdpaDriveAPI {
         return $this->request('GET', "/users", null, $query);
     }
 
-
-    public function searchNodes($username, $match = null, $regexMatch = null, $after = null) {
-        $query = [];
-        if ($match) $query['match'] = urlencode(json_encode($match));
-        if ($regexMatch) $query['regexMatch'] = urlencode(json_encode($regexMatch));
-        if ($after) $query['after'] = $after;
-        return $this->request('GET', "/filesystem/" . urlencode($username) . "/search", null, $query);
+    public function updateUserPoints($username, $operation, $amount) {
+        return $this->request('PATCH', "/users/" . urlencode($username) . "/points", [
+            'operation' => $operation,
+            'amount' => $amount
+        ]);
     }
 
-    public function createNode($username, $data) {
-        return $this->request('POST', "/filesystem/" . urlencode($username), $data);
+    public function getUserQuestions($username, $after = null) {
+        $query = $after ? ['after' => $after] : [];
+        return $this->request('GET', "/users/" . urlencode($username) . "/questions", null, $query);
     }
 
-    public function getNodes($username, ...$nodeIds) {
-        $path = implode("/", array_map('urlencode', $nodeIds));
-        return $this->request('GET', "/filesystem/" . urlencode($username) . "/$path");
+    public function getUserAnswers($username, $after = null) {
+        $query = $after ? ['after' => $after] : [];
+        return $this->request('GET', "/users/" . urlencode($username) . "/answers", null, $query);
     }
 
-    public function updateNode($username, $nodeId, $data) {
-        return $this->request('PUT', "/filesystem/" . urlencode($username) . "/" . urlencode($nodeId), $data);
+    public function createQuestion($creator, $title, $text) {
+        return $this->request('POST', "/questions", compact('creator', 'title', 'text'));
     }
 
-    public function deleteNodes($username, ...$nodeIds) {
-        $path = implode("/", array_map('urlencode', $nodeIds));
-        return $this->request('DELETE', "/filesystem/" . urlencode($username) . "/$path");
+    public function getQuestion($question_id) {
+        return $this->request('GET', "/questions/" . urlencode($question_id));
+    }
+
+    public function updateQuestion($question_id, $fields) {
+        return $this->request('PATCH', "/questions/" . urlencode($question_id), $fields);
+    }
+
+    public function deleteQuestion($question_id) {
+        return $this->request('DELETE', "/questions/" . urlencode($question_id));
+    }
+
+    public function getAnswers($question_id, $after = null) {
+        $query = $after ? ['after' => $after] : [];
+        return $this->request('GET', "/questions/$question_id/answers", null, $query);
+    }
+
+    public function createAnswer($question_id, $creator, $text) {
+        return $this->request('POST', "/questions/$question_id/answers", compact('creator', 'text'));
+    }
+
+    public function updateAnswer($question_id, $answer_id, $fields) {
+        return $this->request('PATCH', "/questions/$question_id/answers/$answer_id", $fields);
+    }
+
+    public function voteAnswer($question_id, $answer_id, $username, $operation, $target) {
+        return $this->request('PATCH', "/questions/$question_id/answers/$answer_id/vote/$username", compact('operation', 'target'));
+    }
+
+    public function getQuestionComments($question_id, $after = null) {
+        $query = $after ? ['after' => $after] : [];
+        return $this->request('GET', "/questions/$question_id/comments", null, $query);
+    }
+
+    public function createQuestionComment($question_id, $creator, $text) {
+        return $this->request('POST', "/questions/$question_id/comments", compact('creator', 'text'));
+    }
+
+    public function deleteQuestionComment($question_id, $comment_id) {
+        return $this->request('DELETE', "/questions/$question_id/comments/$comment_id");
+    }
+
+    public function voteQuestionComment($question_id, $comment_id, $username, $operation, $target) {
+        return $this->request('PATCH', "/questions/$question_id/comments/$comment_id/vote/$username", compact('operation', 'target'));
+    }
+
+    public function getAnswerComments($question_id, $answer_id, $after = null) {
+        $query = $after ? ['after' => $after] : [];
+        return $this->request('GET', "/questions/$question_id/answers/$answer_id/comments", null, $query);
+    }
+
+    public function createAnswerComment($question_id, $answer_id, $creator, $text) {
+        return $this->request('POST', "/questions/$question_id/answers/$answer_id/comments", compact('creator', 'text'));
+    }
+
+    public function deleteAnswerComment($question_id, $answer_id, $comment_id) {
+        return $this->request('DELETE', "/questions/$question_id/answers/$answer_id/comments/$comment_id");
+    }
+
+    public function voteAnswerComment($question_id, $answer_id, $comment_id, $username, $operation, $target) {
+        return $this->request('PATCH', "/questions/$question_id/answers/$answer_id/comments/$comment_id/vote/$username", compact('operation', 'target'));
     }
 }
 ?>
