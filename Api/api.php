@@ -1,6 +1,6 @@
 <?php
 
-class BdpaDriveAPI {
+class qOverflowAPI {
     private $baseUrl;
     private $apiKey;
 
