@@ -39,16 +39,13 @@ class BdpaDriveAPI {
         return json_decode($response, true);
     }
 
+
     public function createUser($username, $email, $salt, $key) {
         return $this->request('POST', "/users", compact('username', 'email', 'salt', 'key'));
     }
 
     public function getUserByUsername($username) {
         return $this->request('GET', "/users/" . urlencode($username));
-    }
-
-    public function authenticateUser($username, $key) {
-        return $this->request('POST', "/users/" . urlencode($username) . "/auth", compact('key'));
     }
 
     public function updateUser($username, $fields) {
@@ -59,10 +56,40 @@ class BdpaDriveAPI {
         return $this->request('DELETE', "/users/" . urlencode($username));
     }
 
+    public function authenticateUser($username, $key) {
+        return $this->request('POST', "/users/" . urlencode($username) . "/auth", compact('key'));
+    }
+
     public function listUsers($after = null) {
         $query = $after ? ['after' => $after] : [];
         return $this->request('GET', "/users", null, $query);
     }
 
+
+    public function searchNodes($username, $match = null, $regexMatch = null, $after = null) {
+        $query = [];
+        if ($match) $query['match'] = urlencode(json_encode($match));
+        if ($regexMatch) $query['regexMatch'] = urlencode(json_encode($regexMatch));
+        if ($after) $query['after'] = $after;
+        return $this->request('GET', "/filesystem/" . urlencode($username) . "/search", null, $query);
+    }
+
+    public function createNode($username, $data) {
+        return $this->request('POST', "/filesystem/" . urlencode($username), $data);
+    }
+
+    public function getNodes($username, ...$nodeIds) {
+        $path = implode("/", array_map('urlencode', $nodeIds));
+        return $this->request('GET', "/filesystem/" . urlencode($username) . "/$path");
+    }
+
+    public function updateNode($username, $nodeId, $data) {
+        return $this->request('PUT', "/filesystem/" . urlencode($username) . "/" . urlencode($nodeId), $data);
+    }
+
+    public function deleteNodes($username, ...$nodeIds) {
+        $path = implode("/", array_map('urlencode', $nodeIds));
+        return $this->request('DELETE', "/filesystem/" . urlencode($username) . "/$path");
+    }
 }
 ?>
