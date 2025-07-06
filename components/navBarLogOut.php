@@ -36,22 +36,19 @@
     <span class="text-xl font-semibold text-cyan-500">qOverflow</span>
   </div>
 
-  <!-- Middle: Points and Level -->
-  <div class="text-center">
-    <p class="text-sm font-bold text-yellow-400">Points: <span class="font-bold text-yellow-400">125</span></p>
-    <p class="text-sm font-bold text-yellow-400">Level: <span class="font-bold text-yellow-400">4</span></p>
-  </div>
-
+  
   <!-- Right: Buttons + Profile -->
   <div class="flex items-center space-x-4">
     <button class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded custom-shadow">
-  Dashboard
+  Login
 </button>
 <button class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded custom-shadow">
-  Settings
+  Signup
 </button>
     <img src="/path/to/profile.jpg" alt="Profile" class="h-10 w-10 rounded-full border-2 border-blue-600">
   </div>
 </nav>
 </body>
 </html>
+
+
