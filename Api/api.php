@@ -5,7 +5,7 @@ class qOverflowAPI {
     private $apiKey;
 
     public function __construct($apiKey, $version = 'v1') {
-        $this->baseUrl = "https://drive.api.hscc.bdpa.org/$version";
+        $this->baseUrl = "https://qoverflow.api.hscc.bdpa.org/$version";
         $this->apiKey = $apiKey;
     }
 
@@ -34,6 +34,15 @@ class qOverflowAPI {
         curl_close($ch);
 
         return json_decode($response, true);
+    }
+
+    public function sendMail($sender, $receiver, $subject, $text) {
+        return $this->request('POST', '/mail', compact('sender', 'receiver', 'subject', 'text'));
+    }
+
+    public function getMail($username, $after = null) {
+        $query = $after ? ['after' => $after] : [];
+        return $this->request('GET', "/mail/" . urlencode($username), null, $query);
     }
 
     public function createUser($username, $email, $salt, $key) {
@@ -77,6 +86,10 @@ class qOverflowAPI {
         $query = $after ? ['after' => $after] : [];
         return $this->request('GET', "/users/" . urlencode($username) . "/answers", null, $query);
     }
+
+    public function searchQuestions(array $params = []) {
+        return $this->request('GET', '/questions/search', null, $params);
+    }    
 
     public function createQuestion($creator, $title, $text) {
         return $this->request('POST', "/questions", compact('creator', 'title', 'text'));
@@ -145,4 +158,5 @@ class qOverflowAPI {
         return $this->request('PATCH', "/questions/$question_id/answers/$answer_id/comments/$comment_id/vote/$username", compact('operation', 'target'));
     }
 }
+
 ?>
