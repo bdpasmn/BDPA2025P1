@@ -52,7 +52,6 @@ $messages = $inbox['mail'] ?? [];
 </head>
 <body class="text-white">
 
-<!-- Navbar -->
 <nav class="bg-gray-900 shadow-md border-b border-gray-700 backdrop-blur-sm">
   <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
     <div class="flex items-center space-x-3">
@@ -70,17 +69,14 @@ $messages = $inbox['mail'] ?? [];
   </div>
 </nav>
 
-<!-- Alerts -->
 <?php if ($error): ?>
   <div class="bg-red-600 text-white text-sm py-2 text-center"><?= htmlspecialchars($error) ?></div>
 <?php elseif ($success): ?>
   <div class="bg-green-600 text-white text-sm py-2 text-center"><?= htmlspecialchars($success) ?></div>
 <?php endif; ?>
 
-<!-- Layout -->
 <div class="flex h-[calc(100vh-4rem)] px-6 pt-6 space-x-6 overflow-hidden">
   
-  <!-- Sidebar: Inbox -->
   <aside class="w-72 bg-gray-800 rounded-xl p-4 flex flex-col border border-gray-700 shadow-md">
     <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-150 shadow hover:-translate-y-0.5 hover:shadow-lg mb-4">
       + Compose
@@ -101,7 +97,6 @@ $messages = $inbox['mail'] ?? [];
     </div>
   </aside>
 
-  <!-- Main View -->
   <main class="flex-1 bg-gray-800 rounded-xl p-6 flex flex-col border border-gray-700 shadow-md overflow-hidden">
     <?php if (!empty($messages)): ?>
       <?php $first = $messages[0]; ?>
@@ -116,7 +111,6 @@ $messages = $inbox['mail'] ?? [];
       <p class="text-sm text-gray-400">No messages in your inbox.</p>
     <?php endif; ?>
 
-    <!-- Reply Form -->
     <form method="POST" class="mt-auto">
       <label for="reply" class="text-sm font-medium block mb-2">Reply (max 150 characters):</label>
       <textarea id="reply" name="body" rows="3" maxlength="150"

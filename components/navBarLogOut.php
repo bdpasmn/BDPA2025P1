@@ -1,54 +1,50 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qOverflow Navbar</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
-      background-color: #010611;
-      font-family: lucida console;
-    }
-    .navbar-gradient {
-      background: linear-gradient(to left, #004d9b, #6fe5ff);
-    }
-    .navbar-color {
-      background: blue;
-    }
-    .header {
-      color: white;
-      font-size: 35px;
-    }
-    #reg {
-      color: white;
-      font-size: 14px;
+      background: radial-gradient(ellipse at top, #0f172a, #0b1120);
+      font-family: 'Inter', sans-serif;
     }
     .custom-shadow {
-  box-shadow: 0 4px 6px rgba(106, 90, 205, 0.3);
-}
+      box-shadow: 0 0 16px rgba(59, 130, 246, 0.5);
+      transition: box-shadow 0.3s ease, transform 0.2s ease;
+    }
+    .custom-shadow:hover {
+      box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
+      transform: translateY(-2px);
+    }
   </style>
 </head>
-<body class="bg-gray-100">
+<body class="text-white">
 
-<nav class="bg-gray-800 text-white px-6 py-4 flex items-center justify-between">
-  <!-- Left: Logo + Site Name -->
-  <div class="flex items-center space-x-3">
-    <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo" class="h-10 w-10">
-    <span class="text-xl font-semibold text-cyan-500">qOverflow</span>
-  </div>
+<nav class="bg-gray-900 shadow-lg">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center h-16">
 
-  
-  <!-- Right: Buttons + Profile -->
-  <div class="flex items-center space-x-4">
-    <button class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded custom-shadow">
-  Login
-</button>
-<button class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded custom-shadow">
-  Signup
-</button>
-    <img src="/path/to/profile.jpg" alt="Profile" class="h-10 w-10 rounded-full border-2 border-blue-600">
+      <!-- Left: Logo + App Name (linked to index) -->
+      <a href="/index.php" class="flex items-center space-x-3">
+        <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo" class="h-9 w-auto">
+        <span class="text-2xl font-bold text-white">qOverflow</span>
+      </a>
+
+      <!-- Right: Login & Signup Buttons -->
+      <div class="flex items-center space-x-4">
+        <a href="/pages/login.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
+          Login
+        </a>
+        <a href="/pages/signup.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
+          Join Now
+        </a>
+      </div>
+
+    </div>
   </div>
 </nav>
+
 </body>
 </html>
-
-

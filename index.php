@@ -14,7 +14,7 @@ session_start();
       font-family: 'Inter', sans-serif;
     }
     .glow-button {
-      background: lignear-gradient(90deg, #3b82f6, #6366f1);
+      background: linear-gradient(90deg, #3b82f6, #6366f1);
       box-shadow: 0 0 16px rgba(99, 102, 241, 0.5);
       transition: box-shadow 0.3s ease, transform 0.2s ease;
     }
