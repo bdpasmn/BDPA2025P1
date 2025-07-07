@@ -40,12 +40,20 @@
         <a href="/pages/dashboard/dashboard.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
           Dashboard
         </a>
-        <a href="/pages/dashboard/settings.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
-          Settings
+        <a href="/pages/mail/mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
+          Mail
         </a>
-        <img src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=identicon" alt="Profile" class="h-10 w-10 rounded-full border-2 border-blue-600">
+        <a href="/pages/buffet/Buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
+          Buffet
+        </a>
+        <a href="index.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
+          Log Out
+        </a>
+        <img src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=identicon" alt="Profile" class="h-10 w-10 rounded-full border-2 border-blue-600" href="/pages/dashboard/dashboard.php">
       </div>
-
+//Make sure to replace the Gravatar URL with the actual user's Gravatar link if available.
+//Make sure to link the profile image to the user's dashboard or profile page.
+//Make sure to make the points and level dynamic based on the user's data
     </div>
   </div>
 </nav>
