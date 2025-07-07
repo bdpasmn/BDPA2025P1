@@ -26,9 +26,10 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between items-center h-16">
 
-      
+      <div class="flex items-center space-x-3">
         <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo" class="h-9 w-auto">
         <span class="text-2xl font-bold text-white">qOverflow</span>
+      </div>
 
       <div class="hidden md:flex flex-col text-center text-yellow-300 text-sm font-semibold">
         <span>Points: <span class="text-yellow-200">125</span></span>
