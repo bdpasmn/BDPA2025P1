@@ -3,8 +3,8 @@ session_start();
 require_once '../../api/key.php';
 require_once '../../api/api.php';
 
-$api = new qOverflowAPI(API_KEY);
-$_SESSION['username'] = 'test_user';
+$api = new qOverflowAPI(apiKey: API_KEY);
+$_SESSION['username'] = 'test-user';
 
 $sort = $_POST['sort'] ?? 'recent';
 
