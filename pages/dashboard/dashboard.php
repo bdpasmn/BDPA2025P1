@@ -5,7 +5,7 @@
   //$userId = $_SESSION['user_id'];
   require_once '../../Api/api.php';
   require_once '../../Api/key.php';
-  require_once '../../Api/db.php';
+  require_once '../../db.php';
   $api = new qOverflowAPI(API_KEY);
   $username = "User7";
   
