@@ -7,7 +7,7 @@
   require_once '../../Api/key.php';
   require_once '../../Api/db.php';
   $api = new qOverflowAPI(API_KEY);
-  $username = "test-user";
+  $username = "User7";
   
   $question = $api->getUserQuestions($username);
   $answer = $api->getUserAnswers($username);
@@ -16,14 +16,22 @@
   $questions = $question['questions'] ?? [];
   $answers = $answer['answers'] ?? [];
   $loggedInUser = $user['user'] ?? [];
-/*
+  $pdo = new PDO($dsn, $userType, $pass);
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+
    // deleting user account
   if (isset($_POST['delete_account'])) {
   $deleteUser = $api->deleteUser($username);
+  $stmt = $pdo->prepare("DELETE FROM users WHERE username = :username");
+  $stmt->execute(['username' => $username]);
   }
-  session_destroy();
-  header('Location: login.php');
-*/
+  //session_destroy();
+  //header('Location: login.php');
+
+
+
+  
   $users = $api->listUsers();
 
 // Print as raw PHP array
@@ -178,8 +186,6 @@ echo "Email: " . htmlspecialchars($userData['user']['email'] ?? 'N/A') . "<br>";
       editInput.type = 'password';
       editInput.value = '';
     }
-
-    editInput.focus();
   }
 
   // Close modal on Cancel button click
