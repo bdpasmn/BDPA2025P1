@@ -22,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $error = "Enter both username and password.";
     } else {
      // echo $username . '<br /' ;
-        $userResponse = $api->getUserByUsername($username);
+        $userResponse = $api->getUser($username);
 
         //print_r($userResponse);
 
@@ -43,7 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if (isset($authResponse['success']) && $authResponse['success'] === true) {
     $_SESSION['username'] = $username;
-    header("Location: dashboard.php");
+    header("Location: /pages/dashboard/dashboard.php");
     exit;
     } else {
         $error = "Login failed. Authentication failed.";
@@ -100,7 +100,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 // Optional: restore session from cookie
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
     $_SESSION['username'] = $_COOKIE['remember_me'];
-    header("Location: authedDashboard.php");
+    header("Location: /pages/dashboard/dashboard.php");
     exit;
 }
 ?>
