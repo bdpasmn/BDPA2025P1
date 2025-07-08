@@ -5,15 +5,9 @@
   //$userId = $_SESSION['user_id'];
   require_once '../../Api/api.php';
   require_once '../../Api/key.php';
+  require_once '../../Api/db.php';
   $api = new qOverflowAPI(API_KEY);
   $username = "test-user";
-
-  $host = 'db.vxxyazdibxquytnyxacb.supabase.co';
-  $port = '5432';
-  $dbname = 'postgres';
-  $user = 'postgres';
-  $pass = 'Bdpa2025qOverflow!';
-  $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
   
   $question = $api->getUserQuestions($username);
   $answer = $api->getUserAnswers($username);
