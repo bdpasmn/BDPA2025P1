@@ -59,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $checkStmt->execute([$username, $email]);
 
             if ($checkStmt->fetchColumn() > 0) {
-                $error = "Username or email already exists in database.";
+                $error = "Username or email already exists.";
             } else {
                 $insertQuery = "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
                 $stmt = $pdo->prepare($insertQuery);

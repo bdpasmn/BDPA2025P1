@@ -32,7 +32,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 //exit;
 
         if (!isset($userResponse ['user']['salt'])) {
-    $error = "Login failed. User not found or salt missing.";
+    $error = "User not found.";
 } else {
     $salt = $userResponse['user']['salt'];
     //$key = hash('SHA-256', $salt . $rawPassword);
@@ -46,7 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     header("Location: /pages/dashboard/dashboard.php");
     exit;
     } else {
-        $error = "Login failed. Authentication failed.";
+        $error = "Incorrect Password.";
       }
     //if ($time_since_last_fail > LOCKOUT_TIME) {
       //  $_SESSION['failed_attempts'] = 0;
