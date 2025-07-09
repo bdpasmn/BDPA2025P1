@@ -1,5 +1,7 @@
 <?php
 session_start();
+// $_SESSION['username'] = 'user2'; 
+
 require_once __DIR__ . '/../../Api/api.php';
 require_once __DIR__ . '/../../Api/key.php';
 
@@ -16,12 +18,10 @@ $error = '';
 $success = '';
 $showCompose = true;
 
-
 $recipient = $_GET['with'] ?? '';
 $subject = $_GET['subject'] ?? '';
 $activeKey = $recipient && $subject ? $recipient . '::' . $subject : null;
 
-// does the sending
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject = trim($_POST['subject'] ?? '');
     $body = trim($_POST['body'] ?? '');
@@ -48,13 +48,10 @@ if (isset($_GET['success'])) {
     $success = 'Message sent successfully!';
 }
 
-// Get the messages
-$all = $api->getMail($user)['messages'] ?? [];
+$allMessages = $api->getMail($user)['messages'] ?? [];
 
-
-// Group all the messages into threads on the left side
 $threads = [];
-foreach ($all as $msg) {
+foreach ($allMessages as $msg) {
     $isToOrFrom = ($msg['sender'] === $user || $msg['receiver'] === $user);
     if (!$isToOrFrom) continue;
 
@@ -65,15 +62,14 @@ foreach ($all as $msg) {
     $threads[$key][] = $msg;
 }
 
-// Sort the threads
 foreach ($threads as &$msgs) {
     usort($msgs, fn($a, $b) => $a['createdAt'] <=> $b['createdAt']);
 }
 
-// Active thread you're using
 $activeThread = $activeKey && isset($threads[$activeKey]) ? $threads[$activeKey] : [];
 $showCompose = !$activeKey;
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -81,6 +77,7 @@ $showCompose = !$activeKey;
   <title>Mail • qOverflow</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -119,29 +116,27 @@ $showCompose = !$activeKey;
       <a href="?with=<?= urlencode($peer) ?>&subject=<?= urlencode($first['subject']) ?>"
          class="block bg-gray-700 hover:bg-gray-600 rounded-lg p-3 mb-2 border border-gray-600 transition">
         <h4 class="font-semibold text-white text-sm truncate"><?= htmlspecialchars($first['subject']) ?></h4>
-        <p class="text-xs text-gray-300 truncate">
-          <?= htmlspecialchars($first['sender']) ?>: <?= htmlspecialchars($first['text']) ?>
-        </p>
+        <div class="text-xs text-gray-400 mt-1 line-clamp-3 preview-block" data-md="<?= htmlspecialchars($first['text']) ?>"></div>
       </a>
     <?php endforeach; ?>
   </aside>
 
   <main class="flex-1 bg-gray-800 rounded-xl p-6 flex flex-col border border-gray-700 shadow-md overflow-hidden">
     <?php if (!$showCompose): ?>
-    <div class="flex-1 overflow-y-auto space-y-4 mb-4">
-      <?php foreach ($activeThread as $msg): ?>
-        <?php $isMine = $msg['sender'] === $user; ?>
-        <div class="flex <?= $isMine ? 'justify-end' : 'justify-start' ?>">
-          <div class="<?= $isMine ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white' ?> max-w-[75%] p-4 rounded-lg border border-gray-600">
-            <div class="text-xs text-gray-300 mb-1">
-              <?= $isMine ? 'You → ' . htmlspecialchars($msg['receiver']) : htmlspecialchars($msg['sender']) . ' → You' ?>
+      <div class="flex-1 overflow-y-auto space-y-4 mb-4">
+        <?php foreach ($activeThread as $msg): ?>
+          <?php $isMine = $msg['sender'] === $user; ?>
+          <div class="flex <?= $isMine ? 'justify-end' : 'justify-start' ?>">
+            <div class="<?= $isMine ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white' ?> max-w-[75%] p-4 rounded-lg border border-gray-600">
+              <div class="text-xs text-gray-300 mb-1">
+                <?= $isMine ? 'You → ' . htmlspecialchars($msg['receiver']) : htmlspecialchars($msg['sender']) . ' → You' ?>
+              </div>
+              <div class="message-body text-sm" data-md="<?= htmlspecialchars($msg['text']) ?>"></div>
+              <div class="text-[11px] text-gray-400 mt-1 text-right"><?= date('n/j g:ia', intval($msg['createdAt'] / 1000)) ?></div>
             </div>
-            <div class="text-sm whitespace-pre-line"><?= htmlspecialchars($msg['text']) ?></div>
-            <div class="text-[11px] text-gray-400 mt-1 text-right"><?= date('n/j g:ia', intval($msg['createdAt'] / 1000)) ?></div>
           </div>
-        </div>
-      <?php endforeach; ?>
-    </div>
+        <?php endforeach; ?>
+      </div>
 
       <form method="POST" class="border-t border-gray-700 pt-4">
         <input type="hidden" name="recipient" value="<?= htmlspecialchars($recipient) ?>">
@@ -164,7 +159,9 @@ $showCompose = !$activeKey;
         <label class="text-sm font-medium">Subject:</label>
         <input type="text" name="subject" maxlength="75" required class="p-3 bg-gray-700 border border-gray-600 rounded-md text-white">
         <label class="text-sm font-medium">Message:</label>
-        <textarea name="body" rows="5" maxlength="150" required class="p-3 bg-gray-700 border border-gray-600 rounded-md text-white"></textarea>
+        <textarea name="body" id="body" rows="5" maxlength="150" required class="p-3 bg-gray-700 border border-gray-600 rounded-md text-white"></textarea>
+        <label class="text-sm font-medium">Live Preview:</label>
+        <div id="preview" class="p-3 bg-gray-700 border border-gray-600 rounded-md text-white text-sm min-h-[5rem]"></div>
         <div class="flex justify-end">
           <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md text-sm font-medium shadow">
             Send
@@ -174,5 +171,24 @@ $showCompose = !$activeKey;
     <?php endif; ?>
   </main>
 </div>
+
+<script>
+  const converter = new showdown.Converter();
+
+  document.querySelectorAll('.message-body, .preview-block').forEach(el => {
+    const raw = el.getAttribute('data-md') || '';
+    el.innerHTML = converter.makeHtml(raw);
+  });
+
+  const textarea = document.getElementById('body');
+  const preview = document.getElementById('preview');
+  if (textarea && preview) {
+    textarea.addEventListener('input', () => {
+      preview.innerHTML = converter.makeHtml(textarea.value);
+    });
+    preview.innerHTML = converter.makeHtml(textarea.value);
+  }
+</script>
+
 </body>
 </html>
