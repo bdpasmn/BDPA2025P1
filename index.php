@@ -41,8 +41,8 @@ session_start();
         <span class="text-2xl font-bold text-white">qOverflow</span>
       </div>
       <div class="hidden sm:flex space-x-4 items-center">
-        <a href="pages/login.php" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Login</a>
-        <a href="pages/signup.php" class="glow-button px-5 py-2 rounded-lg text-white font-medium">Join Now</a>
+        <a href="pages/auth/login.php" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Login</a>
+        <a href="pages/auth/signup.php" class="glow-button px-5 py-2 rounded-lg text-white font-medium">Join Now</a>
       </div>
     </div>
   </div>
@@ -56,7 +56,7 @@ session_start();
     Welcome to BDPA's official knowledge-sharing hub. Ask questions, find solutions, and connect with experts from across the nation.
   </p>
   <div class="mt-10 flex justify-center gap-4 flex-wrap">
-    <a href="pages/signup.php" class="glow-button text-white px-6 py-3 text-lg rounded-lg font-semibold">
+    <a href="pages/auth/signup.php" class="glow-button text-white px-6 py-3 text-lg rounded-lg font-semibold">
       🚀 Get Started Now
     </a>
     <a href="pages/buffet.php" class="text-blue-400 border border-blue-400 hover:bg-blue-600 hover:text-white px-6 py-3 text-lg rounded-lg font-semibold transition">
