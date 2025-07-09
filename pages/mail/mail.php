@@ -8,7 +8,6 @@ require_once __DIR__ . '/../../Api/key.php';
 $api = new qOverflowAPI(API_KEY);
 
 $user = $_SESSION['username'] ?? null;
-
 if (!$user) {
     header('Location: ../auth/login.php');
     exit;
@@ -21,6 +20,14 @@ $showCompose = true;
 $recipient = $_GET['with'] ?? '';
 $subject = $_GET['subject'] ?? '';
 $activeKey = $recipient && $subject ? $recipient . '::' . $subject : null;
+
+$recipientExists = true;
+if ($recipient && $recipient !== $user) {
+    $resp = $api->getUser($recipient);
+    if (isset($resp['error'])) {
+        $recipientExists = false;
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject = trim($_POST['subject'] ?? '');
@@ -48,12 +55,17 @@ if (isset($_GET['success'])) {
     $success = 'Message sent successfully!';
 }
 
-$allMessages = $api->getMail($user)['messages'] ?? [];
+$inboxMessages = $api->getMail($user)['messages'] ?? [];
+$outboxMessages = [];
+if (!empty($recipient) && $recipient !== $user) {
+    $outboxMessages = $api->getMail($recipient)['messages'] ?? [];
+}
+
+$allMessages = array_merge($inboxMessages, $outboxMessages);
 
 $threads = [];
 foreach ($allMessages as $msg) {
-    $isToOrFrom = ($msg['sender'] === $user || $msg['receiver'] === $user);
-    if (!$isToOrFrom) continue;
+    if ($msg['sender'] !== $user && $msg['receiver'] !== $user) continue;
 
     $peer = $msg['sender'] === $user ? $msg['receiver'] : $msg['sender'];
     $key = $peer . '::' . $msg['subject'];
@@ -69,7 +81,6 @@ foreach ($threads as &$msgs) {
 $activeThread = $activeKey && isset($threads[$activeKey]) ? $threads[$activeKey] : [];
 $showCompose = !$activeKey;
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -123,6 +134,12 @@ $showCompose = !$activeKey;
 
   <main class="flex-1 bg-gray-800 rounded-xl p-6 flex flex-col border border-gray-700 shadow-md overflow-hidden">
     <?php if (!$showCompose): ?>
+      <?php if (!$recipientExists): ?>
+        <div class="bg-yellow-600 text-white text-sm px-4 py-2 mb-4 rounded">
+          ⚠️ The user "<strong><?= htmlspecialchars($recipient) ?></strong>" no longer exists. You can no longer message them.
+        </div>
+      <?php endif; ?>
+
       <div class="flex-1 overflow-y-auto space-y-4 mb-4">
         <?php foreach ($activeThread as $msg): ?>
           <?php $isMine = $msg['sender'] === $user; ?>
@@ -138,7 +155,7 @@ $showCompose = !$activeKey;
         <?php endforeach; ?>
       </div>
 
-      <form method="POST" class="border-t border-gray-700 pt-4">
+      <form method="POST" class="border-t border-gray-700 pt-4" <?= !$recipientExists ? 'style="opacity: 0.5; pointer-events: none;"' : '' ?>>
         <input type="hidden" name="recipient" value="<?= htmlspecialchars($recipient) ?>">
         <input type="hidden" name="subject" value="<?= htmlspecialchars($subject) ?>">
         <label class="text-sm font-medium mb-1 block">Reply to Thread:</label>
@@ -189,6 +206,5 @@ $showCompose = !$activeKey;
     preview.innerHTML = converter.makeHtml(textarea.value);
   }
 </script>
-
 </body>
 </html>
