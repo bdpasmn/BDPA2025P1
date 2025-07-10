@@ -147,7 +147,7 @@ function format_relative_time($timestamp_ms) {
           $exact = $createdAt ? (new DateTime('@' . ($createdAt / 1000)))->setTimezone(new DateTimeZone('America/Chicago'))->format('m/d/Y h:i:s A') : '';
         ?>
         <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-gray-500 transition">
-          <a class="text-lg font-semibold text-blue-400 hover:underline" href="../q&a/q&a.php?id=<?= urlencode($q['question_id']) ?>">
+          <a class="text-lg font-semibold text-blue-400 hover:underline" href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>">
             <?= htmlspecialchars($q['title']) ?>
           </a>
           <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed" style="font-size: 1rem;" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
