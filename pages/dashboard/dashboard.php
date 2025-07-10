@@ -90,9 +90,9 @@ echo '</pre>';
 
 
 
-<?php  include '../../../BDPA2025P1/components/navBar.php';  ?>
+<?php /* include '../../../BDPA2025P1/components/navBar.php'; */ ?>
 
-  <!--
+  
   <div class="bg-gray-800 flex justify-between items-center px-10 py-4 shadow-md border-b border-gray-700">
     <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" class="w-10 h-10" alt="logo">
     <div class="flex gap-10 text-sm font-medium">
@@ -101,7 +101,7 @@ echo '</pre>';
       <h3>placeholder</h3>
     </div>
   </div>
--->
+
 
   <div class="bg-gray-800 rounded-lg mx-10 mt-10 p-6 flex items-center shadow-md">
     <!--    this is just the hardcoded old user profile image
