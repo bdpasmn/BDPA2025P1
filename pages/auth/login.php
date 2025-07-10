@@ -137,7 +137,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
 
       <p class="mt-4 text-sm text-gray-300">
         Forgot password?
-        <a href="accountRecovery.php" class="text-blue-400 hover:underline">Reset password</a>
+        <a href="../../pages/accountRecovery/accountRecovery.php" class="text-blue-400 hover:underline">Reset password</a>
       </p>
       
       <p class="mt-4 text-sm text-gray-300">
