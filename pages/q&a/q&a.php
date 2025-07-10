@@ -5,14 +5,42 @@ require_once '../../api/api.php';
 
 $api = new qOverflowAPI(API_KEY);
 
-// Set current user and question - NO DATABASE VALIDATION
+// Set current user first line should be removed once windows database works 
 $CURRENT_USER = 'test_user';
 $_SESSION['username'] = $CURRENT_USER;
 $questionName = $_GET['questionName'] ?? '123';
 
-// Initialize comment votes in session if not exists
-if (!isset($_SESSION['comment_votes'])) {
-    $_SESSION['comment_votes'] = [];
+// Initialize data structures
+if (!isset($_SESSION['qa_votes'])) {
+    $_SESSION['qa_votes'] = [
+        'question' => [],
+        'answers' => [],   
+    ];
+}
+
+if (!isset($_SESSION['qa_answers'])) {
+    $_SESSION['qa_answers'] = []; 
+}
+ // array of comment objects
+if (!isset($_SESSION['qa_comments'])) {
+    $_SESSION['qa_comments'] = [
+        'question' => [], 
+        'answers' => [],   
+    ];
+}
+
+// Initialize viewed questions tracking
+if (!isset($_SESSION['viewed_questions'])) {
+    $_SESSION['viewed_questions'] = [];
+}
+
+// Initialize session view counts for questions
+if (!isset($_SESSION['question_views'])) {
+    $_SESSION['question_views'] = [];
+}
+
+if (!isset($_SESSION['next_answer_id'])) {
+    $_SESSION['next_answer_id'] = 1;
 }
 
 $message = '';
@@ -46,92 +74,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         switch ($action) {
             case 'vote_question':
                 $operation = $_POST['operation'] ?? '';
-                $target = ($operation === 'upvote') ? 'upvotes' : 'downvotes';
-                $voteOperation = 'increment';
-                
-                debugLog("Attempting to vote on question", ['operation' => $voteOperation, 'target' => $target, 'question_id' => $actualQuestionId]);
-                
-                // Skip user validation - just make the API call
-                $result = $api->voteQuestionComment($actualQuestionId, $actualQuestionId, $CURRENT_USER, $voteOperation, $target);
-                
-                debugLog("Vote question result", $result);
-                
-                if (isset($result['error'])) {
-                    // If error mentions user not found, create a mock success
-                    if (strpos($result['error'], 'user') !== false || strpos($result['error'], 'not found') !== false) {
-                        $message = "Question " . $operation . " successful! (Simulated - no database)";
-                    } else {
-                        throw new Exception($result['error']);
-                    }
-                } else {
-                    $message = "Question " . $operation . " successful!";
+                if (!in_array($operation, ['upvote', 'downvote'])) {
+                    throw new Exception('Invalid vote operation');
                 }
+                
+                // Store vote
+                $_SESSION['qa_votes']['question'][$CURRENT_USER] = ($operation === 'upvote') ? 1 : -1;
+                
+                debugLog("Question vote stored", $_SESSION['qa_votes']['question']);
+                $message = "Question " . $operation . " successful!";
                 break;
                 
             case 'vote_answer':
                 $answerId = $_POST['answer_id'] ?? '';
                 $operation = $_POST['operation'] ?? '';
-                $target = ($operation === 'upvote') ? 'upvotes' : 'downvotes';
-                $voteOperation = 'increment';
-                
-                debugLog("Attempting to vote on answer", ['answer_id' => $answerId, 'operation' => $voteOperation, 'target' => $target]);
-                
-                $result = $api->voteAnswer($actualQuestionId, $answerId, $CURRENT_USER, $voteOperation, $target);
-                
-                debugLog("Vote answer result", $result);
-                
-                if (isset($result['error'])) {
-                    // If error mentions user not found, create a mock success
-                    if (strpos($result['error'], 'user') !== false || strpos($result['error'], 'not found') !== false) {
-                        $message = "Answer " . $operation . " successful! (Simulated - no database)";
-                    } else {
-                        throw new Exception($result['error']);
-                    }
-                } else {
-                    $message = "Answer " . $operation . " successful!";
+                if (!in_array($operation, ['upvote', 'downvote'])) {
+                    throw new Exception('Invalid vote operation');
                 }
+                
+                // Initialize answer votes if not exists
+                if (!isset($_SESSION['qa_votes']['answers'][$answerId])) {
+                    $_SESSION['qa_votes']['answers'][$answerId] = [];
+                }
+                
+                // Store vote
+                $_SESSION['qa_votes']['answers'][$answerId][$CURRENT_USER] = ($operation === 'upvote') ? 1 : -1;
+                
+                debugLog("Answer vote stored", $_SESSION['qa_votes']['answers'][$answerId]);
+                $message = "Answer " . $operation . " successful!";
                 break;
 
             case 'vote_question_comment':
                 $commentId = $_POST['comment_id'] ?? '';
                 $operation = $_POST['operation'] ?? '';
                 
-                debugLog("Attempting to vote on question comment", ['comment_id' => $commentId, 'operation' => $operation]);
-                
-                // Store vote in session since no database
-                $voteKey = 'question_comment_' . $commentId;
-                if (!isset($_SESSION['comment_votes'][$voteKey])) {
-                    $_SESSION['comment_votes'][$voteKey] = ['upvotes' => 0, 'downvotes' => 0];
+                // Find and update comment
+                foreach ($_SESSION['qa_comments']['question'] as &$comment) {
+                    if ($comment['id'] === $commentId) {
+                        if (!isset($comment['votes'])) {
+                            $comment['votes'] = ['upvotes' => 0, 'downvotes' => 0];
+                        }
+                        if ($operation === 'upvote') {
+                            $comment['votes']['upvotes']++;
+                        } else {
+                            $comment['votes']['downvotes']++;
+                        }
+                        break;
+                    }
                 }
                 
-                if ($operation === 'upvote') {
-                    $_SESSION['comment_votes'][$voteKey]['upvotes']++;
-                } else {
-                    $_SESSION['comment_votes'][$voteKey]['downvotes']++;
-                }
-                
-                $message = "Question comment " . $operation . " successful! (Stored in session)";
+                $message = "Question comment " . $operation . " successful!";
                 break;
 
             case 'vote_answer_comment':
                 $commentId = $_POST['comment_id'] ?? '';
+                $answerId = $_POST['answer_id'] ?? '';
                 $operation = $_POST['operation'] ?? '';
                 
-                debugLog("Attempting to vote on answer comment", ['comment_id' => $commentId, 'operation' => $operation]);
-                
-                // Store vote in session since no database
-                $voteKey = 'answer_comment_' . $commentId;
-                if (!isset($_SESSION['comment_votes'][$voteKey])) {
-                    $_SESSION['comment_votes'][$voteKey] = ['upvotes' => 0, 'downvotes' => 0];
+                // Find and update comment 
+                if (isset($_SESSION['qa_comments']['answers'][$answerId])) {
+                    foreach ($_SESSION['qa_comments']['answers'][$answerId] as &$comment) {
+                        if ($comment['id'] === $commentId) {
+                            if (!isset($comment['votes'])) {
+                                $comment['votes'] = ['upvotes' => 0, 'downvotes' => 0];
+                            }
+                            if ($operation === 'upvote') {
+                                $comment['votes']['upvotes']++;
+                            } else {
+                                $comment['votes']['downvotes']++;
+                            }
+                            break;
+                        }
+                    }
                 }
                 
-                if ($operation === 'upvote') {
-                    $_SESSION['comment_votes'][$voteKey]['upvotes']++;
-                } else {
-                    $_SESSION['comment_votes'][$voteKey]['downvotes']++;
-                }
-                
-                $message = "Answer comment " . $operation . " successful! (Stored in session)";
+                $message = "Answer comment " . $operation . " successful!";
                 break;
                 
             case 'add_question_comment':
@@ -139,22 +156,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($text === '') throw new Exception('Comment text required');
                 if (strlen($text) > 150) throw new Exception('Comment too long');
                 
-                debugLog("Attempting to add question comment", ['text' => $text, 'question_id' => $actualQuestionId]);
+                // Add comment 
+                $_SESSION['qa_comments']['question'][] = [
+                    'id' => uniqid(),
+                    'text' => $text,
+                    'creator' => $CURRENT_USER,
+                    'created' => date('Y-m-d H:i:s'),
+                    'votes' => ['upvotes' => 0, 'downvotes' => 0]
+                ];
                 
-                $result = $api->createQuestionComment($actualQuestionId, $CURRENT_USER, $text);
-                
-                debugLog("Add question comment result", $result);
-                
-                if (isset($result['error'])) {
-                    // If error mentions user not found, create a mock success
-                    if (strpos($result['error'], 'user') !== false || strpos($result['error'], 'not found') !== false) {
-                        $message = "Comment added to question! (Simulated - no database)";
-                    } else {
-                        throw new Exception($result['error']);
-                    }
-                } else {
-                    $message = "Comment added to question!";
-                }
+                debugLog("Question comment added", $_SESSION['qa_comments']['question']);
+                $message = "Comment added to question!";
                 break;
                 
             case 'add_answer_comment':
@@ -163,22 +175,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($text === '') throw new Exception('Comment text required');
                 if (strlen($text) > 150) throw new Exception('Comment too long');
                 
-                debugLog("Attempting to add answer comment", ['answer_id' => $answerId, 'text' => $text]);
-                
-                $result = $api->createAnswerComment($actualQuestionId, $answerId, $CURRENT_USER, $text);
-                
-                debugLog("Add answer comment result", $result);
-                
-                if (isset($result['error'])) {
-                    // If error mentions user not found, create a mock success
-                    if (strpos($result['error'], 'user') !== false || strpos($result['error'], 'not found') !== false) {
-                        $message = "Comment added to answer! (Simulated - no database)";
-                    } else {
-                        throw new Exception($result['error']);
-                    }
-                } else {
-                    $message = "Comment added to answer!";
+                // Initialize answer comments if not exists
+                if (!isset($_SESSION['qa_comments']['answers'][$answerId])) {
+                    $_SESSION['qa_comments']['answers'][$answerId] = [];
                 }
+                
+                // Add comment to session
+                $_SESSION['qa_comments']['answers'][$answerId][] = [
+                    'id' => uniqid(),
+                    'text' => $text,
+                    'creator' => $CURRENT_USER,
+                    'created' => date('Y-m-d H:i:s'),
+                    'votes' => ['upvotes' => 0, 'downvotes' => 0]
+                ];
+                
+                debugLog("Answer comment added", $_SESSION['qa_comments']['answers'][$answerId]);
+                $message = "Comment added to answer!";
                 break;
                 
             case 'add_answer':
@@ -186,46 +198,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($text === '') throw new Exception('Answer text required');
                 if (strlen($text) > 3000) throw new Exception('Answer too long');
                 
-                debugLog("Attempting to add answer", ['text' => substr($text, 0, 100) . '...', 'question_id' => $actualQuestionId]);
+                // Add answer to session
+                $answerId = $_SESSION['next_answer_id']++;
+                $_SESSION['qa_answers'][$answerId] = [
+                    'answer_id' => $answerId,
+                    'text' => $text,
+                    'creator' => $CURRENT_USER,
+                    'created' => date('Y-m-d H:i:s'),
+                    'points' => 0,
+                    'accepted' => false,
+                    'upvotes' => 0,
+                    'downvotes' => 0
+                ];
                 
-                $result = $api->createAnswer($actualQuestionId, $CURRENT_USER, $text);
-                
-                debugLog("Add answer result", $result);
-                
-                if (isset($result['error'])) {
-                    // If error mentions user not found, create a mock success
-                    if (strpos($result['error'], 'user') !== false || strpos($result['error'], 'not found') !== false) {
-                        $message = "Answer submitted! (Simulated - no database)";
-                        // Don't redirect - reload data to show the new answer
-                        $reloadData = true;
-                    } else {
-                        throw new Exception($result['error']);
-                    }
-                } else {
-                    $message = "Answer submitted!";
-                    // Don't redirect - reload data to show the new answer
-                    $reloadData = true;
-                }
+                debugLog("Answer added", $_SESSION['qa_answers'][$answerId]);
+                $message = "Answer submitted!";
+                $reloadData = true;
                 break;
                 
             case 'accept_answer':
                 $answerId = $_POST['answer_id'] ?? '';
                 
-                debugLog("Attempting to accept answer", ['answer_id' => $answerId]);
+                // Check if answer exists in API data
+                $answerExists = isset($_SESSION['qa_answers'][$answerId]);
                 
-                $result = $api->updateAnswer($actualQuestionId, $answerId, ['accepted' => true]);
-                
-                debugLog("Accept answer result", $result);
-                
-                if (isset($result['error'])) {
-                    // If error mentions user not found, create a mock success
-                    if (strpos($result['error'], 'user') !== false || strpos($result['error'], 'not found') !== false) {
-                        $message = "Answer accepted! (Simulated - no database)";
-                    } else {
-                        throw new Exception($result['error']);
+                if ($answerExists) {
+                    // Unaccept all answers first
+                    foreach ($_SESSION['qa_answers'] as &$ans) {
+                        $ans['accepted'] = false;
                     }
-                } else {
+                    $_SESSION['qa_answers'][$answerId]['accepted'] = true;
                     $message = "Answer accepted!";
+                } else {
+                    // Try API call for answers
+                    $result = $api->updateAnswer($actualQuestionId, $answerId, ['accepted' => true]);
+                    
+                    if (isset($result['error'])) {
+                        if (strpos($result['error'], 'user') !== false || strpos($result['error'], 'not found') !== false) {
+                            $message = "Answer accepted! (Simulated - no database)";
+                        } else {
+                            throw new Exception($result['error']);
+                        }
+                    } else {
+                        $message = "Answer accepted!";
+                    }
                 }
                 break;
                 
@@ -255,7 +271,7 @@ if (isset($_GET['msg'])) {
     $messageType = $_GET['type'] ?? 'success';
 }
 
-// Get question data
+// Get question data (keep original API-based approach)
 try {
     $questionResult = $api->getQuestion($questionName);
     
@@ -286,40 +302,83 @@ try {
     
     debugLog("Final question data", ['actualQuestionId' => $actualQuestionId, 'question' => $question]);
     
-    // Skip view count increment to avoid user validation issues
+    // Track view for this question in this session
+    if (!in_array($actualQuestionId, $_SESSION['viewed_questions'])) {
+        $_SESSION['viewed_questions'][] = $actualQuestionId;
+        
+        // Initialize view count for this question if not exists
+        if (!isset($_SESSION['question_views'][$actualQuestionId])) {
+            $_SESSION['question_views'][$actualQuestionId] = 0;
+        }
+        
+        // Increment view count
+        $_SESSION['question_views'][$actualQuestionId]++;
+        
+        debugLog("View tracked for question", ['questionId' => $actualQuestionId, 'totalViews' => $_SESSION['question_views'][$actualQuestionId]]);
+    }
     
-    // Get answers using the actual question ID
+    // Get API answers
     $answersResult = $api->getAnswers($actualQuestionId);
     debugLog("Answers lookup", $answersResult);
     
+    $apiAnswers = [];
     if (!isset($answersResult['error'])) {
-        $answers = $answersResult['answers'] ?? [];
-    } else {
-        debugLog("Error getting answers", $answersResult);
-        $answers = []; // Initialize as empty array
+        $apiAnswers = $answersResult['answers'] ?? [];
     }
     
-    // Get question comments using the actual question ID
+    // Merge API answers
+    $answers = [];
+    
+    // Add API answers
+    foreach ($apiAnswers as $answer) {
+        $answerId = $answer['answer_id'];
+        // Apply votes if they exist
+        if (isset($_SESSION['qa_votes']['answers'][$answerId])) {
+            $votes = array_sum($_SESSION['qa_votes']['answers'][$answerId]);
+            $answer['upvotes'] = max(0, ($answer['upvotes'] ?? 0) + $votes);
+        }
+        $answers[] = $answer;
+    }
+    
+    // Add answers
+    foreach ($_SESSION['qa_answers'] as $sessionAnswer) {
+        // Calculate points from session votes
+        $answerId = $sessionAnswer['answer_id'];
+        if (isset($_SESSION['qa_votes']['answers'][$answerId])) {
+            $sessionAnswer['points'] = array_sum($_SESSION['qa_votes']['answers'][$answerId]);
+            $sessionAnswer['upvotes'] = max(0, $sessionAnswer['points']);
+        }
+        $answers[] = $sessionAnswer;
+    }
+    
+    // Get question comments 
     $commentsResult = $api->getQuestionComments($actualQuestionId);
     debugLog("Question comments lookup", $commentsResult);
     
     $questionComments = [];
     if (!isset($commentsResult['error'])) {
         $questionComments = $commentsResult['comments'] ?? [];
-    } else {
-        debugLog("Error getting question comments", $commentsResult);
     }
+    
+    // Add comments
+    $questionComments = array_merge($questionComments, $_SESSION['qa_comments']['question']);
     
     // Get answer comments for each answer
     foreach ($answers as &$answer) {
-        $answerCommentsResult = $api->getAnswerComments($actualQuestionId, $answer['answer_id']);
-        debugLog("Answer comments lookup for " . $answer['answer_id'], $answerCommentsResult);
+        $answerId = $answer['answer_id'];
+        
+        // Get API comments
+        $answerCommentsResult = $api->getAnswerComments($actualQuestionId, $answerId);
+        debugLog("Answer comments lookup for " . $answerId, $answerCommentsResult);
         
         $answer['comments'] = [];
         if (!isset($answerCommentsResult['error'])) {
             $answer['comments'] = $answerCommentsResult['comments'] ?? [];
-        } else {
-            debugLog("Error getting answer comments for " . $answer['answer_id'], $answerCommentsResult);
+        }
+        
+        // Add comments
+        if (isset($_SESSION['qa_comments']['answers'][$answerId])) {
+            $answer['comments'] = array_merge($answer['comments'], $_SESSION['qa_comments']['answers'][$answerId]);
         }
     }
     
@@ -352,14 +411,23 @@ function canUserInteract($status) {
     return ($status === 'open' || !isset($status));
 }
 
-// Function to get comment votes from session
-function getCommentVotes($commentId, $type = 'question') {
-    $voteKey = $type . '_comment_' . $commentId;
-    if (isset($_SESSION['comment_votes'][$voteKey])) {
-        return $_SESSION['comment_votes'][$voteKey];
+// Function to get comment votes
+function getCommentVotes($comment) {
+    if (isset($comment['votes'])) {
+        return $comment['votes'];
     }
     return ['upvotes' => 0, 'downvotes' => 0];
 }
+
+// Calculate question points from session votes
+$questionPoints = ($question['upvotes'] ?? 0);
+if (isset($_SESSION['qa_votes']['question'])) {
+    $sessionVotes = array_sum($_SESSION['qa_votes']['question']);
+    $questionPoints += $sessionVotes;
+}
+
+// Calculate total views 
+$totalViews = ($question['views'] ?? 0) + ($_SESSION['question_views'][$actualQuestionId] ?? 0);
 
 // Sort answers: accepted first, then by points desc
 if (!empty($answers)) {
@@ -370,8 +438,8 @@ if (!empty($answers)) {
         if ($aAccepted && !$bAccepted) return -1;
         if (!$aAccepted && $bAccepted) return 1;
         
-        $aPoints = $a['upvotes'] ?? 0;
-        $bPoints = $b['upvotes'] ?? 0;
+        $aPoints = $a['upvotes'] ?? $a['points'] ?? 0;
+        $bPoints = $b['upvotes'] ?? $b['points'] ?? 0;
         
         return $bPoints - $aPoints;
     });
@@ -421,8 +489,8 @@ if (!$question) {
     <div class="flex justify-between items-center mb-3">
         <div class="space-x-4 text-sm text-gray-400">
             <span>Asked: <time><?php echo formatDate($question['createdAt'] ?? time()); ?></time></span>
-            <span>Views: <?php echo $question['views'] ?? 0; ?></span>
-            <span>Points: <strong><?php echo $question['upvotes'] ?? 0; ?></strong></span>
+            <span>Views: <?php echo $totalViews; ?></span>
+            <span>Points: <strong><?php echo $questionPoints; ?></strong></span>
         </div>
         <div>
             <strong><?php echo htmlspecialchars($question['creator'] ?? 'Unknown'); ?></strong>
@@ -455,32 +523,13 @@ if (!$question) {
         <?php if (!empty($questionComments)): ?>
             <?php foreach ($questionComments as $comment): ?>
                 <?php 
-                $commentId = $comment['comment_id'] ?? uniqid();
-                $votes = getCommentVotes($commentId, 'question');
+                $commentId = $comment['comment_id'] ?? $comment['id'] ?? uniqid();
+                $votes = getCommentVotes($comment);
                 ?>
                 <li class="border-l-2 border-gray-600 pl-3 py-2 mb-2 bg-gray-750 rounded-r">
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <span><?php echo htmlspecialchars($comment['text'] ?? ''); ?></span> — <em><?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?></em>
-                        </div>
-                        <div class="flex items-center space-x-2 ml-4">
-                            <span class="text-sm text-gray-400">
-                                ▲<?php echo $votes['upvotes']; ?> ▼<?php echo $votes['downvotes']; ?>
-                            </span>
-                            <form method="POST" class="inline">
-                                <input type="hidden" name="action" value="vote_question_comment">
-                                <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                                <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($commentId); ?>">
-                                <input type="hidden" name="operation" value="upvote">
-                                <button type="submit" class="text-blue-400 hover:text-blue-300 px-1">▲</button>
-                            </form>
-                            <form method="POST" class="inline">
-                                <input type="hidden" name="action" value="vote_question_comment">
-                                <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                                <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($commentId); ?>">
-                                <input type="hidden" name="operation" value="downvote">
-                                <button type="submit" class="text-red-400 hover:text-red-300 px-1">▼</button>
-                            </form>
                         </div>
                     </div>
                 </li>
@@ -506,10 +555,7 @@ if (!$question) {
     <?php if (count($answers) === 0): ?>
         <p class="text-gray-400 mb-8">No answers yet. Be the first to answer!</p>
     <?php else: ?>
-        <!-- Debug info -->
-        <div class="text-xs text-gray-500 mb-4">
-            Debug: Found <?php echo count($answers); ?> answers | Last updated: <?php echo date('H:i:s'); ?>
-        </div>
+
     <?php endif; ?>
 
     <?php foreach ($answers as $answer): ?>
@@ -518,9 +564,9 @@ if (!$question) {
                 <div class="text-green-400 font-semibold mb-2">✓ Accepted Answer</div>
             <?php endif; ?>
             <div class="flex justify-between items-center mb-4">
-                <div>Points: <strong><?php echo $answer['upvotes'] ?? 0; ?></strong></div>
+                <div>Points: <strong><?php echo $answer['upvotes'] ?? $answer['points'] ?? 0; ?></strong></div>
                 <div><strong><?php echo htmlspecialchars($answer['creator'] ?? 'Unknown'); ?></strong></div>
-                <time class="text-gray-400 text-sm"><?php echo formatDate($answer['createdAt'] ?? time()); ?></time>
+                <time class="text-gray-400 text-sm"><?php echo formatDate($answer['createdAt'] ?? $answer['created'] ?? time()); ?></time>
             </div>
 
             <div class="prose prose-invert mb-4"><?php echo renderMarkdown($answer['text'] ?? ''); ?></div>
@@ -556,66 +602,50 @@ if (!$question) {
                 <?php if (!empty($answer['comments'])): ?>
                     <?php foreach ($answer['comments'] as $comment): ?>
                         <?php 
-                        $commentId = $comment['comment_id'] ?? uniqid();
-                        $votes = getCommentVotes($commentId, 'answer');
+                        $commentId = $comment['comment_id'] ?? $comment['id'] ?? uniqid();
+                        $votes = getCommentVotes($comment);
                         ?>
                         <li class="border-l-2 border-gray-600 pl-3 py-2 mb-2 bg-gray-750 rounded-r">
                             <div class="flex justify-between items-start">
                                 <div class="flex-1">
                                     <span class="text-gray-400"><?php echo htmlspecialchars($comment['text'] ?? ''); ?></span> — <em><?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?></em>
                                 </div>
-                                <div class="flex items-center space-x-2 ml-4">
-                                    <span class="text-sm text-gray-400">
-                                        ▲<?php echo $votes['upvotes']; ?> ▼<?php echo $votes['downvotes']; ?>
-                                    </span>
-                                    <form method="POST" class="inline">
-                                        <input type="hidden" name="action" value="vote_answer_comment">
-                                        <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                                        <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($commentId); ?>">
-                                        <input type="hidden" name="operation" value="upvote">
-                                        <button type="submit" class="text-blue-400 hover:text-blue-300 px-1">▲</button>
-                                    </form>
-                                    <form method="POST" class="inline">
-                                        <input type="hidden" name="action" value="vote_answer_comment">
-                                        <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                                        <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($commentId); ?>">
-                                        <input type="hidden" name="operation" value="downvote">
-                                        <button type="submit" class="text-red-400 hover:text-red-300 px-1">▼</button>
-                                    </form>
-                                </div>
                             </div>
                         </li>
                     <?php endforeach; ?>
-                <?php else: ?>
+                   <?php else: ?>
                     <li class="text-gray-500">No comments yet.</li>
                 <?php endif; ?>
             </ul>
 
             <?php if (canUserInteract($question['status'] ?? null)): ?>
-            <form method="POST" class="mb-4">
+            <form method="POST">
                 <input type="hidden" name="action" value="add_answer_comment">
                 <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
                 <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id']); ?>">
-                <input type="text" name="comment_text" maxlength="150" required placeholder="Add comment..." class="w-full p-2 rounded bg-gray-700 text-gray-300 border border-gray-600">  
-                <button type="submit" class="mt-2 bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded text-white">Add Comment</button>
+                <input type="text" name="comment_text" maxlength="150" required placeholder="Add a comment..." class="w-full p-2 rounded bg-gray-700 text-gray-300 border border-gray-600">
+                <button type="submit" class="mt-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white">Add Comment</button>
             </form>
             <?php endif; ?>
         </article>
     <?php endforeach; ?>
-
-    <?php if (canUserInteract($question['status'] ?? null)): ?>
-    <section class="bg-gray-800 p-6 rounded-lg shadow-lg">
-        <h3 class="text-white text-2xl font-bold mb-4">Add a new answer</h3>
-        <form method="POST">
-            <input type="hidden" name="action" value="add_answer">
-            <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-            <textarea name="answer_text" rows="6" maxlength="3000" required placeholder="Your answer here..." class="w-full p-3 rounded bg-gray-700 text-gray-300 border border-gray-600 mb-4"></textarea>
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded text-white font-semibold">Submit Answer</button>
-        </form>
-    </section>
-    <?php endif; ?>
-        
 </section>
+
+<?php if (canUserInteract($question['status'] ?? null)): ?>
+<section class="bg-gray-800 rounded-lg p-6 mt-8 shadow-lg">
+    <h2 class="text-white text-2xl font-bold mb-4">Your Answer</h2>
+    <form method="POST">
+        <input type="hidden" name="action" value="add_answer">
+        <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
+        <textarea name="answer_text" maxlength="3000" required placeholder="Write your answer here..." class="w-full p-4 rounded bg-gray-700 text-gray-300 border border-gray-600 h-40 resize-vertical"></textarea>
+        <div class="flex justify-between items-center mt-4">
+            <span class="text-gray-400 text-sm">Maximum 3000 characters</span>
+            <button type="submit" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded text-white font-semibold">Submit Answer</button>
+        </div>
+    </form>
+</section>
+<?php endif; ?>
+
 
 </body>
 </html>
