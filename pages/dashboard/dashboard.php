@@ -58,7 +58,7 @@ print_r($users);
 echo '</pre>';
 */
 
-
+/*
 $AllQuestionInfo= $api->getUserQuestions($username);
 echo '<pre>';
 print_r($AllQuestionInfo);
@@ -73,6 +73,7 @@ $Answers= $api->getUserAnswers($username);
 echo '<pre>';
 print_r($Answers);
 echo '</pre>';
+*/
   ?>
 
 
@@ -164,7 +165,7 @@ echo '</pre>';
       <?php foreach ($JustUserAnswer as $UserAnswer): ?> <!-- Loop through each user answer -->
         <a href="/pages/q&a/q&a.php">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md w-[300px]">
-          <p class="text-sm font-semibold">QUESTION TITLE:</p>
+          <p class="text-sm font-semibold">ANSWER TITLE:</p>
           <p class="mt-2 text-sm font-semibold"><?php echo htmlspecialchars($UserAnswer['text']); ?></p> <!-- Display question title -->
           <p class="mt-4 text-sm">VOTES: <?php echo $UserAnswer['upvotes'] ?? 0; ?></p><!-- Display answer votes -->
         </div>
