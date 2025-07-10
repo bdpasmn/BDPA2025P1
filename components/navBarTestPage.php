@@ -30,6 +30,16 @@
         <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo" class="h-9 w-auto">
         <span class="text-2xl font-bold text-white">qOverflow</span>
       </div>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold">Search</h3>
+            <form class="flex gap-2" method="get" action="navBarTest.php">
+                <input type="text" id="searchInput" name="query" placeholder="Search questions"
+                       class="bg-gray-700 border border-gray-600 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button type="submit" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded transition-colors">
+                    🔍
+                </button>
+            </form>
+        </div>
 
       <div class="hidden md:flex flex-col text-center text-yellow-300 text-sm font-semibold">
         <span>Points: <span class="text-yellow-200">125</span></span>
@@ -43,13 +53,13 @@
         <a href="/pages/mail/mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
           Mail
         </a>
-        <a href="/pages/buffet/Buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
+        <a href="/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
           Buffet
         </a>
         <a href="index.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
           Log Out
         </a>
-        <img src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=identicon" alt="Profile" class="h-10 w-10 rounded-full border-2 border-blue-600" href="/pages/dashboard/dashboard.php">
+        <a href="/pages/dashboard/dashboard.php"><img src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=identicon" alt="Profile" class="h-10 w-10 rounded-full border-2 border-blue-600"></a>
       </div>
 <!--Make sure to replace the Gravatar URL with the actual user's Gravatar link if available.
 //Make sure to link the profile image to the user's dashboard or profile page.
