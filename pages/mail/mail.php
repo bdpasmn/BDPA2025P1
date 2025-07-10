@@ -1,12 +1,13 @@
 <?php
 session_start();
-// $_SESSION['username'] = 'user2'; 
+// $_SESSION['username'] = 'user2'; hardcoded for testing
 
 require_once __DIR__ . '/../../Api/api.php';
 require_once __DIR__ . '/../../Api/key.php';
 
 $api = new qOverflowAPI(API_KEY);
 
+// Get the user from session
 $user = $_SESSION['username'] ?? null;
 if (!$user) {
     header('Location: ../auth/login.php');
@@ -17,10 +18,12 @@ $error = '';
 $success = '';
 $showCompose = true;
 
+// Get the selected thread if any
 $recipient = $_GET['with'] ?? '';
 $subject = $_GET['subject'] ?? '';
 $activeKey = $recipient && $subject ? $recipient . '::' . $subject : null;
 
+// Check if the recipient exists in the system, in case they are deleted or don't exist
 $recipientExists = true;
 if ($recipient && $recipient !== $user) {
     $resp = $api->getUser($recipient);
@@ -29,6 +32,7 @@ if ($recipient && $recipient !== $user) {
     }
 }
 
+// Handles sending the mail
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject = trim($_POST['subject'] ?? '');
     $body = trim($_POST['body'] ?? '');
@@ -45,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'User not found. Please check the recipient username.' :
                 'Message failed: ' . htmlspecialchars($resp['error']);
         } else {
+            // Redirect to the thread after sending message
             header("Location: mail.php?with=" . urlencode($recipient) . "&subject=" . urlencode($subject) . "&success=1");
             exit;
         }
@@ -55,14 +60,19 @@ if (isset($_GET['success'])) {
     $success = 'Message sent successfully!';
 }
 
+// Get received messages for the current user
 $inboxMessages = $api->getMail($user)['messages'] ?? [];
+
+// Get messages the user sent (if viewing a thread)
 $outboxMessages = [];
 if (!empty($recipient) && $recipient !== $user) {
     $outboxMessages = $api->getMail($recipient)['messages'] ?? [];
 }
 
+// Combine inbox and outbox into one array
 $allMessages = array_merge($inboxMessages, $outboxMessages);
 
+// Group all messages into threads
 $threads = [];
 foreach ($allMessages as $msg) {
     if ($msg['sender'] !== $user && $msg['receiver'] !== $user) continue;
@@ -74,10 +84,12 @@ foreach ($allMessages as $msg) {
     $threads[$key][] = $msg;
 }
 
+// Sort messages in each thread based on creation time
 foreach ($threads as &$msgs) {
     usort($msgs, fn($a, $b) => $a['createdAt'] <=> $b['createdAt']);
 }
 
+// If viewing a thread, get that thread's messages
 $activeThread = $activeKey && isset($threads[$activeKey]) ? $threads[$activeKey] : [];
 $showCompose = !$activeKey;
 ?>
@@ -88,6 +100,8 @@ $showCompose = !$activeKey;
   <title>Mail • qOverflow</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Showdown for Markdown -->
   <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
   <style>
     body {
@@ -97,7 +111,7 @@ $showCompose = !$activeKey;
   </style>
 </head>
 <body class="text-white">
-
+<!-- Navbar -->
 <nav class="bg-gray-900 shadow-md border-b border-gray-700">
   <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
     <div class="flex items-center space-x-3">
@@ -112,12 +126,14 @@ $showCompose = !$activeKey;
   </div>
 </nav>
 
+<!--  message for error or success -->
 <?php if ($error): ?>
   <div class="bg-red-600 text-white text-sm py-2 text-center"><?= $error ?></div>
 <?php elseif ($success): ?>
   <div class="bg-green-600 text-white text-sm py-2 text-center"><?= $success ?></div>
 <?php endif; ?>
 
+<!-- sidebar and main panel -->
 <div class="flex h-[calc(100vh-4rem)] px-6 pt-6 space-x-6 overflow-hidden">
   <aside class="w-72 bg-gray-800 rounded-xl p-4 flex flex-col border border-gray-700 shadow-md overflow-y-auto">
     <a href="mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 mb-4 rounded-md text-sm font-medium shadow text-center">+ Compose</a>
@@ -131,7 +147,7 @@ $showCompose = !$activeKey;
       </a>
     <?php endforeach; ?>
   </aside>
-
+  <!-- thread view or compose screen -->
   <main class="flex-1 bg-gray-800 rounded-xl p-6 flex flex-col border border-gray-700 shadow-md overflow-hidden">
     <?php if (!$showCompose): ?>
       <?php if (!$recipientExists): ?>
@@ -140,6 +156,8 @@ $showCompose = !$activeKey;
         </div>
       <?php endif; ?>
 
+
+      <!-- Message history thread -->
       <div class="flex-1 overflow-y-auto space-y-4 mb-4">
         <?php foreach ($activeThread as $msg): ?>
           <?php $isMine = $msg['sender'] === $user; ?>
@@ -155,6 +173,7 @@ $showCompose = !$activeKey;
         <?php endforeach; ?>
       </div>
 
+       <!-- Reply form -->
       <form method="POST" class="border-t border-gray-700 pt-4" <?= !$recipientExists ? 'style="opacity: 0.5; pointer-events: none;"' : '' ?>>
         <input type="hidden" name="recipient" value="<?= htmlspecialchars($recipient) ?>">
         <input type="hidden" name="subject" value="<?= htmlspecialchars($subject) ?>">
@@ -168,6 +187,8 @@ $showCompose = !$activeKey;
           </button>
         </div>
       </form>
+
+     <!-- Compose Area -->
     <?php else: ?>
       <form method="POST" class="flex flex-col space-y-4">
         <h2 class="text-white font-bold text-lg">Compose New Message</h2>
@@ -189,14 +210,17 @@ $showCompose = !$activeKey;
   </main>
 </div>
 
+<!-- JS for Markdown rendering -->
 <script>
   const converter = new showdown.Converter();
 
+  // Renders all markdown blocks
   document.querySelectorAll('.message-body, .preview-block').forEach(el => {
     const raw = el.getAttribute('data-md') || '';
     el.innerHTML = converter.makeHtml(raw);
   });
 
+   // Live preview 
   const textarea = document.getElementById('body');
   const preview = document.getElementById('preview');
   if (textarea && preview) {
