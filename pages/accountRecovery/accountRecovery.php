@@ -7,8 +7,8 @@ require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../Api/api.php';
 $api = new qOverflowAPI(API_KEY);
 
-// CAPTCHA generation
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+//CAPTCHA generation and validation
+  if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     $num1 = rand(1, 10);
     $num2 = rand(1, 10);
     $_SESSION['num1'] = $num1;

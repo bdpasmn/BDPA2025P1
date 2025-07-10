@@ -8,10 +8,14 @@ require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../Api/api.php';
 $api = new qOverflowAPI(API_KEY);
 
-$error = '';
+// Error placeholders for form validation
+$usernameerror = '';
+$passworderror = '';
+$captchaerror = '';
 
-// CAPTCHA generation
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+
+//CAPTCHA generation and validation
+  if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     $num1 = rand(1, 10);
     $num2 = rand(1, 10);
     $_SESSION['num1'] = $num1;
@@ -23,31 +27,42 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $haserror = false;
     $username = trim($_POST['username']);
     $email = trim($_POST['email']);
     $rawPassword = $_POST['password'];
     $captcha = trim($_POST['captcha']);
 
-       if (!isset($_SESSION['captcha_answer']) || $captcha != $_SESSION['captcha_answer']) {
-        $error = "Incorrect answer.";
-    } elseif (!preg_match('/^[a-zA-Z0-9_-]+$/', $username)) {
-        $error = "Username must include both letters and numbers.";
-    } elseif (
-        strlen($rawPassword) < 11 ||
-        !preg_match("/[A-Z]/", $rawPassword) ||
-        !preg_match("/[a-z]/", $rawPassword) ||
-        !preg_match("/[0-9]/", $rawPassword) ||
-        !preg_match("/[\W]/", $rawPassword)
+     if (!isset($_SESSION['captcha_answer']) || $captcha != $_SESSION['captcha_answer']) {
+        $captchaerror = "Incorrect answer";
+        $haserror = true;
+    }
+
+    // Enforce username requirements
+    if (
+    !preg_match('/^[a-zA-Z0-9_-]+$/', $username) || // Only these charcters are allowed
+    !preg_match('/[a-zA-Z]/', $username) ||         // Must contain at least one letter
+    !preg_match('/[0-9]/', $username)               // Must contain at least one digit
     ) {
-        $error = "Password must have: >10 characters, uppercase letters, lowercase letters, numbers, special characters.";
-    } else {
+        $usernameerror = "Username must include both letters and numbers and may include dashes and underscores.";
+        $haserror = true;
+    }
+
+     // Enforce storng password requirements
+    if (
+        strlen($rawPassword) < 11 || //Must be more than 10 characters
+        !preg_match("/[A-Z]/", $rawPassword) || //Must contain at least one uppercase letter
+        !preg_match("/[a-z]/", $rawPassword) || //Must contain at least one lowercase letter
+        !preg_match("/[0-9]/", $rawPassword) || //Must conatin at least one number
+        !preg_match("/[\W]/", $rawPassword) //Must contain at least one special character
+    ) {
+        $passworderror = "Password must have: > 10 characters, uppercase letters, lowercase letters, numbers, and special characters";
+        $haserror = true;
+    }
+
+    // Create a secure salt and derive a password hash using PBKDF2  
+    if (!$haserror) {
         $salt = bin2hex(random_bytes(16));
-        //$key = hash('sha256', $salt . $rawPassword);
-        //$passwordHash = password_hash($rawPassword, PASSWORD_DEFAULT);
-        //$username = 'gabby16';
-        //$email = 'gabby15@example.com';
-        //$password = '2005871036?aA';
-  
         $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
 
         try {
@@ -55,6 +70,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]);
 
+            // Check if username or email already exists in DB
             $checkQuery = "SELECT COUNT(*) FROM users WHERE username = ? OR email = ?";
             $checkStmt = $pdo->prepare($checkQuery);
             $checkStmt->execute([$username, $email]);
@@ -65,16 +81,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $insertQuery = "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
                 $stmt = $pdo->prepare($insertQuery);
                 $stmt->execute([$username, $email, $passwordHash]);
-
+                
+                // Register user with external API
                 $result = $api->createUser($username, $email, $salt, $passwordHash);
-//print_r($result['error']);
                 if ($result['error']) {
                     $error = "Note: User was added to the database, but API call failed: " . $result['error'];
                 } else {
                     $_SESSION['user_id'] = $result['id'] ?? null;
                 }
 
-               $_SESSION['username'] = $username;
+                // Store username and redirect to login
+                $_SESSION['username'] = $username;
                header("Location: login.php");
                 exit;
             }
@@ -98,10 +115,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <div class="w-full bg-gray-800 rounded-2xl shadow-lg border border-gray-700 sm:max-w-lg p-8 sm:p-10">
       <h2 class="text-2xl font-bold mb-6 text-white">Sign Up</h2>
 
-      <?php if (!empty($error)): ?>
-        <div style="color: red;"><?= htmlspecialchars($error) ?> </div>
-      <?php endif; ?>
-
       <form class="space-y-6" method="POST" action="">
         <div>
           <label class="block mb-2 text-md font-medium text-white">Username</label>
@@ -109,6 +122,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                  placeholder="Enter your username"
                  class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3" />
         </div>
+
+        <?php if (!empty($usernameerror)): ?>
+          <div style="color: red;"><?= htmlspecialchars($usernameerror) ?> </div>
+        <?php endif; ?>
 
         <div>
           <label class="block mb-2 text-md font-medium text-white">Email</label>
@@ -124,6 +141,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                  class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3" />
         </div>
 
+        <?php if (!empty($passworderror)): ?>
+          <div style="color: red;"><?= htmlspecialchars($passworderror) ?> </div>
+        <?php endif; ?>
+
         <div>
           <label for="captcha" class="block mb-2 text-md font-medium text-white">
             What is <?= $num1 ?> + <?= $num2 ?>?
@@ -131,6 +152,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           <input type="text" id="captcha" name="captcha" placeholder="Answer"
                  class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3">
         </div>
+
+        <?php if (!empty($captchaerror)): ?>
+          <div style="color: red;"><?= htmlspecialchars($captchaerror) ?> </div>
+        <?php endif; ?>
 
         <button type="submit"
                 class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3">

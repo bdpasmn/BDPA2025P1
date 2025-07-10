@@ -8,8 +8,9 @@ require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../Api/api.php';
 $api = new qOverflowAPI(API_KEY);
 
+// Lockout settings for failed login attempts
 define('MAX_ATTEMPTS', 3);
-define('LOCKOUT_TIME', 3600); 
+define('LOCKOUT_TIME', 3600); // 1 hour in seconds
 
 $error = null;
 
@@ -21,83 +22,67 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (empty($username) || empty($rawPassword)) {
         $error = "Enter both username and password.";
     } else {
-     // echo $username . '<br /' ;
-        $userResponse = $api->getUser($username);
+        // Check if user is temporarily locked out due to repeated failures
+        if (isset($_SESSION['failed_attempts']) && $_SESSION['failed_attempts'] >= MAX_ATTEMPTS) {
+            $last_failed = $_SESSION['last_failed_time'] ?? 0;
+            $time_since_last_fail = time() - $last_failed;
 
-        //print_r($userResponse);
-
-//echo "<pre>";
-//print_r($userResponse);
-//echo "</pre>";
-//exit;
-
-        if (!isset($userResponse ['user']['salt'])) {
-    $error = "User not found.";
-} else {
-    $salt = $userResponse['user']['salt'];
-    //$key = hash('SHA-256', $salt . $rawPassword);
-    $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
-    $authResponse = $api->authenticateUser($username, $passwordHash);
-    
-    print_r($authResponse);
-
-    if (isset($authResponse['success']) && $authResponse['success'] === true) {
-    $_SESSION['username'] = $username;
-    header("Location: /pages/dashboard/dashboard.php");
-    exit;
-    } else {
-        $error = "Incorrect Password.";
-      }
-    //if ($time_since_last_fail > LOCKOUT_TIME) {
-      //  $_SESSION['failed_attempts'] = 0;
-    //}
-/*
-    if ($_SERVER["REQUEST_METHOD"] === "POST") {
-        $username = trim($_POST['username']);
-        $password = $_POST['password'];
-        $remember_me = isset($_POST['remember_me']);
-
-        $saltData = json_decode($response, true);
-        $salt = is_array($saltData) && isset($saltData[0]['salt']) ? $saltData[0]['salt'] : null;
-        
-        if (!$salt) {
-            $_SESSION['failed_attempts']++;
-            $_SESSION['last_failed_time'] = time();
-            $attempts_left = MAX_ATTEMPTS - $_SESSION['failed_attempts'];
-            $error = "Username not found. $attempts_left Attempts.";
-        } else {
-            $key = hash('sha512', $salt . $password);
-            $authResponse = $api->authenticateUser($username, $key);
-
-            if ($authResponse && isset($authResponse['id'])) {
-                $_SESSION['user_id'] = $authResponse['id'];
-                $_SESSION['username'] = $authResponse['username'];
-
+            if ($time_since_last_fail < LOCKOUT_TIME) {
+                $minutes_left = ceil((LOCKOUT_TIME - $time_since_last_fail) / 60);
+                $error = "Too many failed attempts. Try again in $minutes_left minutes.";
+            } else {
                 $_SESSION['failed_attempts'] = 0;
                 $_SESSION['last_failed_time'] = 0;
+            }
+        }
 
-                if ($remember_me) {
-                    setcookie('remember_me', $authResponse['username'], time() + 60 * 60 * 24 * 30, "/");
-                }
+        // Proceed with login if not locked out and all field are filled
+        if (!$error) {
+            $userResponse = $api->getUser($username);
 
-                header("Location: authedDashboard.php");
-                exit;
-            } else {
-                $_SESSION['failed_attempts']++;
+            if (!isset($userResponse['user']['salt'])) {
+                // If user doesn't exist in the external API, count as failed attempt
+                $_SESSION['failed_attempts'] = ($_SESSION['failed_attempts'] ?? 0) + 1;
                 $_SESSION['last_failed_time'] = time();
                 $attempts_left = MAX_ATTEMPTS - $_SESSION['failed_attempts'];
                 $error = $attempts_left <= 0
                     ? "Too many failed attempts. You are locked out for 1 hour."
-                    : "Username or password incorrect.$attempts_left Attempts left:.";
+                    : "User not found. $attempts_left attempt(s) left.";
+            } else {
+                // Derive password hash using stored salt and validate with API
+                $salt = $userResponse['user']['salt'];
+                $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
+                $authResponse = $api->authenticateUser($username, $passwordHash);
+
+                if (isset($authResponse['success']) && $authResponse['success'] === true) {
+                    $_SESSION['username'] = $username;
+                    $_SESSION['user_id'] = $authResponse['id'] ?? null;
+
+                    // Reset lockout counters
+                    $_SESSION['failed_attempts'] = 0;
+                    $_SESSION['last_failed_time'] = 0;
+
+                    // Optionally store cookie if user checked "remember me"
+                    if ($remember_me) {
+                        setcookie('remember_me', $authResponse['username'], time() + 60 * 60 * 24 * 30, "/");
+                    }
+                    header("Location: /pages/dashboard/dashboard.php");
+                    exit;
+                } else {
+                    // Password hash didn't match — count as failed attempt
+                    $_SESSION['failed_attempts'] = ($_SESSION['failed_attempts'] ?? 0) + 1;
+                    $_SESSION['last_failed_time'] = time();
+                    $attempts_left = MAX_ATTEMPTS - $_SESSION['failed_attempts'];
+                    $error = $attempts_left <= 0
+                        ? "Too many failed attempts. You are locked out for 1 hour."
+                        : "Incorrect password. $attempts_left attempt(s) left.";
+                }
             }
         }
-      } 
-*/
     }
-  }
 }
 
-// Optional: restore session from cookie
+// Restore session from cookie
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
     $_SESSION['username'] = $_COOKIE['remember_me'];
     header("Location: /pages/dashboard/dashboard.php");
