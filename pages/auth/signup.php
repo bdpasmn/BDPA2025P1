@@ -8,6 +8,8 @@ require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../Api/api.php';
 $api = new qOverflowAPI(API_KEY);
 
+$error = '';
+
 // CAPTCHA generation
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     $num1 = rand(1, 10);
@@ -26,10 +28,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $rawPassword = $_POST['password'];
     $captcha = trim($_POST['captcha']);
 
-    if (!isset($_SESSION['captcha_answer']) || $captcha != $_SESSION['captcha_answer']) {
-        $error = "Incorrect CAPTCHA answer.";
+       if (!isset($_SESSION['captcha_answer']) || $captcha != $_SESSION['captcha_answer']) {
+        $error = "Incorrect answer.";
     } elseif (!preg_match('/^[a-zA-Z0-9_-]+$/', $username)) {
-        $error = "Username must be alphanumeric and may include dashes and underscores.";
+        $error = "Username must include both letters and numbers.";
     } elseif (
         strlen($rawPassword) < 11 ||
         !preg_match("/[A-Z]/", $rawPassword) ||
@@ -37,7 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         !preg_match("/[0-9]/", $rawPassword) ||
         !preg_match("/[\W]/", $rawPassword)
     ) {
-        $error = "Password must be at least 11 characters and include uppercase, lowercase, number, and special character.";
+        $error = "Password must have: >10 characters, uppercase letters, lowercase letters, numbers, special characters.";
     } else {
         $salt = bin2hex(random_bytes(16));
         //$key = hash('sha256', $salt . $rawPassword);
@@ -45,7 +47,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         //$username = 'gabby16';
         //$email = 'gabby15@example.com';
         //$password = '2005871036?aA';
-
   
         $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
 
@@ -96,6 +97,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     <div class="w-full bg-gray-800 rounded-2xl shadow-lg border border-gray-700 sm:max-w-lg p-8 sm:p-10">
       <h2 class="text-2xl font-bold mb-6 text-white">Sign Up</h2>
+
+      <?php if (!empty($error)): ?>
+        <div style="color: red;"><?= htmlspecialchars($error) ?> </div>
+      <?php endif; ?>
 
       <form class="space-y-6" method="POST" action="">
         <div>
