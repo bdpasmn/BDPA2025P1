@@ -44,18 +44,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $user = getUserByEmail($api, $email);
 
         if ($user && isset($user['username'])) {
-            $token = bin2hex(random_bytes(16));
+            $token = bin2hex(random_bytes(64));
             $host = $_SERVER['HTTP_HOST'];
             $recoveryLink = "http://$host/pages/resetPassword.php?token=$token";
             $showPopup = true;
 
-            // Store token in API (in `salt` field)
+            // Store token in API (in `key` field)
             $username = $user['username'];
-            $response = $api->updateUser($username, ['salt' => $token]);
+            $response = $api->updateUser($username, ['key' => $token]);
 
             if (isset($response['error'])) {
                 $error = "Failed to generate recovery link.";
                 $showPopup = false;
+                echo "<pre>"; print_r($response); echo "</pre>";
             }
         } else {
             $error = "Email not found in our records.";
