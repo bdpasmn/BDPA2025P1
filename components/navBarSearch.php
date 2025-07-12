@@ -12,11 +12,23 @@ $api = new qOverflowAPI(API_KEY);
 $searchQuery = isset($_GET['query']) ? trim($_GET['query']) : 'php';
 $params = ['query' => $searchQuery];
 
+// Check if query is in YYYY-MM-DD format
+$dateMatches = [];
+if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $searchQuery)) {
+    $date = DateTime::createFromFormat('Y-m-d', $searchQuery);
+    if ($date) {
+        $startOfDay = $date->setTime(0, 0, 0)->getTimestamp() * 1000;
+        $endOfDay = $date->setTime(23, 59, 59)->getTimestamp() * 1000 + 999;
+        $params['startTime'] = $startOfDay;
+        $params['endTime'] = $endOfDay;
+    }
+}
+
 try {
     // Call the API to search for questions
     $results = $api->searchQuestions($params);
 
-    echo "<h2>Search Results for '" . htmlspecialchars($searchQuery) . "'</h2>";
+    echo "<h1>Search Results for '" . htmlspecialchars($searchQuery) . "'</h1>";
 
     // Prepare variables for matches
     $searchQueryLower = strtolower($searchQuery);
@@ -54,33 +66,45 @@ try {
                         }
                     }
                 }
+                // Date match (if query is date)
+                if (isset($params['startTime']) && isset($question['time'])) {
+                    if ($question['time'] >= $params['startTime'] && $question['time'] <= $params['endTime']) {
+                        $dateMatches[] = $question['title'];
+                    }
+                }
             }
         }
     }
 
     // Display the results for each match type
     if (count($titleMatches) > 0) {
-        echo '<h3>Titles:</h3>';
+        echo '<h1>Titles:</h1>';
         foreach ($titleMatches as $title) {
-            echo htmlspecialchars($title) . '<br>';
+            echo '<a class="text-2xl font-bold text-blue-400 hover:underline" href="../q&a/q&a.php?questionName=' . urlencode($title) . '">' . htmlspecialchars($title) . '</a><br>';
         }
     }
     if (count($textMatches) > 0) {
-        echo '<h3>Body Text:</h3>';
+        echo '<h1>Body Text:</h1>';
         foreach ($textMatches as $text) {
-            echo htmlspecialchars($text) . '<br>';
+            echo '<a class="text-2xl font-bold text-blue-400 hover:underline" href="../q&a/q&a.php?questionName=' . urlencode($text) . '">' . htmlspecialchars($text) . '</a><br>';
         }
     }
     if (count($creatorMatches) > 0) {
-        echo '<h3>Creator:</h3>';
+        echo '<h1>Creator:</h1>';
         foreach ($creatorMatches as $creator) {
             // Only display the creator name, since title is not available in this context
-            echo htmlspecialchars($creator) . '<br>';
+            echo '<a class="text-2xl font-bold text-blue-400 hover:underline" href="../q&a/q&a.php?questionName=' . urlencode($creator) . '">' . htmlspecialchars($creator) . '</a><br>';
+        }
+    }
+    if (count($dateMatches) > 0) {
+        echo '<h1>Date Matches (' . htmlspecialchars($searchQuery) . '):</h1>';
+        foreach ($dateMatches as $title) {
+            echo '<a class="text-2xl font-bold text-blue-400 hover:underline" href="../q&a/q&a.php?questionName=' . urlencode($title) . '">' . htmlspecialchars($title) . '</a><br>';
         }
     }
     // If no matches found, display a message
-    if (count($titleMatches) === 0 && count($textMatches) === 0 && count($creatorMatches) === 0) {
-        echo 'No matching titles, creator, or body text found.';
+    if (count($titleMatches) === 0 && count($textMatches) === 0 && count($creatorMatches) === 0 && count($dateMatches) === 0) {
+        echo 'No matching titles, creator, body text, or dates found.';
     }
 
 } catch (Exception $e) {
@@ -88,3 +112,32 @@ try {
     echo "Search failed: " . $e->getMessage();
 }
 ?>
+<html>
+    <head>
+          <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qOverflow — Logged-In Navbar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: radial-gradient(ellipse at top, #0f172a, #0b1120);
+      font-family: 'Inter', sans-serif;
+      color: white;
+      size: 14px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+    .custom-shadow {
+      box-shadow: 0 0 16px rgba(59, 130, 246, 0.5);
+      transition: box-shadow 0.3s ease, transform 0.2s ease;
+    }
+    .custom-shadow:hover {
+      box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
+      transform: translateY(-2px);
+    }
+  </style>
+    </head>
+</html>
