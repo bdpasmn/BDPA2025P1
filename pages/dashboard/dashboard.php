@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html>
   <?php
-  // DASHBOARD PAGE !!!
+  // DASHBOARD PAGE
+  //again
   session_start();
 
   require_once '../../Api/api.php';
   require_once '../../Api/key.php';
   require_once '../../db.php';
   $api = new qOverflowAPI(API_KEY);
-  //$username = "Hello10";
+  //$username = "user101";
 
   $pdo = new PDO($dsn, $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -27,12 +28,12 @@
    // deleting user account
   if (isset($_POST['delete_account'])) {
 
-  //$AllQuestionInfo= $api->getUserQuestions($username);          //this is just the code that deletes their questions
-  //$JustUserQuestions = $AllQuestionInfo['questions'] ?? [];
+  $AllQuestionInfo= $api->getUserQuestions($username);          //this is just the code that deletes their questions
+  $JustUserQuestions = $AllQuestionInfo['questions'] ?? [];
 
-      //foreach ($JustUserQuestions as $UserQuestion) {
-       // $api->deleteQuestion($UserQuestion['question_id']);
-   // }                                                           //question deletion ends here
+      foreach ($JustUserQuestions as $UserQuestion) {
+       $api->deleteQuestion($UserQuestion['question_id']);
+   }                                                           //question deletion ends here
 
   $deleteUser = $api->deleteUser($username);
   $stmt = $pdo->prepare("DELETE FROM users WHERE username = :username");
@@ -90,9 +91,9 @@ echo '</pre>';
 
 
 
-<?php /* include '../../../BDPA2025P1/components/navBar.php'; */ ?>
+<?php  include '../../../BDPA2025P1/components/navBarLogIn.php';  ?>
 
-  
+  <!--
   <div class="bg-gray-800 flex justify-between items-center px-10 py-4 shadow-md border-b border-gray-700">
     <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" class="w-10 h-10" alt="logo">
     <div class="flex gap-10 text-sm font-medium">
@@ -101,7 +102,7 @@ echo '</pre>';
       <h3>placeholder</h3>
     </div>
   </div>
-
+-->
 
   <div class="bg-gray-800 rounded-lg mx-10 mt-10 p-6 flex items-center shadow-md">
     <!--    this is just the hardcoded old user profile image
@@ -131,11 +132,11 @@ echo '</pre>';
 </br>
     
     <div class="pl-10 flex space-x-5">
-     <button  onclick="showQuestions()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm rounded-lg">
+     <button  onclick="showQuestions()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm">
         Questions
       </button>
       
-     <button onclick="showAnswers()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm rounded-lg">
+     <button onclick="showAnswers()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm">
         Answers
       </button>
     </div>
@@ -149,7 +150,7 @@ echo '</pre>';
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md w-[300px]">
           <p class="text-sm font-semibold">QUESTION TITLE:</p>
           <p class="mt-2 text-sm font-semibold"><?php echo htmlspecialchars($UserQuestion['title']); ?></p> <!-- Display question title -->
-          <p class="mt-4 text-sm">VOTES: <?php echo $UserQuestion['upvotes'] ?? 0; ?></p> <!-- Display question votes -->
+          <p class="mt-4 text-sm">VOTES: <?php echo $UserQuestion['upvotes'] ?? 'not found'; ?></p> <!-- Display question votes -->
         </div>
         </a>
       <?php endforeach; ?>
@@ -197,7 +198,8 @@ echo '</pre>';
   const modalTitle = document.getElementById('modalTitle'); // Get the modal title element
   const editInput = document.getElementById('editInput');// Get the input field in the modal
   const cancelBtn = document.getElementById('cancelBtn');// Get the Cancel button
-  function openEditModal(field) {
+
+  function openEditModal(field) { // Function to open the modal for editing email or password
     currentField = field;  // save which field (email or password)
     modal.classList.remove('hidden');// hide the modal
     modal.classList.add('flex');//show the modal
@@ -214,7 +216,8 @@ echo '</pre>';
   }
 
 
-  saveBtn.onclick = () => { // onlcick of save button
+  //saveBtn.onclick = () => { // onlcick of save button
+  saveBtn.onclick = function()  { 
   const value = editInput.value;// get the value from the input field
 
   const data = new FormData();// Create a new FormData object to send data
@@ -225,8 +228,16 @@ echo '</pre>';
     method: 'POST',// Use POST method
     body: data// Send the FormData object as the request body
   })
+  
+  /*
   .then(r => r.text())// Convert the response to text
   .then(t => {// Handle the response text
+  */
+  .then(function (r){// Convert the response to text
+      return r.text();//return the response text
+  })
+  .then(function (t) {// Handle the response text
+
     alert(t);// Show an alert with the response text
     modal.classList.add('hidden');// hide the modal
     modal.classList.remove('flex');//remove the flex class to hide it
@@ -234,12 +245,17 @@ echo '</pre>';
   };
 
 
+/*
   // Close modal on Cancel button click
   cancelBtn.onclick = () => { //onlcick of cancel button
     modal.classList.add('hidden');// hide the modal
     modal.classList.remove('flex');//remove the flex class to hide it
   }
-
+*/
+    cancelBtn.onclick = function() { //onlcick of cancel button
+    modal.classList.add('hidden');// hide the modal
+    modal.classList.remove('flex');//remove the flex class to hide it
+  }
 
 
 
