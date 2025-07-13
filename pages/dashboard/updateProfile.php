@@ -1,6 +1,6 @@
   <?php
   // UPDATE PROFILE PAGE
-//again!!!!!
+//again!!!!! :)
   session_start();
   //$userId = $_SESSION['user_id'];
 

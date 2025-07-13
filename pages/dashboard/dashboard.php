@@ -2,7 +2,7 @@
 <html>
   <?php
   // DASHBOARD PAGE
-  //again!!!!!
+  //again!!!!! :)
   session_start();
 
   require_once '../../Api/api.php';
