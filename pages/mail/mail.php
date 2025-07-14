@@ -4,8 +4,13 @@ require_once __DIR__ . '/../../Api/api.php';
 require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../db.php';
 
-$_SESSION['username'] = 'Vikram1';
-$user = 'Vikram1';
+// Check if user is logged in
+if (!isset($_SESSION['username'])) {
+    header("Location: ../auth/login.php");
+    exit;
+}
+
+$user = $_SESSION['username'];
 $api = new qOverflowAPI(API_KEY);
 
 // 1. Get inbox messages (where user is receiver)
