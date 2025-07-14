@@ -1,7 +1,5 @@
 <?php
 session_start();
-// Hardcoded for testing: switch between 'Vikram1' and 'Vikram2' as needed
-$_SESSION['username'] = 'user2'; // Change to 'Vikram2' to test as the other user
 
 require_once __DIR__ . '/../../Api/api.php';
 require_once __DIR__ . '/../../Api/key.php';
@@ -23,7 +21,7 @@ $composingNew = isset($_GET['compose']) && $_GET['compose'] == '1';
 // Get inbox messages (where user is receiver)
 $inboxMessages = $api->getMail($user)['messages'] ?? [];
 
-// Build Inbox threads: group by (sender, user, subject)
+// Build Inbox threads
 $inboxThreads = [];
 $inboxThreadActivity = [];
 foreach ($inboxMessages as $msg) {
@@ -42,7 +40,7 @@ uksort($inboxThreads, function($a, $b) use ($inboxThreadActivity) {
     return $bTime <=> $aTime;
 });
 
-// Build Sent threads: for each peer, get their inbox and filter for messages where user is sender
+// Build Sent threads
 $sentThreads = [];
 $sentThreadActivity = [];
 $peers = [];
@@ -69,7 +67,7 @@ uksort($sentThreads, function($a, $b) use ($sentThreadActivity) {
     return $bTime <=> $aTime;
 });
 
-// --- Thread Key Helper ---
+// Thread Key Helper
 function getThreadKey($user1, $user2, $subject) {
     $participants = [$user1, $user2];
     sort($participants);
@@ -77,7 +75,7 @@ function getThreadKey($user1, $user2, $subject) {
     return hash('sha256', $base);
 }
 
-// Handle POST (sending new message)
+// Handle sending a new message
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject = trim($_POST['subject'] ?? '');
     $body = trim($_POST['body'] ?? '');
@@ -103,10 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $peers[] = $recipient;
             }
 
-            // Use deterministic thread key
+            // Use  thread key
             $threadKey = getThreadKey($user, $recipient, $subject);
 
-            // After composing, return to compose view. Else go to thread
+            // After composing, return to compose view
             if ($composingNew) {
                 header("Location: mail.php?compose=1&success=1");
             } else {
@@ -117,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Pull sent messages from user's own outbox (simulate if needed)
+// Pull sent messages from user's own outbox 
 $sent = [];
 foreach ($peers as $peer) { // Use $peers from the new code
     $peerInbox = $api->getMail($peer)['messages'] ?? [];
@@ -272,16 +270,15 @@ if ($tab === 'inbox') {
         $lastSender = $last['sender'] === $user ? 'You' : htmlspecialchars($last['sender']);
         $lastText = trim(explode("\n", $last['text'])[0]); // first line only
         if ($lastText === '') $lastText = mb_strimwidth($last['text'], 0, 40, '...');
-        // Show peer's username next to the message preview
-        $lastPreview = ($last['sender'] === $user ? htmlspecialchars($peer) : htmlspecialchars($last['sender'])) . ': ' . htmlspecialchars($lastText);
+        $lastPreview = "<span class='font-bold text-blue-300'>" . $lastSender . "</span>: " . htmlspecialchars($lastText);
       ?>
       <div class="relative">
         <a href="?thread=<?= urlencode($key) ?>" class="<?= $baseClass . ' ' . $classes ?>">
           <h4 class="font-semibold text-white text-sm truncate flex items-center mb-1">
             <?= htmlspecialchars($first['subject']) ?>
           </h4>
-          <div class="text-xs text-gray-300 preview-block truncate" data-md="<?= htmlspecialchars($last['text']) ?>">
-            <?= $lastPreview ?>
+          <div class="text-xs text-gray-100 preview-block truncate" data-md="<?= htmlspecialchars($last['text']) ?>">
+            <?php echo $lastPreview; ?>
           </div>
         </a>
       </div>
@@ -359,7 +356,7 @@ if ($tab === 'inbox') {
   }
 
   // Render messages (in thread view and sidebar previews)
-  document.querySelectorAll('.message-body, .preview-block').forEach(el => {
+  document.querySelectorAll('.message-body').forEach(el => {
     const raw = el.getAttribute('data-md') || '';
     if (isPreFormatted(raw)) {
       el.innerHTML = '<pre class="whitespace-pre-wrap font-mono text-sm">' + raw + '</pre>';
