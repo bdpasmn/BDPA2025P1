@@ -1,6 +1,7 @@
 <?php
 session_start();
-//$_SESSION['username'] = 'Vik123'; // For testing only
+// Hardcoded for testing: switch between 'Vikram1' and 'Vikram2' as needed
+$_SESSION['username'] = 'user2'; // Change to 'Vikram2' to test as the other user
 
 require_once __DIR__ . '/../../Api/api.php';
 require_once __DIR__ . '/../../Api/key.php';
@@ -16,17 +17,64 @@ if (!$user) {
 $error = '';
 $success = '';
 $showCompose = true;
-$activeKey = $_GET['thread'] ?? null;
+$activeKey = $_GET['threadKey'] ?? $_GET['thread'] ?? null;
+$composingNew = isset($_GET['compose']) && $_GET['compose'] == '1';
 
-// Get inbox messages
-$inbox = $api->getMail($user)['messages'] ?? [];
+// Get inbox messages (where user is receiver)
+$inboxMessages = $api->getMail($user)['messages'] ?? [];
 
-// Guess all peers from inbox and track for sent messages
-$sent = [];
-$seenPeers = [];
-foreach ($inbox as $msg) {
-    $peer = $msg['sender'] === $user ? $msg['receiver'] : $msg['sender'];
-    if (!in_array($peer, $seenPeers)) $seenPeers[] = $peer;
+// Build Inbox threads: group by (sender, user, subject)
+$inboxThreads = [];
+$inboxThreadActivity = [];
+foreach ($inboxMessages as $msg) {
+    if ($msg['receiver'] !== $user) continue;
+    $peer = $msg['sender'];
+    $threadKey = getThreadKey($peer, $user, $msg['subject']);
+    $inboxThreads[$threadKey][] = $msg;
+    $inboxThreadActivity[$threadKey] = max($inboxThreadActivity[$threadKey] ?? 0, $msg['createdAt']);
+}
+foreach ($inboxThreads as $key => $msgs) {
+    usort($msgs, fn($a, $b) => $a['createdAt'] <=> $b['createdAt']);
+}
+uksort($inboxThreads, function($a, $b) use ($inboxThreadActivity) {
+    $aTime = $inboxThreadActivity[$a] ?? 0;
+    $bTime = $inboxThreadActivity[$b] ?? 0;
+    return $bTime <=> $aTime;
+});
+
+// Build Sent threads: for each peer, get their inbox and filter for messages where user is sender
+$sentThreads = [];
+$sentThreadActivity = [];
+$peers = [];
+foreach ($inboxMessages as $msg) {
+    $peer = $msg['sender'];
+    if ($peer !== $user && !in_array($peer, $peers)) $peers[] = $peer;
+}
+foreach ($peers as $peer) {
+    $peerInbox = $api->getMail($peer)['messages'] ?? [];
+    foreach ($peerInbox as $msg) {
+        if ($msg['sender'] === $user && $msg['receiver'] === $peer) {
+            $threadKey = getThreadKey($user, $peer, $msg['subject']);
+            $sentThreads[$threadKey][] = $msg;
+            $sentThreadActivity[$threadKey] = max($sentThreadActivity[$threadKey] ?? 0, $msg['createdAt']);
+        }
+    }
+}
+foreach ($sentThreads as $key => $msgs) {
+    usort($msgs, fn($a, $b) => $a['createdAt'] <=> $b['createdAt']);
+}
+uksort($sentThreads, function($a, $b) use ($sentThreadActivity) {
+    $aTime = $sentThreadActivity[$a] ?? 0;
+    $bTime = $sentThreadActivity[$b] ?? 0;
+    return $bTime <=> $aTime;
+});
+
+// --- Thread Key Helper ---
+function getThreadKey($user1, $user2, $subject) {
+    $participants = [$user1, $user2];
+    sort($participants);
+    $base = implode('-', $participants) . '::' . strtolower(trim($subject));
+    return hash('sha256', $base);
 }
 
 // Handle POST (sending new message)
@@ -51,41 +99,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $sentMsg = $resp['message'] ?? null;
 
-            // Put message into your inbox array
-            if ($sentMsg) {
-                $inbox[] = $sentMsg;
+            if (!in_array($recipient, $peers)) { // Use $peers from the new code
+                $peers[] = $recipient;
             }
 
-            // Ensure peer gets checked for reverse messages
-            if (!in_array($recipient, $seenPeers)) {
-                $seenPeers[] = $recipient;
-            }
+            // Use deterministic thread key
+            $threadKey = getThreadKey($user, $recipient, $subject);
 
-            // Build thread key using actual createdAt
-            $participants = [$user, $recipient];
-            sort($participants);
-            $comboKey = implode('-', $participants) . '::' . trim(strtolower($subject));
-            $threadKey = $comboKey . '::' . ($sentMsg['createdAt'] ?? time() * 1000);
-
-            //  Redirect to new thread view
-            $existingThread = $_POST['thread'] ?? null;
-            if ($existingThread) {
-                header("Location: mail.php?thread=" . urlencode($existingThread) . "&success=1");
+            // After composing, return to compose view. Else go to thread
+            if ($composingNew) {
+                header("Location: mail.php?compose=1&success=1");
             } else {
-                // New message from compose redirect to compose with a  success msg
-                header("Location: mail.php?compose=1&sent=1");
+                header("Location: mail.php?thread=" . urlencode($threadKey) . "&success=1&threadKey=" . urlencode($threadKey) . "#scroll");
             }
-
             exit;
-
         }
     }
 }
 
-
-
-// Pull simulated sent messages from other users' inboxes
-foreach ($seenPeers as $peer) {
+// Pull sent messages from user's own outbox (simulate if needed)
+$sent = [];
+foreach ($peers as $peer) { // Use $peers from the new code
     $peerInbox = $api->getMail($peer)['messages'] ?? [];
     foreach ($peerInbox as $msg) {
         if ($msg['sender'] === $user && $msg['receiver'] === $peer) {
@@ -93,31 +127,26 @@ foreach ($seenPeers as $peer) {
         }
     }
 }
-
-// Merge and group into threads
-$allMessages = array_merge($inbox, $sent);
-$threadBuckets = [];
-$threadActivity = [];
-
-foreach ($allMessages as $msg) {
-    if ($msg['sender'] !== $user && $msg['receiver'] !== $user) continue;
-
-    $peer = $msg['sender'] === $user ? $msg['receiver'] : $msg['sender'];
-    $participants = [$user, $peer];
-    sort($participants);
-    $baseKey = implode('-', $participants) . '::' . trim(strtolower($msg['subject']));
-    $uniqueKey = $baseKey . '::' . $msg['createdAt']; // ensures uniqueness
-
-    $threadBuckets[$uniqueKey][] = $msg;
-    $threadActivity[$uniqueKey] = $msg['createdAt'];
+if (isset($sentMsg)) {
+    $sent[] = $sentMsg;
 }
 
-$threads = [];
+// Merge and group into threads
+$allMessages = array_merge($inboxMessages, $sent); 
+$threadBuckets = []; 
+$threadActivity = [];
+foreach ($allMessages as $msg) {
+    if ($msg['sender'] !== $user && $msg['receiver'] !== $user) continue;
+    $peer = $msg['sender'] === $user ? $msg['receiver'] : $msg['sender'];
+    $threadKey = getThreadKey($user, $peer, $msg['subject']);
+    $threadBuckets[$threadKey][] = $msg;
+    $threadActivity[$threadKey] = max($threadActivity[$threadKey] ?? 0, $msg['createdAt']);
+}
+$threads = []; 
 foreach ($threadBuckets as $key => $msgs) {
     usort($msgs, fn($a, $b) => $a['createdAt'] <=> $b['createdAt']);
     $threads[$key] = $msgs;
 }
-
 uksort($threads, function($a, $b) use ($threadActivity) {
     $aTime = $threadActivity[$a] ?? 0;
     $bTime = $threadActivity[$b] ?? 0;
@@ -125,10 +154,7 @@ uksort($threads, function($a, $b) use ($threadActivity) {
 });
 
 $activeThread = $activeKey && isset($threads[$activeKey]) ? $threads[$activeKey] : [];
-$showCompose = !$activeKey;
-if (isset($_GET['compose']) && $_GET['compose'] == '1') {
-    $showCompose = true;
-}
+$showCompose = !$activeKey || $composingNew;
 
 $replyTo = $activeThread[0] ?? null;
 $recipient = $replyTo ? ($replyTo['sender'] === $user ? $replyTo['receiver'] : $replyTo['sender']) : '';
@@ -138,6 +164,57 @@ $recipientExists = $recipient ? !isset($api->getUser($recipient)['error']) : tru
 if (isset($_GET['success']) && $_GET['success'] == 1) {
     $success = 'Message sent successfully!';
 }
+
+if (!empty($activeThread)) {
+    echo '<script>window.onload = function() {
+        setTimeout(function() {
+            var threadBox = document.getElementById("thread-messages");
+            if (threadBox) {
+                var msgs = threadBox.querySelectorAll(".thread-message");
+                if (msgs.length > 0) {
+                    msgs[msgs.length - 1].scrollIntoView({ behavior: "smooth" });
+                    // Double-check after another short delay in case layout shifts
+                    setTimeout(function() {
+                        msgs[msgs.length - 1].scrollIntoView({ behavior: "smooth" });
+                    }, 200);
+                }
+            }
+        }, 300);
+    };</script>';
+}
+
+
+function getStarredThreads($user) {
+    return isset($_SESSION['starred_threads'][$user]) ? $_SESSION['starred_threads'][$user] : [];
+}
+function toggleStarThread($user, $threadKey) {
+    if (!isset($_SESSION['starred_threads'][$user])) $_SESSION['starred_threads'][$user] = [];
+    if (in_array($threadKey, $_SESSION['starred_threads'][$user])) {
+        $_SESSION['starred_threads'][$user] = array_diff($_SESSION['starred_threads'][$user], [$threadKey]);
+    } else {
+        $_SESSION['starred_threads'][$user][] = $threadKey;
+    }
+}
+if (isset($_GET['star']) && isset($_GET['thread'])) {
+    toggleStarThread($user, $_GET['thread']);
+    header('Location: mail.php' . (isset($_GET['tab']) ? '?tab=' . urlencode($_GET['tab']) : ''));
+    exit;
+}
+$starredThreads = getStarredThreads($user);
+$tab = $_GET['tab'] ?? 'inbox';
+
+$filteredThreads = [];
+if ($tab === 'inbox') {
+    $filteredThreads = $inboxThreads;
+} elseif ($tab === 'sent') {
+    $filteredThreads = $sentThreads;
+} elseif ($tab === 'starred') {
+    foreach ($starredThreads as $key) {
+        if (isset($inboxThreads[$key])) $filteredThreads[$key] = $inboxThreads[$key];
+        elseif (isset($sentThreads[$key])) $filteredThreads[$key] = $sentThreads[$key];
+    }
+}
+
 ?>
 
 
@@ -191,12 +268,23 @@ if (isset($_GET['success']) && $_GET['success'] == 1) {
         $isActive = $key === $activeKey;
         $baseClass = 'block rounded-lg p-3 mb-2 border transition';
         $classes = $isActive ? 'bg-blue-700 border-blue-500' : 'bg-gray-700 hover:bg-gray-600 border-gray-600';
+        $last = end($msgs);
+        $lastSender = $last['sender'] === $user ? 'You' : htmlspecialchars($last['sender']);
+        $lastText = trim(explode("\n", $last['text'])[0]); // first line only
+        if ($lastText === '') $lastText = mb_strimwidth($last['text'], 0, 40, '...');
+        // Show peer's username next to the message preview
+        $lastPreview = ($last['sender'] === $user ? htmlspecialchars($peer) : htmlspecialchars($last['sender'])) . ': ' . htmlspecialchars($lastText);
       ?>
-      <a href="?thread=<?= urlencode($key) ?>" class="<?= $baseClass . ' ' . $classes ?>">
-        <h4 class="font-semibold text-white text-sm truncate"><?= htmlspecialchars($first['subject']) ?></h4>
-        <?php $last = end($msgs); ?>
-        <div class="text-xs text-gray-400 mt-1 line-clamp-3 preview-block" data-md="<?= htmlspecialchars($last['text']) ?>"></div>
-      </a>
+      <div class="relative">
+        <a href="?thread=<?= urlencode($key) ?>" class="<?= $baseClass . ' ' . $classes ?>">
+          <h4 class="font-semibold text-white text-sm truncate flex items-center mb-1">
+            <?= htmlspecialchars($first['subject']) ?>
+          </h4>
+          <div class="text-xs text-gray-300 preview-block truncate" data-md="<?= htmlspecialchars($last['text']) ?>">
+            <?= $lastPreview ?>
+          </div>
+        </a>
+      </div>
     <?php endforeach; ?>
   </aside>
 
@@ -210,11 +298,11 @@ if (isset($_GET['success']) && $_GET['success'] == 1) {
       <?php endif; ?>
 
       <!-- Message History -->
-      <div class="flex-1 overflow-y-auto space-y-4 mb-4">
-        <?php foreach ($activeThread as $msg): ?>
+      <div id="thread-messages" class="flex-1 overflow-y-auto space-y-4 mb-4">
+        <?php foreach ($activeThread as $i => $msg): ?>
           <?php $isMine = $msg['sender'] === $user; ?>
           <div class="flex <?= $isMine ? 'justify-end' : 'justify-start' ?>">
-            <div class="<?= $isMine ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white' ?> max-w-[75%] p-4 rounded-lg border border-gray-600">
+            <div class="<?= $isMine ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white' ?> max-w-[75%] p-4 rounded-lg border border-gray-600 thread-message" data-msg-index="<?= $i ?>">
               <div class="text-xs text-gray-300 mb-1">
                 <?= $isMine ? 'You → ' . htmlspecialchars($msg['receiver']) : htmlspecialchars($msg['sender']) . ' → You' ?>
               </div>
@@ -257,7 +345,7 @@ if (isset($_GET['success']) && $_GET['success'] == 1) {
   </main>
 </div>
 
-<!-- JS for Markdown Rendering -->
+<!-- JS for Markdown  -->
 <script>
   const converter = new showdown.Converter({
     simpleLineBreaks: true,
