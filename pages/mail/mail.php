@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     sort($participants);
                     $base = implode('-', $participants) . '::' . trim($subject) . '::' . $createdAt;
                     $threadKey = hash('sha256', $base);
-                    header("Location: mail_optimized.php?thread=" . urlencode($threadKey));
+                    header("Location: mail.php?thread=" . urlencode($threadKey));
                     exit;
                 } else {
                     $error = "Failed to send message: " . htmlspecialchars($resp['error']);
@@ -151,7 +151,7 @@ if (isset($_POST['pin_thread']) && isset($_POST['thread_key'])) {
         }
     } catch (Exception $e) {}
     // Redirect to avoid form resubmission
-    header("Location: mail_optimized.php?thread=" . urlencode($threadKey));
+    header("Location: mail.php?thread=" . urlencode($threadKey));
     exit;
 }
 
@@ -211,7 +211,7 @@ $unpinnedPageKeys = array_slice($unpinnedKeys, $unpinnedStart, $threadsPerPage);
     <div id="pin-spinner" class="hidden absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center z-20">
       <svg class="animate-spin h-8 w-8 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
     </div>
-    <a href="mail_optimized.php?compose=1" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 mb-4 rounded-md text-sm font-medium shadow text-center">+ Compose</a>
+    <a href="mail.php?compose=1" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 mb-4 rounded-md text-sm font-medium shadow text-center">+ Compose</a>
     <input type="text" id="thread-search" placeholder="Search by user or subject..." class="mb-3 w-full p-2 rounded bg-gray-700 border border-gray-600 text-white text-sm" autocomplete="off">
     <?php if (empty($threads)): ?>
       <div class="text-gray-400 text-sm text-center mt-4 px-2 space-y-2">
@@ -242,7 +242,7 @@ $unpinnedPageKeys = array_slice($unpinnedKeys, $unpinnedStart, $threadsPerPage);
             <a href="?thread=<?= urlencode($key) ?>" class="<?= $baseClass . ' ' . $classes ?>">
               <h4 class="font-semibold text-white text-sm truncate flex items-center mb-1">
                 <?= htmlspecialchars($first['subject']) ?>
-                <form method="POST" class="ml-auto inline-block" style="margin-left:auto;" action="mail_optimized.php?thread=<?= urlencode($key) ?>" onsubmit="event.stopPropagation();">
+                <form method="POST" class="ml-auto inline-block" style="margin-left:auto;" action="mail.php?thread=<?= urlencode($key) ?>" onsubmit="event.stopPropagation();">
                   <input type="hidden" name="thread_key" value="<?= htmlspecialchars($key) ?>">
                   <input type="hidden" name="pin_thread" value="0">
                   <button type="submit" title="Unpin" class="ml-2 text-yellow-400 hover:text-yellow-300 focus:outline-none">
@@ -276,7 +276,7 @@ $unpinnedPageKeys = array_slice($unpinnedKeys, $unpinnedStart, $threadsPerPage);
         <a href="?thread=<?= urlencode($key) ?>" class="<?= $baseClass . ' ' . $classes ?>">
           <h4 class="font-semibold text-white text-sm truncate flex items-center mb-1">
             <?= htmlspecialchars($first['subject']) ?>
-            <form method="POST" class="ml-auto inline-block" style="margin-left:auto;" action="mail_optimized.php?thread=<?= urlencode($key) ?>" onsubmit="event.stopPropagation();">
+            <form method="POST" class="ml-auto inline-block" style="margin-left:auto;" action="mail.php?thread=<?= urlencode($key) ?>" onsubmit="event.stopPropagation();">
               <input type="hidden" name="thread_key" value="<?= htmlspecialchars($key) ?>">
               <input type="hidden" name="pin_thread" value="1">
               <button type="submit" title="Pin" class="ml-2 text-gray-400 hover:text-yellow-400 focus:outline-none">
@@ -428,7 +428,7 @@ function optimisticStarToggle(e, btn, isPinned) {
   }, 0);
 }
 
-document.querySelectorAll('form[action^="mail_optimized.php"][onsubmit]').forEach(form => {
+document.querySelectorAll('form[action^="mail.php"][onsubmit]').forEach(form => {
   form.addEventListener('submit', function(e) {
     const btn = this.querySelector('button[type="submit"]');
     const isPinned = this.querySelector('input[name="pin_thread"]').value === '0';
