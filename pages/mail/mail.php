@@ -3,6 +3,7 @@ session_start();
 
 require_once __DIR__ . '/../../Api/api.php';
 require_once __DIR__ . '/../../Api/key.php';
+require_once __DIR__ . '/../../db.php'; // Add this near the top after other requires
 
 $api = new qOverflowAPI(API_KEY);
 
@@ -43,11 +44,39 @@ uksort($inboxThreads, function($a, $b) use ($inboxThreadActivity) {
 // Build Sent threads
 $sentThreads = [];
 $sentThreadActivity = [];
+// Build list of peers from inbox (senders)
 $peers = [];
 foreach ($inboxMessages as $msg) {
     $peer = $msg['sender'];
     if ($peer !== $user && !in_array($peer, $peers)) $peers[] = $peer;
 }
+// Add all recipients I've ever sent a message to (from database)
+try {
+    $pdo = new PDO($dsn, $user, $pass);
+    $stmt = $pdo->prepare("SELECT recipient FROM sent_peers WHERE username = :username");
+    $stmt->execute(['username' => $user]);
+    $sentPeers = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($sentPeers as $sentPeer) {
+        if ($sentPeer !== $user && !in_array($sentPeer, $peers)) $peers[] = $sentPeer;
+    }
+} catch (Exception $e) {
+    // If DB fails, just skip sentPeers
+}
+
+// When I send a message, add the recipient to the sent_peers table
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $recipient = trim($_POST['recipient'] ?? '');
+    if ($recipient && $user) {
+        try {
+            $pdo = new PDO($dsn, $user, $pass);
+            $stmt = $pdo->prepare("INSERT INTO sent_peers (username, recipient) VALUES (:username, :recipient) ON CONFLICT DO NOTHING");
+            $stmt->execute(['username' => $user, 'recipient' => $recipient]);
+        } catch (Exception $e) {
+            // Ignore DB errors for now
+        }
+    }
+}
+
 foreach ($peers as $peer) {
     $peerInbox = $api->getMail($peer)['messages'] ?? [];
     foreach ($peerInbox as $msg) {
@@ -96,22 +125,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'Message failed: ' . htmlspecialchars($resp['error']);
         } else {
             $sentMsg = $resp['message'] ?? null;
-
-            if (!in_array($recipient, $peers)) { // Use $peers from the new code
-                $peers[] = $recipient;
-            }
-
-            // Use  thread key
+            // Add recipient to sent_peers table (already handled above)
             $threadKey = getThreadKey($user, $recipient, $subject);
-
-            // After composing, return to compose view
             if ($composingNew) {
                 header("Location: mail.php?compose=1&success=1");
+                exit;
             } else {
                 header("Location: mail.php?thread=" . urlencode($threadKey) . "&success=1&threadKey=" . urlencode($threadKey) . "#scroll");
+                exit;
             }
-            exit;
         }
+    }
+    // Always add recipient to $peers if not already present (for new conversations)
+    if (!in_array($recipient, $peers)) {
+        $peers[] = $recipient;
     }
 }
 
@@ -181,37 +208,6 @@ if (!empty($activeThread)) {
     };</script>';
 }
 
-
-function getStarredThreads($user) {
-    return isset($_SESSION['starred_threads'][$user]) ? $_SESSION['starred_threads'][$user] : [];
-}
-function toggleStarThread($user, $threadKey) {
-    if (!isset($_SESSION['starred_threads'][$user])) $_SESSION['starred_threads'][$user] = [];
-    if (in_array($threadKey, $_SESSION['starred_threads'][$user])) {
-        $_SESSION['starred_threads'][$user] = array_diff($_SESSION['starred_threads'][$user], [$threadKey]);
-    } else {
-        $_SESSION['starred_threads'][$user][] = $threadKey;
-    }
-}
-if (isset($_GET['star']) && isset($_GET['thread'])) {
-    toggleStarThread($user, $_GET['thread']);
-    header('Location: mail.php' . (isset($_GET['tab']) ? '?tab=' . urlencode($_GET['tab']) : ''));
-    exit;
-}
-$starredThreads = getStarredThreads($user);
-$tab = $_GET['tab'] ?? 'inbox';
-
-$filteredThreads = [];
-if ($tab === 'inbox') {
-    $filteredThreads = $inboxThreads;
-} elseif ($tab === 'sent') {
-    $filteredThreads = $sentThreads;
-} elseif ($tab === 'starred') {
-    foreach ($starredThreads as $key) {
-        if (isset($inboxThreads[$key])) $filteredThreads[$key] = $inboxThreads[$key];
-        elseif (isset($sentThreads[$key])) $filteredThreads[$key] = $sentThreads[$key];
-    }
-}
 
 ?>
 
