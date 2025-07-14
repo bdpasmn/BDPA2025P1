@@ -1,6 +1,6 @@
 <?php
 session_start();
-//$_SESSION['username'] = 'user1'; // For testing only
+//$_SESSION['username'] = 'Vik123'; // For testing only
 
 require_once __DIR__ . '/../../Api/api.php';
 require_once __DIR__ . '/../../Api/key.php';
@@ -95,7 +95,18 @@ foreach ($seenPeers as $peer) {
 }
 
 // Merge and group into threads
-$allMessages = array_merge($inbox, $sent);
+$seen = [];
+$uniqueMessages = [];
+
+foreach (array_merge($inbox, $sent) as $msg) {
+    $id = $msg['id'] ?? null;
+    if ($id && !isset($seen[$id])) {
+        $seen[$id] = true;
+        $uniqueMessages[] = $msg;
+    }
+}
+
+$allMessages = $uniqueMessages;
 $threadBuckets = [];
 $threadActivity = [];
 
@@ -158,19 +169,8 @@ if (isset($_GET['success']) && $_GET['success'] == 1) {
   </style>
 </head>
 <body class="text-white">
-<nav class="bg-gray-900 shadow-md border-b border-gray-700">
-  <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
-    <div class="flex items-center space-x-3">
-      <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" class="h-8" alt="BDPA Logo" />
-      <span class="text-xl font-bold">qOverflow</span>
-    </div>
-    <div class="flex space-x-4 text-sm items-center">
-      <a href="../buffet/buffet.php" class="text-gray-300 hover:text-white">Questions</a>
-      <a href="../dashboard/dashboard.php" class="text-gray-300 hover:text-white">Dashboard</a>
-      <a href="mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow">Mail</a>
-    </div>
-  </div>
-</nav>
+<?php include __DIR__ . '/../../components/navBarLogin.php'; ?>
+
 
   <?php
     if ($error) {
@@ -241,7 +241,7 @@ if (isset($_GET['success']) && $_GET['success'] == 1) {
         <input type="hidden" name="thread" value="<?= htmlspecialchars($activeKey) ?>">
         <input type="hidden" name="recipient" value="<?= htmlspecialchars($recipient) ?>">
         <input type="hidden" name="subject" value="<?= htmlspecialchars($subject) ?>">
-        <label class="text-sm font-medium mb-1 block">Reply to Thread:</label>
+        <label class="text-sm font-medium mb-3 ml-1 block">Reply to Thread:</label>
         <textarea name="body" rows="3" maxlength="150" required class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 resize-none mb-4" placeholder="Type your reply..."></textarea>
         <div class="flex justify-end">
           <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md text-sm font-medium shadow">Send Reply</button>
@@ -270,12 +270,25 @@ if (isset($_GET['success']) && $_GET['success'] == 1) {
 
 <!-- JS for Markdown Rendering -->
 <script>
-  const converter = new showdown.Converter();
+  const converter = new showdown.Converter({
+    simpleLineBreaks: true,
+    openLinksInNewWindow: true,
+    emoji: true
+  });
 
-  // Initial markdown rendering
+  // Function to determine if raw text has multiple blank lines
+  function isPreFormatted(raw) {
+    return raw.includes('\n\n\n') || raw.includes('\n \n'); // triple or spaced blank lines
+  }
+
+  // Render messages (in thread view and sidebar previews)
   document.querySelectorAll('.message-body, .preview-block').forEach(el => {
     const raw = el.getAttribute('data-md') || '';
-    el.innerHTML = converter.makeHtml(raw);
+    if (isPreFormatted(raw)) {
+      el.innerHTML = '<pre class="whitespace-pre-wrap font-mono text-sm">' + raw + '</pre>';
+    } else {
+      el.innerHTML = converter.makeHtml(raw);
+    }
   });
 
   // Live preview for Compose
@@ -283,10 +296,16 @@ if (isset($_GET['success']) && $_GET['success'] == 1) {
   const preview = document.getElementById('preview');
   if (textarea && preview) {
     textarea.addEventListener('input', () => {
-      preview.innerHTML = converter.makeHtml(textarea.value);
+      const raw = textarea.value;
+      if (isPreFormatted(raw)) {
+        preview.innerHTML = '<pre class="whitespace-pre-wrap font-mono text-sm">' + raw + '</pre>';
+      } else {
+        preview.innerHTML = converter.makeHtml(raw);
+      }
     });
     preview.innerHTML = converter.makeHtml(textarea.value);
   }
 </script>
+
 </body>
 </html>
