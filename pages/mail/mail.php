@@ -95,18 +95,7 @@ foreach ($seenPeers as $peer) {
 }
 
 // Merge and group into threads
-$seen = [];
-$uniqueMessages = [];
-
-foreach (array_merge($inbox, $sent) as $msg) {
-    $id = $msg['id'] ?? null;
-    if ($id && !isset($seen[$id])) {
-        $seen[$id] = true;
-        $uniqueMessages[] = $msg;
-    }
-}
-
-$allMessages = $uniqueMessages;
+$allMessages = array_merge($inbox, $sent);
 $threadBuckets = [];
 $threadActivity = [];
 
