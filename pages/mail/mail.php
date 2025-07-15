@@ -4,75 +4,103 @@ require_once __DIR__ . '/../../Api/api.php';
 require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../db.php';
 
-// Check if user is logged in
-if (!isset($_SESSION['username'])) {
+$appUser = $_SESSION['username'] ?? null;
+if (!$appUser) {
     header("Location: ../auth/login.php");
     exit;
 }
 
-$user = $_SESSION['username'];
 $api = new qOverflowAPI(API_KEY);
 
+// Create a single PDO connection for all DB queries
+try {
+    $pdo = new PDO($dsn, $user, $pass);
+} catch (Exception $e) {
+    $error = "DB ERROR: " . $e->getMessage();
+    header("Location: mail.php?error=" . urlencode($error));
+    exit;
+}
+
 // 1. Get inbox messages (where user is receiver)
-$inboxMessages = $api->getMail($user)['messages'] ?? [];
+$inboxMessages = $api->getMail($appUser)['messages'] ?? [];
 
 // 2. Build list of peers from inbox (senders)
 $peers = [];
 foreach ($inboxMessages as $msg) {
     $peer = $msg['sender'];
-    if ($peer !== $user && !in_array($peer, $peers)) $peers[] = $peer;
+    if ($peer !== $appUser) $peers[$peer] = true;
 }
 
 // 3. Add all recipients I've ever sent a message to (from database)
 try {
-    $pdo = new PDO($dsn, $user, $pass);
     $stmt = $pdo->prepare("SELECT recipient FROM sent_peers WHERE username = :username");
-    $stmt->execute(['username' => $user]);
+    $stmt->execute(['username' => $appUser]);
     $sentPeers = $stmt->fetchAll(PDO::FETCH_COLUMN);
     foreach ($sentPeers as $sentPeer) {
-        if ($sentPeer !== $user && !in_array($sentPeer, $peers)) $peers[] = $sentPeer;
+        if ($sentPeer !== $appUser) $peers[$sentPeer] = true;
     }
 } catch (Exception $e) {
-    // If DB fails, just skip sentPeers
+    $error = "DB ERROR: " . $e->getMessage();
+    header("Location: mail.php?error=" . urlencode($error));
+    exit;
 }
+// Convert associative array keys to a simple array
+$peers = array_keys($peers);
 
 // 4. Handle sending a new message
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $recipient = trim($_POST['recipient'] ?? '');
     $subject = trim($_POST['subject'] ?? '');
     $body = trim($_POST['body'] ?? '');
+    $rootTimestamp = isset($_POST['root_timestamp']) ? $_POST['root_timestamp'] : null;
+    $currentThreadKey = $_POST['current_thread_key'] ?? null;
+    $debugMode = isset($_GET['debug']) && $_GET['debug'] == '1';
     if ($recipient && $subject && $body) {
-        if ($recipient === $user) {
+        if ($recipient === $appUser) {
             $error = "You cannot send messages to yourself.";
+            header("Location: mail.php?error=" . urlencode($error) . ($debugMode ? '&debug=1' : ''));
+            exit;
         } else {
             // Check if recipient user exists
             $userCheck = $api->getUser($recipient);
             if (isset($userCheck['error'])) {
                 $error = "User doesn't exist.";
+                header("Location: mail.php?error=" . urlencode($error) . ($debugMode ? '&debug=1' : ''));
+                exit;
             } else {
-                $resp = $api->sendMail($user, $recipient, $subject, $body);
+                $resp = $api->sendMail($appUser, $recipient, $subject, $body);
                 if (!isset($resp['error'])) {
-                    // Add recipient to sent_peers table
                     try {
-                        $pdo = new PDO($dsn, $user, $pass);
                         $stmt = $pdo->prepare("INSERT INTO sent_peers (username, recipient) VALUES (:username, :recipient) ON CONFLICT DO NOTHING");
-                        $stmt->execute(['username' => $user, 'recipient' => $recipient]);
-                    } catch (Exception $e) {}
-                    // Use createdAt from API response if available, else fallback to current time
-                    $createdAt = isset($resp['message']['createdAt']) ? $resp['message']['createdAt'] : round(microtime(true) * 1000);
-                    $participants = [$user, $recipient];
-                    sort($participants);
-                    $base = implode('-', $participants) . '::' . trim($subject) . '::' . $createdAt;
-                    $threadKey = hash('sha256', $base);
-                    header("Location: mail.php?thread=" . urlencode($threadKey));
+                        $stmt->execute(['username' => $appUser, 'recipient' => $recipient]);
+                    } catch (Exception $e) {
+                        $error = "DB ERROR: " . $e->getMessage();
+                        header("Location: mail.php?error=" . urlencode($error) . ($debugMode ? '&debug=1' : ''));
+                        exit;
+                    }
+                    $_SESSION['mail_success'] = 'Message sent successfully!';
+                    // Always use the current thread key for redirect if available
+                    $redirectKey = $currentThreadKey ?: getThreadKey($appUser, $recipient, $subject, $rootTimestamp);
+                    if ($debugMode) {
+                        debug_log([
+                            'AFTER_SEND_REPLY',
+                            'current_thread_key' => $currentThreadKey,
+                            'redirect_key' => $redirectKey,
+                        ]);
+                    }
+                    header("Location: mail.php?thread=" . urlencode($redirectKey) . ($debugMode ? '&debug=1' : ''));
                     exit;
                 } else {
                     $error = "Failed to send message: " . htmlspecialchars($resp['error']);
+                    header("Location: mail.php?error=" . urlencode($error) . ($debugMode ? '&debug=1' : ''));
+                    exit;
                 }
             }
         }
     } else {
         $error = "All fields are required.";
+        header("Location: mail.php?error=" . urlencode($error) . ($debugMode ? '&debug=1' : ''));
+        exit;
     }
 }
 
@@ -81,7 +109,7 @@ $sent = [];
 foreach ($peers as $peer) {
     $peerInbox = $api->getMail($peer)['messages'] ?? [];
     foreach ($peerInbox as $msg) {
-        if ($msg['sender'] === $user && $msg['receiver'] === $peer) {
+        if ($msg['sender'] === $appUser && $msg['receiver'] === $peer) {
             $sent[] = $msg;
         }
     }
@@ -93,27 +121,39 @@ $threadBuckets = [];
 $threadActivity = [];
 
 // Helper: Find or create a unique thread key for each message
-function getUniqueThreadKey(&$threadBuckets, $msg, $user) {
-    $peer = $msg['sender'] === $user ? $msg['receiver'] : $msg['sender'];
-    $subject = $msg['subject'];
-    // Only group messages if they have the same sender, receiver, subject, and first message timestamp
-    foreach ($threadBuckets as $key => $msgs) {
-        $first = $msgs[0];
-        $peer1 = $first['sender'] === $user ? $first['receiver'] : $first['sender'];
-        if ($peer1 === $peer && $first['subject'] === $subject && $first['createdAt'] === $msg['createdAt']) {
-            return $key;
-        }
-    }
-    // Otherwise, create a new thread key using sender, receiver, subject, and this message's timestamp
-    $participants = [$user, $peer];
+function getThreadRootTimestamp($msgs) {
+    // The root timestamp is the createdAt of the first message in the thread
+    return $msgs[0]['createdAt'];
+}
+
+function getThreadKey($user1, $user2, $subject, $rootTimestamp) {
+    $participants = [$user1, $user2];
     sort($participants);
-    $base = implode('-', $participants) . '::' . trim($subject) . '::' . $msg['createdAt'];
+    $base = implode('-', $participants) . '::' . trim($subject) . '::' . $rootTimestamp;
     return hash('sha256', $base);
 }
 
+// Helper: Paginate an array
+function paginateArray($array, $page, $perPage) {
+    $start = ($page - 1) * $perPage;
+    return array_slice($array, $start, $perPage);
+}
+
 foreach ($allMessages as $msg) {
-    if ($msg['sender'] !== $user && $msg['receiver'] !== $user) continue;
-    $key = getUniqueThreadKey($threadBuckets, $msg, $user);
+    if ($msg['sender'] !== $appUser && $msg['receiver'] !== $appUser) continue;
+    $peer = $msg['sender'] === $appUser ? $msg['receiver'] : $msg['sender'];
+    $subject = $msg['subject'];
+    // Find the root timestamp for this thread (first message with same participants and subject)
+    $rootTimestamp = $msg['createdAt'];
+    foreach ($threadBuckets as $key => $msgs) {
+        $first = $msgs[0];
+        $peer1 = $first['sender'] === $appUser ? $first['receiver'] : $first['sender'];
+        if ($peer1 === $peer && $first['subject'] === $subject) {
+            $rootTimestamp = $first['createdAt'];
+            break;
+        }
+    }
+    $key = getThreadKey($appUser, $peer, $subject, $rootTimestamp);
     $threadBuckets[$key][] = $msg;
     $threadActivity[$key] = max($threadActivity[$key] ?? 0, $msg['createdAt']);
 }
@@ -128,28 +168,54 @@ uksort($threads, function($a, $b) use ($threadActivity) {
     return $bTime <=> $aTime;
 });
 
+// After threads are built, output debug info if in debug mode
+if (isset($_GET['debug']) && $_GET['debug'] == '1') {
+    debug_log([
+        'THREADS_KEYS' => array_keys($threads),
+        'ACTIVE_KEY' => $activeKey,
+        'PINNED_KEYS' => array_keys($pinned),
+        'UNPINNED_KEYS' => array_keys($unpinned),
+        'GET' => $_GET,
+        'POST' => $_POST,
+    ]);
+    // If redirected after send, show extra info
+    if (isset($_GET['thread'])) {
+        debug_log([
+            'REDIRECTED_TO_THREAD' => $_GET['thread'],
+            'IS_THREAD_FOUND' => isset($threads[$_GET['thread']]),
+            'ACTIVE_THREAD_MSGS' => isset($threads[$_GET['thread']]) ? $threads[$_GET['thread']] : null,
+        ]);
+    }
+}
+
 // Load pinned threads for the current user
 $pinnedThreads = [];
 try {
-    $pdo = new PDO($dsn, $user, $pass);
     $stmt = $pdo->prepare("SELECT thread_key FROM pinned_threads WHERE username = :username");
-    $stmt->execute(['username' => $user]);
+    $stmt->execute(['username' => $appUser]);
     $pinnedThreads = $stmt->fetchAll(PDO::FETCH_COLUMN);
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    $error = "DB ERROR: " . $e->getMessage();
+    header("Location: mail.php?error=" . urlencode($error));
+    exit;
+}
 
 // Handle pin/unpin actions
 if (isset($_POST['pin_thread']) && isset($_POST['thread_key'])) {
     $threadKey = $_POST['thread_key'];
     try {
-        $pdo = new PDO($dsn, $user, $pass);
         if ($_POST['pin_thread'] === '1') {
             $stmt = $pdo->prepare("INSERT INTO pinned_threads (username, thread_key) VALUES (:username, :thread_key) ON CONFLICT DO NOTHING");
-            $stmt->execute(['username' => $user, 'thread_key' => $threadKey]);
+            $stmt->execute(['username' => $appUser, 'thread_key' => $threadKey]);
         } else {
             $stmt = $pdo->prepare("DELETE FROM pinned_threads WHERE username = :username AND thread_key = :thread_key");
-            $stmt->execute(['username' => $user, 'thread_key' => $threadKey]);
+            $stmt->execute(['username' => $appUser, 'thread_key' => $threadKey]);
         }
-    } catch (Exception $e) {}
+    } catch (Exception $e) {
+        $error = "DB ERROR: " . $e->getMessage();
+        header("Location: mail.php?error=" . urlencode($error));
+        exit;
+    }
     // Redirect to avoid form resubmission
     header("Location: mail.php?thread=" . urlencode($threadKey));
     exit;
@@ -182,10 +248,8 @@ $unpinnedKeys = array_keys($unpinned);
 $pinnedTotal = count($pinnedKeys);
 $unpinnedTotal = count($unpinnedKeys);
 
-$pinnedStart = ($page - 1) * $threadsPerPage;
-$pinnedPageKeys = array_slice($pinnedKeys, $pinnedStart, $threadsPerPage);
-$unpinnedStart = ($page - 1) * $threadsPerPage;
-$unpinnedPageKeys = array_slice($unpinnedKeys, $unpinnedStart, $threadsPerPage);
+$pinnedPageKeys = paginateArray($pinnedKeys, $page, $threadsPerPage);
+$unpinnedPageKeys = paginateArray($unpinnedKeys, $page, $threadsPerPage);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -228,12 +292,12 @@ $unpinnedPageKeys = array_slice($unpinnedKeys, $unpinnedStart, $threadsPerPage);
         <?php foreach ($pinnedPageKeys as $key): $msgs = $pinned[$key]; ?>
           <?php
             $first = $msgs[0];
-            $peer = $first['sender'] === $user ? $first['receiver'] : $first['sender'];
+            $peer = $first['sender'] === $appUser ? $first['receiver'] : $first['sender'];
             $isActive = $key === $activeKey;
             $baseClass = 'block rounded-lg p-3 mb-2 border transition';
             $classes = $isActive ? 'bg-blue-700 border-blue-500' : 'bg-gray-700 hover:bg-gray-600 border-gray-600';
             $last = end($msgs);
-            $lastSender = $last['sender'] === $user ? 'You' : htmlspecialchars($last['sender']);
+            $lastSender = $last['sender'] === $appUser ? 'You' : htmlspecialchars($last['sender']);
             $lastText = trim(explode("\n", $last['text'])[0]);
             if ($lastText === '') $lastText = mb_strimwidth($last['text'], 0, 40, '...');
             $lastPreview = "<span class='font-bold text-blue-300'>" . $lastSender . "</span>: " . htmlspecialchars($lastText);
@@ -262,12 +326,12 @@ $unpinnedPageKeys = array_slice($unpinnedKeys, $unpinnedStart, $threadsPerPage);
     <?php foreach ($unpinnedPageKeys as $key): $msgs = $unpinned[$key]; ?>
       <?php
         $first = $msgs[0];
-        $peer = $first['sender'] === $user ? $first['receiver'] : $first['sender'];
+        $peer = $first['sender'] === $appUser ? $first['receiver'] : $first['sender'];
         $isActive = $key === $activeKey;
         $baseClass = 'block rounded-lg p-3 mb-2 border transition';
         $classes = $isActive ? 'bg-blue-700 border-blue-500' : 'bg-gray-700 hover:bg-gray-600 border-gray-600';
         $last = end($msgs);
-        $lastSender = $last['sender'] === $user ? 'You' : htmlspecialchars($last['sender']);
+        $lastSender = $last['sender'] === $appUser ? 'You' : htmlspecialchars($last['sender']);
         $lastText = trim(explode("\n", $last['text'])[0]);
         if ($lastText === '') $lastText = mb_strimwidth($last['text'], 0, 40, '...');
         $lastPreview = "<span class='font-bold text-blue-300'>" . $lastSender . "</span>: " . htmlspecialchars($lastText);
@@ -317,14 +381,18 @@ $unpinnedPageKeys = array_slice($unpinnedKeys, $unpinnedStart, $threadsPerPage);
 
   <!-- Thread view or Compose -->
   <main class="flex-1 bg-gray-800 rounded-xl p-6 flex flex-col border border-gray-700 shadow-md overflow-hidden">
-    <?php if (isset($error)): ?>
+    <?php if (isset($_SESSION['mail_success'])): ?>
+      <div class="bg-green-600 text-white text-sm py-2 text-center mb-4"><?= htmlspecialchars($_SESSION['mail_success']) ?></div>
+      <?php unset($_SESSION['mail_success']); ?>
+    <?php endif; ?>
+    <?php if (isset($error) && $error): ?>
       <div class="bg-red-600 text-white text-sm py-2 text-center mb-4"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
     <?php if (!$showCompose): ?>
       <!-- Message History -->
       <div id="thread-messages" class="flex-1 overflow-y-auto space-y-4 mb-4">
         <?php foreach ($activeThread as $i => $msg): ?>
-          <?php $isMine = $msg['sender'] === $user; ?>
+          <?php $isMine = $msg['sender'] === $appUser; ?>
           <div class="flex <?= $isMine ? 'justify-end' : 'justify-start' ?>">
             <div class="<?= $isMine ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white' ?> max-w-[75%] p-4 rounded-lg border border-gray-600 thread-message" data-msg-index="<?= $i ?>">
               <div class="text-xs text-gray-300 mb-1">
@@ -339,8 +407,10 @@ $unpinnedPageKeys = array_slice($unpinnedKeys, $unpinnedStart, $threadsPerPage);
 
       <!-- Reply Form -->
       <form method="POST" class="border-t border-gray-700 pt-4">
-        <input type="hidden" name="recipient" value="<?= htmlspecialchars($activeThread[0]['sender'] === $user ? $activeThread[0]['receiver'] : $activeThread[0]['sender']) ?>">
+        <input type="hidden" name="recipient" value="<?= htmlspecialchars($activeThread[0]['sender'] === $appUser ? $activeThread[0]['receiver'] : $activeThread[0]['sender']) ?>">
         <input type="hidden" name="subject" value="<?= htmlspecialchars($activeThread[0]['subject']) ?>">
+        <input type="hidden" name="root_timestamp" value="<?= htmlspecialchars($activeThread[0]['createdAt']) ?>">
+        <input type="hidden" name="current_thread_key" value="<?= htmlspecialchars($activeKey) ?>">
         <label class="text-sm font-medium mb-3 ml-1 block">Reply to Thread:</label>
         <textarea name="body" id="reply-body" rows="3" maxlength="150" required class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 resize-none mb-4" placeholder="Type your reply..."></textarea>
         <div class="flex justify-end">
@@ -381,14 +451,19 @@ $unpinnedPageKeys = array_slice($unpinnedKeys, $unpinnedStart, $threadsPerPage);
     return raw.includes('\n\n\n') || raw.includes('\n \n'); // triple or spaced blank lines
   }
 
+  // Unified function to render markdown or preformatted text
+  function renderMarkdown(raw) {
+    if (isPreFormatted(raw)) {
+      return '<pre class="whitespace-pre-wrap font-mono text-sm">' + raw + '</pre>';
+    } else {
+      return converter.makeHtml(raw);
+    }
+  }
+
   // Render messages (in thread view and sidebar previews)
   document.querySelectorAll('.message-body').forEach(el => {
     const raw = el.getAttribute('data-md') || '';
-    if (isPreFormatted(raw)) {
-      el.innerHTML = '<pre class="whitespace-pre-wrap font-mono text-sm">' + raw + '</pre>';
-    } else {
-      el.innerHTML = converter.makeHtml(raw);
-    }
+    el.innerHTML = renderMarkdown(raw);
   });
 
   // Live preview for Compose (only if present)
@@ -397,14 +472,27 @@ $unpinnedPageKeys = array_slice($unpinnedKeys, $unpinnedStart, $threadsPerPage);
   if (textarea && preview) {
     textarea.addEventListener('input', () => {
       const raw = textarea.value;
-      if (isPreFormatted(raw)) {
-        preview.innerHTML = '<pre class="whitespace-pre-wrap font-mono text-sm">' + raw + '</pre>';
-      } else {
-        preview.innerHTML = converter.makeHtml(raw);
-      }
+      preview.innerHTML = renderMarkdown(raw);
     });
-    preview.innerHTML = converter.makeHtml(textarea.value);
+    preview.innerHTML = renderMarkdown(textarea.value);
   }
+
+  // Always scroll to the latest message after page load
+  window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      var threadBox = document.getElementById('thread-messages');
+      if (threadBox) {
+        var msgs = threadBox.querySelectorAll('.thread-message');
+        if (msgs.length > 0) {
+          msgs[msgs.length - 1].scrollIntoView({ behavior: 'smooth' });
+          // Double-check after another short delay in case layout shifts
+          setTimeout(function() {
+            msgs[msgs.length - 1].scrollIntoView({ behavior: 'smooth' });
+          }, 200);
+        }
+      }
+    }, 300);
+  });
 
 // Optimistic UI for pin/unpin with spinner
 function optimisticStarToggle(e, btn, isPinned) {
@@ -453,7 +541,7 @@ if (searchInput) {
       }
     });
   });
-}
+} 
 </script>
 
 </body>
