@@ -56,10 +56,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject = trim($_POST['subject'] ?? '');
     $body = trim($_POST['body'] ?? '');
     $rootTimestamp = isset($_POST['root_timestamp']) ? $_POST['root_timestamp'] : null;
+    $currentThreadKey = $_POST['current_thread_key'] ?? null;
+    file_put_contents(__DIR__ . '/mail_debug.log', "POST DATA: recipient=$recipient, subject=$subject, body=$body, rootTimestamp=$rootTimestamp, currentThreadKey=$currentThreadKey\n", FILE_APPEND);
     if ($recipient && $subject && $body) {
         if ($recipient === $appUser) {
             $error = "You cannot send messages to yourself.";
-            header("Location: mail.php?error=" . urlencode($error));
+            header("Location: mail.php?compose=1&error=" . urlencode($error));
             exit;
         } else {
             // Check if recipient user exists
@@ -76,20 +78,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt = $pdo->prepare("INSERT INTO sent_peers (username, recipient) VALUES (:username, :recipient) ON CONFLICT DO NOTHING");
                         $stmt->execute(['username' => $appUser, 'recipient' => $recipient]);
                     } catch (Exception $e) {
-                        $error = "DB ERROR: " . $e->getMessage();
-                        header("Location: mail.php?error=" . urlencode($error));
+                        file_put_contents(__DIR__ . '/mail_debug.log', "DB ERROR: " . $e->getMessage() . "\n", FILE_APPEND);
+                    }
+                    // Auto-fix: Use current_thread_key for replies, only calculate for new messages
+                    if ($currentThreadKey) {
+                        $_SESSION['mail_success'] = 'Message sent successfully!';
+                        file_put_contents(__DIR__ . '/mail_debug.log', "REDIRECTING TO EXISTING THREAD: threadKey=$currentThreadKey\n", FILE_APPEND);
+                        header("Location: mail.php?thread=" . urlencode($currentThreadKey));
+                        exit;
+                    } else {
+                        // Compose: calculate thread key as before
+                        if (!$rootTimestamp) {
+                            $createdAt = isset($resp['message']['createdAt']) ? $resp['message']['createdAt'] : round(microtime(true) * 1000);
+                            $rootTimestamp = $createdAt;
+                        }
+                        $participants = [$appUser, $recipient];
+                        sort($participants);
+                        $base = implode('-', $participants) . '::' . trim($subject) . '::' . $rootTimestamp;
+                        $threadKey = hash('sha256', $base);
+                        file_put_contents(__DIR__ . '/mail_debug.log', "REDIRECTING TO NEW THREAD: threadKey=$threadKey, base=$base\n", FILE_APPEND);
+                        $_SESSION['mail_success'] = 'Message sent successfully!';
+                        header("Location: mail.php?thread=" . urlencode($threadKey));
                         exit;
                     }
-                    // Use createdAt from API response if available, else fallback to current time
-                    $createdAt = isset($resp['message']['createdAt']) ? $resp['message']['createdAt'] : round(microtime(true) * 1000);
-                    if (!$rootTimestamp) {
-                        $rootTimestamp = $createdAt;
-                    }
-                    $threadKey = getThreadKey($appUser, $recipient, $subject, $rootTimestamp);
-                    // Set a success message in the session and redirect
-                    $_SESSION['mail_success'] = 'Message sent successfully!';
-                    header("Location: mail.php?thread=" . urlencode($threadKey));
-                    exit;
                 } else {
                     $error = "Failed to send message: " . htmlspecialchars($resp['error']);
                     header("Location: mail.php?error=" . urlencode($error));
@@ -161,9 +172,11 @@ uksort($threads, function($a, $b) use ($threadActivity) {
     $bTime = $threadActivity[$b] ?? 0;
     return $bTime <=> $aTime;
 });
+file_put_contents(__DIR__ . '/mail_debug.log', "THREAD KEYS AFTER BUILD: " . print_r(array_keys($threads), true) . "\n", FILE_APPEND);
 
 // Determine active thread
-$activeKey = $_GET['thread'] ?? array_key_first($threads);
+// Always use the thread key from the URL if present and valid, otherwise default to the first thread
+$activeKey = isset($_GET['thread']) && isset($threads[$_GET['thread']]) ? $_GET['thread'] : array_key_first($threads);
 $showCompose = isset($_GET['compose']) && $_GET['compose'] == '1';
 $activeThread = !$showCompose && $activeKey && isset($threads[$activeKey]) ? $threads[$activeKey] : [];
 
