@@ -1,5 +1,7 @@
 <?php
 session_start();
+file_put_contents(__DIR__ . '/mail_debug.log', "TOP OF FILE: " . $_SERVER['REQUEST_METHOD'] . "\n", FILE_APPEND);
+file_put_contents(__DIR__ . '/mail_debug.log', "REQUEST_METHOD: " . (isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'N/A') . "\nPOST: " . print_r($_POST, true) . "\n", FILE_APPEND);
 require_once __DIR__ . '/../../Api/api.php';
 require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../db.php';
@@ -49,57 +51,55 @@ $peers = array_keys($peers);
 
 // 4. Handle sending a new message
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    file_put_contents(__DIR__ . '/mail_debug.log', "IN POST HANDLER\n", FILE_APPEND);
     $recipient = trim($_POST['recipient'] ?? '');
     $subject = trim($_POST['subject'] ?? '');
     $body = trim($_POST['body'] ?? '');
     $rootTimestamp = isset($_POST['root_timestamp']) ? $_POST['root_timestamp'] : null;
-    $currentThreadKey = $_POST['current_thread_key'] ?? null;
-    $debugMode = isset($_GET['debug']) && $_GET['debug'] == '1';
     if ($recipient && $subject && $body) {
         if ($recipient === $appUser) {
             $error = "You cannot send messages to yourself.";
-            header("Location: mail.php?error=" . urlencode($error) . ($debugMode ? '&debug=1' : ''));
+            header("Location: mail.php?error=" . urlencode($error));
             exit;
         } else {
             // Check if recipient user exists
             $userCheck = $api->getUser($recipient);
             if (isset($userCheck['error'])) {
                 $error = "User doesn't exist.";
-                header("Location: mail.php?error=" . urlencode($error) . ($debugMode ? '&debug=1' : ''));
+                header("Location: mail.php?compose=1&error=" . urlencode($error));
                 exit;
             } else {
                 $resp = $api->sendMail($appUser, $recipient, $subject, $body);
                 if (!isset($resp['error'])) {
+                    // Add recipient to sent_peers table
                     try {
                         $stmt = $pdo->prepare("INSERT INTO sent_peers (username, recipient) VALUES (:username, :recipient) ON CONFLICT DO NOTHING");
                         $stmt->execute(['username' => $appUser, 'recipient' => $recipient]);
                     } catch (Exception $e) {
                         $error = "DB ERROR: " . $e->getMessage();
-                        header("Location: mail.php?error=" . urlencode($error) . ($debugMode ? '&debug=1' : ''));
+                        header("Location: mail.php?error=" . urlencode($error));
                         exit;
                     }
-                    $_SESSION['mail_success'] = 'Message sent successfully!';
-                    // Always use the current thread key for redirect if available
-                    $redirectKey = $currentThreadKey ?: getThreadKey($appUser, $recipient, $subject, $rootTimestamp);
-                    if ($debugMode) {
-                        debug_log([
-                            'AFTER_SEND_REPLY',
-                            'current_thread_key' => $currentThreadKey,
-                            'redirect_key' => $redirectKey,
-                        ]);
+                    // Use createdAt from API response if available, else fallback to current time
+                    $createdAt = isset($resp['message']['createdAt']) ? $resp['message']['createdAt'] : round(microtime(true) * 1000);
+                    if (!$rootTimestamp) {
+                        $rootTimestamp = $createdAt;
                     }
-                    header("Location: mail.php?thread=" . urlencode($redirectKey) . ($debugMode ? '&debug=1' : ''));
+                    $threadKey = getThreadKey($appUser, $recipient, $subject, $rootTimestamp);
+                    // Set a success message in the session and redirect
+                    $_SESSION['mail_success'] = 'Message sent successfully!';
+                    header("Location: mail.php?thread=" . urlencode($threadKey));
                     exit;
                 } else {
                     $error = "Failed to send message: " . htmlspecialchars($resp['error']);
-                    header("Location: mail.php?error=" . urlencode($error) . ($debugMode ? '&debug=1' : ''));
+                    header("Location: mail.php?error=" . urlencode($error));
                     exit;
                 }
             }
         }
     } else {
         $error = "All fields are required.";
-        header("Location: mail.php?error=" . urlencode($error) . ($debugMode ? '&debug=1' : ''));
+        header("Location: mail.php?error=" . urlencode($error));
         exit;
     }
 }
@@ -133,12 +133,6 @@ function getThreadKey($user1, $user2, $subject, $rootTimestamp) {
     return hash('sha256', $base);
 }
 
-// Helper: Paginate an array
-function paginateArray($array, $page, $perPage) {
-    $start = ($page - 1) * $perPage;
-    return array_slice($array, $start, $perPage);
-}
-
 foreach ($allMessages as $msg) {
     if ($msg['sender'] !== $appUser && $msg['receiver'] !== $appUser) continue;
     $peer = $msg['sender'] === $appUser ? $msg['receiver'] : $msg['sender'];
@@ -168,70 +162,6 @@ uksort($threads, function($a, $b) use ($threadActivity) {
     return $bTime <=> $aTime;
 });
 
-// After threads are built, output debug info if in debug mode
-if (isset($_GET['debug']) && $_GET['debug'] == '1') {
-    debug_log([
-        'THREADS_KEYS' => array_keys($threads),
-        'ACTIVE_KEY' => $activeKey,
-        'PINNED_KEYS' => array_keys($pinned),
-        'UNPINNED_KEYS' => array_keys($unpinned),
-        'GET' => $_GET,
-        'POST' => $_POST,
-    ]);
-    // If redirected after send, show extra info
-    if (isset($_GET['thread'])) {
-        debug_log([
-            'REDIRECTED_TO_THREAD' => $_GET['thread'],
-            'IS_THREAD_FOUND' => isset($threads[$_GET['thread']]),
-            'ACTIVE_THREAD_MSGS' => isset($threads[$_GET['thread']]) ? $threads[$_GET['thread']] : null,
-        ]);
-    }
-}
-
-// Load pinned threads for the current user
-$pinnedThreads = [];
-try {
-    $stmt = $pdo->prepare("SELECT thread_key FROM pinned_threads WHERE username = :username");
-    $stmt->execute(['username' => $appUser]);
-    $pinnedThreads = $stmt->fetchAll(PDO::FETCH_COLUMN);
-} catch (Exception $e) {
-    $error = "DB ERROR: " . $e->getMessage();
-    header("Location: mail.php?error=" . urlencode($error));
-    exit;
-}
-
-// Handle pin/unpin actions
-if (isset($_POST['pin_thread']) && isset($_POST['thread_key'])) {
-    $threadKey = $_POST['thread_key'];
-    try {
-        if ($_POST['pin_thread'] === '1') {
-            $stmt = $pdo->prepare("INSERT INTO pinned_threads (username, thread_key) VALUES (:username, :thread_key) ON CONFLICT DO NOTHING");
-            $stmt->execute(['username' => $appUser, 'thread_key' => $threadKey]);
-        } else {
-            $stmt = $pdo->prepare("DELETE FROM pinned_threads WHERE username = :username AND thread_key = :thread_key");
-            $stmt->execute(['username' => $appUser, 'thread_key' => $threadKey]);
-        }
-    } catch (Exception $e) {
-        $error = "DB ERROR: " . $e->getMessage();
-        header("Location: mail.php?error=" . urlencode($error));
-        exit;
-    }
-    // Redirect to avoid form resubmission
-    header("Location: mail.php?thread=" . urlencode($threadKey));
-    exit;
-}
-
-// Sort threads: pinned first, then others
-$pinned = [];
-$unpinned = [];
-foreach ($threads as $key => $msgs) {
-    if (in_array($key, $pinnedThreads)) {
-        $pinned[$key] = $msgs;
-    } else {
-        $unpinned[$key] = $msgs;
-    }
-}
-
 // Determine active thread
 $activeKey = $_GET['thread'] ?? array_key_first($threads);
 $showCompose = isset($_GET['compose']) && $_GET['compose'] == '1';
@@ -241,15 +171,20 @@ $activeThread = !$showCompose && $activeKey && isset($threads[$activeKey]) ? $th
 $threadsPerPage = 10;
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 
-// Paginate pinned and unpinned threads separately
-$pinnedKeys = array_keys($pinned);
-$unpinnedKeys = array_keys($unpinned);
+$threadKeys = array_keys($threads);
+$totalThreads = count($threadKeys);
+$start = ($page - 1) * $threadsPerPage;
+$pageThreadKeys = array_slice($threadKeys, $start, $threadsPerPage);
 
-$pinnedTotal = count($pinnedKeys);
-$unpinnedTotal = count($unpinnedKeys);
-
-$pinnedPageKeys = paginateArray($pinnedKeys, $page, $threadsPerPage);
-$unpinnedPageKeys = paginateArray($unpinnedKeys, $page, $threadsPerPage);
+// Set $error from GET if present
+if (isset($_GET['error'])) {
+    $error = $_GET['error'];
+}
+// Set $mail_success from session if present
+if (isset($_SESSION['mail_success'])) {
+    $mail_success = $_SESSION['mail_success'];
+    unset($_SESSION['mail_success']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -272,9 +207,6 @@ $unpinnedPageKeys = paginateArray($unpinnedKeys, $page, $threadsPerPage);
 <div class="flex flex-col md:flex-row h-[calc(100vh-4rem)] px-4 md:px-6 pt-4 md:pt-6 gap-4 md:gap-6 overflow-hidden">
   <!-- Sidebar Threads -->
   <aside class="w-72 bg-gray-800 rounded-xl p-4 flex flex-col border border-gray-700 shadow-md overflow-y-auto relative">
-    <div id="pin-spinner" class="hidden absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center z-20">
-      <svg class="animate-spin h-8 w-8 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
-    </div>
     <a href="mail.php?compose=1" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 mb-4 rounded-md text-sm font-medium shadow text-center">+ Compose</a>
     <input type="text" id="thread-search" placeholder="Search by user or subject..." class="mb-3 w-full p-2 rounded bg-gray-700 border border-gray-600 text-white text-sm" autocomplete="off">
     <?php if (empty($threads)): ?>
@@ -285,45 +217,8 @@ $unpinnedPageKeys = paginateArray($unpinnedKeys, $page, $threadsPerPage);
         </p>
       </div>
     <?php endif; ?>
-    <div id="pinned-threads">
-    <?php if (!empty($pinned)): ?>
-      <div class="mb-2">
-        <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Pinned</div>
-        <?php foreach ($pinnedPageKeys as $key): $msgs = $pinned[$key]; ?>
-          <?php
-            $first = $msgs[0];
-            $peer = $first['sender'] === $appUser ? $first['receiver'] : $first['sender'];
-            $isActive = $key === $activeKey;
-            $baseClass = 'block rounded-lg p-3 mb-2 border transition';
-            $classes = $isActive ? 'bg-blue-700 border-blue-500' : 'bg-gray-700 hover:bg-gray-600 border-gray-600';
-            $last = end($msgs);
-            $lastSender = $last['sender'] === $appUser ? 'You' : htmlspecialchars($last['sender']);
-            $lastText = trim(explode("\n", $last['text'])[0]);
-            if ($lastText === '') $lastText = mb_strimwidth($last['text'], 0, 40, '...');
-            $lastPreview = "<span class='font-bold text-blue-300'>" . $lastSender . "</span>: " . htmlspecialchars($lastText);
-          ?>
-          <div class="relative group thread-row" data-thread-key="<?= htmlspecialchars($key) ?>" data-pinned="1" data-peer="<?= htmlspecialchars($peer) ?>">
-            <a href="?thread=<?= urlencode($key) ?>" class="<?= $baseClass . ' ' . $classes ?>">
-              <h4 class="font-semibold text-white text-sm truncate flex items-center mb-1">
-                <?= htmlspecialchars($first['subject']) ?>
-                <form method="POST" class="ml-auto inline-block" style="margin-left:auto;" action="mail.php?thread=<?= urlencode($key) ?>" onsubmit="event.stopPropagation();">
-                  <input type="hidden" name="thread_key" value="<?= htmlspecialchars($key) ?>">
-                  <input type="hidden" name="pin_thread" value="0">
-                  <button type="submit" title="Unpin" class="ml-2 text-yellow-400 hover:text-yellow-300 focus:outline-none">
-                    ★
-                  </button>
-                </form>
-              </h4>
-              <div class="text-xs text-gray-100 preview-block truncate" data-md="<?= htmlspecialchars($last['text']) ?>">
-                <?php echo $lastPreview; ?>
-              </div>
-            </a>
-          </div>
-        <?php endforeach; ?>
-      </div>
-      <hr class="border-gray-700 mb-2">
-    <?php endif; ?>
-    <?php foreach ($unpinnedPageKeys as $key): $msgs = $unpinned[$key]; ?>
+    <div id="thread-list">
+    <?php foreach ($pageThreadKeys as $key): $msgs = $threads[$key]; ?>
       <?php
         $first = $msgs[0];
         $peer = $first['sender'] === $appUser ? $first['receiver'] : $first['sender'];
@@ -336,17 +231,10 @@ $unpinnedPageKeys = paginateArray($unpinnedKeys, $page, $threadsPerPage);
         if ($lastText === '') $lastText = mb_strimwidth($last['text'], 0, 40, '...');
         $lastPreview = "<span class='font-bold text-blue-300'>" . $lastSender . "</span>: " . htmlspecialchars($lastText);
       ?>
-      <div class="relative group thread-row" data-thread-key="<?= htmlspecialchars($key) ?>" data-pinned="0" data-peer="<?= htmlspecialchars($peer) ?>">
+      <div class="relative group thread-row" data-thread-key="<?= htmlspecialchars($key) ?>" data-peer="<?= htmlspecialchars($peer) ?>">
         <a href="?thread=<?= urlencode($key) ?>" class="<?= $baseClass . ' ' . $classes ?>">
           <h4 class="font-semibold text-white text-sm truncate flex items-center mb-1">
             <?= htmlspecialchars($first['subject']) ?>
-            <form method="POST" class="ml-auto inline-block" style="margin-left:auto;" action="mail.php?thread=<?= urlencode($key) ?>" onsubmit="event.stopPropagation();">
-              <input type="hidden" name="thread_key" value="<?= htmlspecialchars($key) ?>">
-              <input type="hidden" name="pin_thread" value="1">
-              <button type="submit" title="Pin" class="ml-2 text-gray-400 hover:text-yellow-400 focus:outline-none">
-                ☆
-              </button>
-            </form>
           </h4>
           <div class="text-xs text-gray-100 preview-block truncate" data-md="<?= htmlspecialchars($last['text']) ?>">
             <?php echo $lastPreview; ?>
@@ -367,8 +255,8 @@ $unpinnedPageKeys = paginateArray($unpinnedKeys, $page, $threadsPerPage);
       <span class="text-xs text-gray-400">Page <?= $page ?></span>
       <form method="GET" class="inline">
         <?php
-          $currentPageThreadCount = count($pinnedPageKeys) + count($unpinnedPageKeys);
-          $hasMoreThreads = $currentPageThreadCount >= $threadsPerPage;
+          $currentPageThreadCount = count($pageThreadKeys);
+          $hasMoreThreads = ($start + $currentPageThreadCount) < $totalThreads;
         ?>
         <?php if ($hasMoreThreads): ?>
           <input type="hidden" name="page" value="<?= $page + 1 ?>">
@@ -381,11 +269,10 @@ $unpinnedPageKeys = paginateArray($unpinnedKeys, $page, $threadsPerPage);
 
   <!-- Thread view or Compose -->
   <main class="flex-1 bg-gray-800 rounded-xl p-6 flex flex-col border border-gray-700 shadow-md overflow-hidden">
-    <?php if (isset($_SESSION['mail_success'])): ?>
-      <div class="bg-green-600 text-white text-sm py-2 text-center mb-4"><?= htmlspecialchars($_SESSION['mail_success']) ?></div>
-      <?php unset($_SESSION['mail_success']); ?>
+    <?php if (isset($mail_success)): ?>
+      <div class="bg-green-600 text-white text-sm py-2 text-center mb-4"><?= htmlspecialchars($mail_success) ?></div>
     <?php endif; ?>
-    <?php if (isset($error) && $error): ?>
+    <?php if (isset($error)): ?>
       <div class="bg-red-600 text-white text-sm py-2 text-center mb-4"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
     <?php if (!$showCompose): ?>
@@ -494,36 +381,6 @@ $unpinnedPageKeys = paginateArray($unpinnedKeys, $page, $threadsPerPage);
     }, 300);
   });
 
-// Optimistic UI for pin/unpin with spinner
-function optimisticStarToggle(e, btn, isPinned) {
-  e.preventDefault();
-  e.stopPropagation();
-  // Toggle icon instantly
-  if (isPinned) {
-    btn.innerHTML = '☆';
-    btn.classList.remove('text-yellow-400');
-    btn.classList.add('text-gray-400');
-  } else {
-    btn.innerHTML = '★';
-    btn.classList.remove('text-gray-400');
-    btn.classList.add('text-yellow-400');
-  }
-  // Show spinner
-  document.getElementById('pin-spinner').classList.remove('hidden');
-  // Submit the form after a short delay for effect
-  setTimeout(function() {
-    btn.closest('form').submit();
-  }, 0);
-}
-
-document.querySelectorAll('form[action^="mail.php"][onsubmit]').forEach(form => {
-  form.addEventListener('submit', function(e) {
-    const btn = this.querySelector('button[type="submit"]');
-    const isPinned = this.querySelector('input[name="pin_thread"]').value === '0';
-    optimisticStarToggle(e, btn, isPinned);
-  });
-});
-
 // Search bar logic
 const searchInput = document.getElementById('thread-search');
 if (searchInput) {
@@ -543,6 +400,5 @@ if (searchInput) {
   });
 } 
 </script>
-
 </body>
 </html>
