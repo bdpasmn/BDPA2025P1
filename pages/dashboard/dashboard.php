@@ -9,18 +9,18 @@
   require_once '../../Api/key.php';
   require_once '../../db.php';
   $api = new qOverflowAPI(API_KEY);
-  $username = "user101";
+  //$username = "user101";
 
   $pdo = new PDO($dsn, $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  //$username = $_SESSION['username'];
-  /*
+  $username = $_SESSION['username'];
+  
   if (!isset($username)) {
     header('Location: /pages/auth/login.php'); // Redirect to login page if not logged in
     exit();
   }
-  */
+  
   $AllQuestionInfo= $api->getUserQuestions($username); //getting user questions
   $JustUserQuestions = $AllQuestionInfo['questions'] ?? [];// getting just the user questions
 
