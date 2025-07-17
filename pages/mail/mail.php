@@ -63,9 +63,9 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
   <div class="w-full max-w-2xl bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 flex flex-col">
     <!-- Tabs -->
     <div class="flex justify-center gap-2 mt-6 mb-2">
-      <a href="mail_minimal.php" class="px-5 py-2 rounded-md text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-500
+      <a href="mail.php" class="px-5 py-2 rounded-md text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-500
         <?= $activeTab === 'inbox' ? 'bg-blue-600 text-white shadow' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' ?>">Inbox</a>
-      <a href="mail_minimal.php?compose=1" class="px-5 py-2 rounded-md text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-500
+      <a href="mail.php?compose=1" class="px-5 py-2 rounded-md text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-500
         <?= $activeTab === 'compose' ? 'bg-blue-600 text-white shadow' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' ?>">Compose</a>
     </div>
     <div class="px-6 pb-8 pt-2 flex-1 flex flex-col">
