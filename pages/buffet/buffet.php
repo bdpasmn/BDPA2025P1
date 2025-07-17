@@ -4,9 +4,6 @@ require_once '../../api/key.php';
 require_once '../../api/api.php';
 
 $api = new qOverflowAPI(API_KEY);
-if (!isset($_SESSION['username'])) {
-    $_SESSION['username'] = 'user101';
-}
 
 $sort = $_GET['sort'] ?? 'recent';
 $currentPage = isset($_GET['page']) && intval($_GET['page']) > 0 ? intval($_GET['page']) : 1;
@@ -37,7 +34,7 @@ if (!empty($match)) {
     $params['match'] = json_encode($match);
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['title'], $_POST['text'])) {
         if (!isset($_SESSION['username'])) {
             header("Location: /login.php");
@@ -46,13 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $title = trim(strip_tags($_POST['title']));
         $text = trim($_POST['text']);
-
-        if (strlen($title) < 5 || strlen($title) > 150) {
-            die("Invalid title length. Must be between 5 and 150 characters.");
-        }
-        if (strlen($text) < 10 || strlen($text) > 3000) {
-            die("Invalid text length. Must be between 10 and 3000 characters.");
-        }
 
         $api->createQuestion($_SESSION['username'], $title, $text);
         header("Location: buffet.php?sort=$sort&page=$currentPage");
@@ -109,6 +99,9 @@ function format_relative_time($timestamp_ms) {
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
 </head>
 <body class="min-h-screen font-sans flex flex-col pt-3 pb-3">
+  <div class="mb-6">
+    <?php include '../../components/navBarLogIn.php'; ?>
+  </div>
   <div class="md:hidden px-4 py-5 bg-gray-800 border border-gray-700 rounded-xl mx-4 my-4 shadow-md">
     <div class="flex justify-between items-center">
       <div class="text-3xl text-white font-semibold">
@@ -142,7 +135,7 @@ function format_relative_time($timestamp_ms) {
       <?php endif; ?>
     </aside>
 
-    <main class="flex-1 flex flex-col min-h-0 overflow-y-auto pt-4 pb-8">
+    <main class="flex-1 flex flex-col min-h-0 overflow-y-auto pb-">
       <form method="GET" class="mb-4 border-b border-gray-700 flex-shrink-0 overflow-x-auto">
         <input type="hidden" name="page" id="pageInput" value="<?= $currentPage ?>">
         <ul class="flex gap-4 text-base font-medium whitespace-nowrap">
