@@ -14,13 +14,26 @@
   $pdo = new PDO($dsn, $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+  /*
   $username = $_SESSION['username'];
   
   if (!isset($username)) {
     header('Location: /pages/auth/login.php'); // Redirect to login page if not logged in
     exit();
   }
-  
+  */
+
+    
+  if (!isset($_SESSION['username'])) {
+    header('Location: /pages/auth/login.php');
+    exit();
+  } 
+  $username = $_SESSION['username'];
+
+
+
+
+
   $AllQuestionInfo= $api->getUserQuestions($username); //getting user questions
   $JustUserQuestions = $AllQuestionInfo['questions'] ?? [];// getting just the user questions
 
@@ -195,7 +208,8 @@ function handleApiError($error, $context = '') {
      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 px-4 sm:px-6 lg:px-10" id="questions">
     <?php if (!empty($JustUserQuestions)): ?> <!-- Check if there are user questions -->
       <?php foreach ($JustUserQuestions as $UserQuestion): ?> <!-- Loop through each user question -->
-        <a href="/pages/q&a/q&a.php">
+       <!-- <a href="/pages/q&a/q&a.php">-->
+        <a href="../q&a/q&a.php?questionName=<?= urlencode($UserQuestion['title']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md "> <!-- got rid of w-[300px] in the div class -->
           <!--text used be sm not l-->
         <p class="text-l font-semibold text-blue-400">QUESTION TITLE:</p>
