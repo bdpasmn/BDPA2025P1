@@ -32,11 +32,22 @@
     $UpdatesInSupabase = [];// Initialize the updates array for Supabase
 
     if ($field === 'email') {//if the field is email
+
+        //check if the email exists
+         $checkQuery = "SELECT COUNT(*) FROM users WHERE email = ?";
+            $checkStmt = $pdo->prepare($checkQuery);
+            $checkStmt->execute([$value]);
+
+            if ($checkStmt->fetchColumn() > 0) {
+                echo " Email already exists.";
+            } else {
+
       $UpdatesInApi = $api->updateUser($username, ['email' => $value]);// Update email in API
       $UpdatesInSupabase = $pdo->prepare("UPDATE users SET email = :email WHERE username = :username");// Prepare the SQL statement for Supabase
       $UpdatesInSupabase->execute(['email' => $value, 'username' => $username]);// Execute the SQL statement
       echo "Successfully updated email.";
       exit();
+            }
     } elseif ($field === 'password') {//if the field is password
           if (
         strlen($value) < 11 ||
@@ -57,8 +68,8 @@
             'salt' => $salt// Include the salt
         ]);
 
-      $UpdatesInSupabase = $pdo->prepare("UPDATE users SET password = :password WHERE username = :username"); // Prepare the SQL statement for Supabase
-      $UpdatesInSupabase->execute(['password' => $passwordHash, 'username' => $username]);// Execute the SQL statement
+      //$UpdatesInSupabase = $pdo->prepare("UPDATE users SET password = :password WHERE username = :username"); // Prepare the SQL statement for Supabase
+      //$UpdatesInSupabase->execute(['password' => $passwordHash, 'username' => $username]);// Execute the SQL statement
       echo "Successfully updated password."; 
         exit();
     }

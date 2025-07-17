@@ -9,7 +9,7 @@
   require_once '../../Api/key.php';
   require_once '../../db.php';
   $api = new qOverflowAPI(API_KEY);
-  //$username = "user101";
+  //$username = "testing1";
 
   $pdo = new PDO($dsn, $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -75,9 +75,9 @@ $users = $api->listUsers();
 echo '<pre>';
 print_r($users);
 echo '</pre>';
-*/
 
-/*
+
+
 $AllQuestionInfo= $api->getUserQuestions($username);
 echo '<pre>';
 print_r($AllQuestionInfo);
