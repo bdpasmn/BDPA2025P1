@@ -35,29 +35,17 @@ if (!empty($match)) {
     $params['match'] = json_encode($match);
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['title'], $_POST['text'])) {
-        if (!isset($_SESSION['username'])) {
-            header("Location: /login.php");
-            exit();
-        }
-
-        // Sanitize and validate inputs
-        $title = trim(strip_tags($_POST['title']));
-        $text = trim($_POST['text']);
-
-        if (strlen($title) < 5 || strlen($title) > 150) {
-            die("Invalid title length. Title must be between 5 and 150 characters.");
-        }
-        if (strlen($text) < 10 || strlen($text) > 3000) {
-            die("Invalid text length. Body must be between 10 and 3000 characters.");
-        }
-
-        $api->createQuestion($_SESSION['username'], $title, $text);
-        header("Location: buffet.php?sort=$sort&page=$currentPage");
-        exit();
-    }
-}
+  if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+      if (isset($_POST['title'], $_POST['text'])) {
+          if (!isset($_SESSION['username'])) {
+              header("Location: /login.php");
+              exit();
+          }
+          $api->createQuestion($_SESSION['username'], $_POST['title'], $_POST['text']);
+          header("Location: buffet.php?sort=$sort&page=$currentPage");
+          exit();
+      }
+  }
 
 $all = [];
 $after = null;
@@ -99,43 +87,25 @@ function format_relative_time($timestamp_ms) {
     return floor($diff / 31536000) . ' year' . (floor($diff / 31536000) == 1 ? '' : 's') . ' ago';
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en" class="bg-gray-900 text-white">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Home • qOverflow</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
   </head>
-  <body class="min-h-screen font-sans flex flex-col pt-3 pb-3">
-    <div class="md:hidden px-4 py-5 bg-gray-800 border border-gray-700 rounded-xl mx-4 my-4 shadow-md">
-      <div class="flex justify-between items-center">
-        <div class="text-3xl text-white font-semibold">
-          Welcome <span class="text-blue-400 font-bold"><?= htmlspecialchars($_SESSION['username'] ?? 'Guest') ?></span>
-        </div>
-        <div class="flex gap-2">
-          <?php if (isset($_SESSION['username'])): ?>
-            <button onclick="document.getElementById('modal').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold">
-              Ask Question
-            </button>
-          <?php else: ?>
-            <a href="../auth/login.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold">Login</a>
-            <a href="../auth/signup.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold">Sign Up</a>
-          <?php endif; ?>
-        </div>
-      </div>
-    </div>
-
-    <div class="flex-1 flex flex-col md:flex-row w-full h-full px-5 md:px-5 gap-5 md:gap-5">
-      <aside class="hidden md:flex w-80 bg-gray-800 rounded-2xl p-6 flex-col max-h-[calc(100vh-3rem)] sticky top-6 border border-gray-700">
+  <body class="min-h-screen font-sans flex flex-col">
+    <div class="flex w-full h-screen p-6 gap-1">
+      <aside class="w-80 bg-gray-800 rounded-2xl p-6 hidden md:flex flex-col max-h-[calc(100vh-3rem)] sticky top-6 border border-gray-700">
         <h1 class="text-3xl font-bold mb-6 leading-tight text-white">
-          Welcome <br /><span class="text-blue-400 text-5xl"><?= htmlspecialchars($_SESSION['username']) ?></span>!
+          Welcome <span class="text-blue-400 text-4xl"><?= htmlspecialchars($_SESSION['username']) ?></span>!
         </h1>
         <?php if (isset($_SESSION['username'])): ?>
-          <button class="mt-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold transition duration-200 shadow-md" onclick="document.getElementById('modal').classList.remove('hidden')">Ask Question</button>
+          <button class="mt-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold transition duration-200 shadow-md" onclick="document.getElementById('modal').classList.remove('hidden')">
+            Ask Question
+          </button>
         <?php else: ?>
           <div class="mt-auto space-y-4">
             <a href="../auth/login.php" class="block bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold text-center transition duration-200 shadow-md">Login</a>
@@ -144,14 +114,14 @@ function format_relative_time($timestamp_ms) {
         <?php endif; ?>
       </aside>
 
-      <main class="flex-1 flex flex-col min-h-0 overflow-y-auto pt-4 pb-8">
-        <form method="GET" class="mb-4 border-b border-gray-700 flex-shrink-0 overflow-x-auto">
+      <main class="flex-1 flex flex-col min-h-0 overflow-y-auto pl-4 pr-2">
+        <form method="GET" class="mb-4 border-b border-gray-700 flex-shrink-0">
           <input type="hidden" name="page" id="pageInput" value="<?= $currentPage ?>">
-          <ul class="flex gap-4 text-base font-medium whitespace-nowrap">
+          <ul class="flex gap-6 text-sm font-medium select-none">
             <?php
               $tabs = ['recent' => 'Recent', 'best' => 'Best', 'interesting' => 'Most Interesting', 'hottest' => 'Hottest'];
               foreach ($tabs as $key => $label):
-                $active = $key == $sort;
+                $active = $key === $sort;
                 $class = $active ? 'border-blue-600 text-blue-400' : 'border-transparent text-gray-400 hover:text-blue-400 hover:border-blue-600';
             ?>
               <li>
@@ -172,16 +142,16 @@ function format_relative_time($timestamp_ms) {
             $exact = $createdAt ? (new DateTime('@' . ($createdAt / 1000)))->setTimezone(new DateTimeZone('America/Chicago'))->format('m/d/Y h:i:s A') : '';
           ?>
           <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-gray-500 transition">
-            <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline block" href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>">
+            <a class="text-lg font-semibold text-blue-400 hover:underline" href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>">
               <?= htmlspecialchars($q['title']) ?>
             </a>
-            <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed text-sm sm:text-base" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
-            <div class="text-sm text-gray-400 flex flex-wrap gap-4 mt-2">
+            <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed" style="font-size: 1rem;" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
+            <div class="text-sm text-gray-400 flex gap-6 mt-2">
               <span><?= intval($q['upvotes'] ?? 0) ?> vote<?= (intval($q['upvotes'] ?? 0) == 1 ? '' : 's') ?></span>
               <span><?= intval($q['answers'] ?? 0) ?> answer<?= (intval($q['answers'] ?? 0) == 1 ? '' : 's') ?></span>
               <span><?= intval($q['views'] ?? 0) ?> view<?= (intval($q['views'] ?? 0) == 1 ? '' : 's') ?></span>
             </div>
-            <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
+            <div class="flex justify-between text-sm mt-2 text-gray-300">
               <span><span class="w-2 h-2 bg-white rounded-full inline-block"></span> <?= $creator ?></span>
               <span><?= $relative ?> <span class="text-gray-500">•</span> <?= $exact ?></span>
             </div>
@@ -190,8 +160,8 @@ function format_relative_time($timestamp_ms) {
         </div>
 
         <?php if ($totalCount > $perPage): ?>
-        <div class="flex flex-wrap justify-end mt-4 gap-1 text-sm text-gray-400">
-          <form method="GET" class="flex flex-wrap items-center gap-1">
+        <div class="flex justify-end mt-4 gap-1 text-sm text-gray-400">
+          <form method="GET" class="flex items-center gap-1">
             <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
             <?php if ($currentPage > 1): ?>
               <button type="submit" name="page" value="<?= $currentPage - 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">Previous</button>
@@ -207,10 +177,9 @@ function format_relative_time($timestamp_ms) {
         <?php endif; ?>
       </main>
     </div>
-    
-    <!-- Ask Question Modal -->
-    <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 md:p-10 hidden z-[70] overflow-auto">
-      <form method="POST" class="bg-gray-800 w-full max-w-3xl p-6 md:p-8 rounded-xl shadow-xl space-y-5 relative">
+
+    <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-[70]">
+      <form method="POST" class="bg-gray-800 w-full max-w-3xl p-8 rounded-xl shadow-xl space-y-5 relative">
         <div class="flex justify-between items-center">
           <h2 class="text-2xl font-semibold text-white">Ask a Question</h2>
           <button type="button" class="text-gray-400 hover:text-white" onclick="document.getElementById('modal').classList.add('hidden')">✕</button>
@@ -224,82 +193,56 @@ function format_relative_time($timestamp_ms) {
           <textarea id="questionText" name="text" rows="8" maxlength="3000" placeholder="Explain your question in detail..." required class="w-full mt-1 p-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 resize-none"></textarea>
         </div>
 
-        <div class="flex justify-between items-center pt-4">
-          <button type="button" onclick="previewMarkdown()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">
-            Preview
-          </button>
-          <div class="flex space-x-3">
-            <button type="button" onclick="document.getElementById('modal').classList.add('hidden')" class="px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">
-              Cancel
-            </button>
-            <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">
-              Post
-            </button>
-          </div>
-        </div>
-      </form>
+            <div class="flex justify-between items-center pt-4">
+                <button type="button" onclick="previewMarkdown()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">
+                    Preview
+                </button>
+                <div class="flex space-x-3">
+                    <button type="button" onclick="document.getElementById('modal').classList.add('hidden')" class="px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">
+                        Post
+                    </button>
+                </div>
+            </div>
+        </form>
     </div>
 
-    <!-- Preview Modal -->
-    <div id="previewModal" class="fixed inset-0 bg-black/30 flex items-center justify-center p-4 md:p-10 hidden z-[90] overflow-auto">
-      <div class="bg-gray-800 w-full max-w-2xl p-6 md:p-8 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
+    <div id="previewModal" class="fixed inset-0 bg-black/30 flex items-center justify-center hidden z-[90]">
+      <div class="bg-gray-800 w-full max-w-2xl p-8 rounded-xl shadow-xl">
         <div class="flex justify-between mb-4 items-center">
           <h2 class="text-xl font-semibold text-white">Preview Question</h2>
           <button onclick="document.getElementById('previewModal').classList.add('hidden')" class="text-white text-xl font-bold">✕</button>
         </div>
-        <div id="previewContent" class="bg-gray-700 border border-gray-600 rounded-md p-4 text-white whitespace-pre-wrap"></div>
+        <div id="previewContent" class="bg-gray-700 border border-gray-600 rounded-md p-4 text-white overflow-y-auto whitespace-pre-wrap" style="min-height: 200px; max-height: 400px;"></div>
       </div>
     </div>
 
     <script>
-      const converter = new showdown.Converter({ simplifiedAutoLink: true, tables: true });
-
       function decodeHTMLEntities(text) {
         const textarea = document.createElement('textarea');
         textarea.innerHTML = text;
         return textarea.value;
       }
 
-      function previewMarkdown() {
-        const textarea = document.getElementById('questionText');
-        if (!textarea) return;
-
-        const rawMarkdown = textarea.value;
-        const html = converter.makeHtml(rawMarkdown);
-
-        const previewContent = document.getElementById('previewContent');
-        previewContent.innerHTML = DOMPurify.sanitize(html); // sanitize before display
-
-        const previewModal = document.getElementById('previewModal');
-        previewModal.classList.remove('hidden');
-      }
-
-      document.getElementById('previewModal').addEventListener('click', function(e) {
-        if (e.target == this) {
-          this.classList.add('hidden');
-        }
-      });
-
-      document.addEventListener('keydown', function(e) {
-        if (e.key == 'Escape') {
-          const previewModal = document.getElementById('previewModal');
-          if (!previewModal.classList.contains('hidden')) {
-            previewModal.classList.add('hidden');
-          }
-          const modal = document.getElementById('modal');
-          if (!modal.classList.contains('hidden')) {
-            modal.classList.add('hidden');
-          }
-        }
-      });
-
       document.addEventListener('DOMContentLoaded', () => {
+        const converter = new showdown.Converter({ simplifiedAutoLink: true, tables: true });
         document.querySelectorAll('[data-markdown]').forEach(el => {
           const rawMarkdown = decodeHTMLEntities(el.getAttribute('data-markdown') || '');
           const html = converter.makeHtml(rawMarkdown);
-          el.innerHTML = DOMPurify.sanitize(html); // sanitize before insertion
+          el.innerHTML = html;
         });
       });
+
+      function previewMarkdown() {
+        const converter = new showdown.Converter({ simplifiedAutoLink: true, tables: true });
+        const markdown = document.getElementById('questionText').value;
+        const html = converter.makeHtml(markdown);
+        const previewBox = document.getElementById('previewContent');
+        previewBox.innerHTML = html;
+        document.getElementById('previewModal').classList.remove('hidden');
+      }
     </script>
-  </body>
+</body>
 </html>
