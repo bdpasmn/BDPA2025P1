@@ -1,6 +1,5 @@
 <?php
 session_start();
-$_SESSION['username'] = 'user3';
 require_once __DIR__ . '/../../Api/api.php';
 require_once __DIR__ . '/../../Api/key.php';
 
