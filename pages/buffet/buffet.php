@@ -98,7 +98,9 @@ function format_relative_time($timestamp_ms) {
   <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
 </head>
+
 <body class="min-h-screen font-sans flex flex-col pt-3 pb-3">
+  
   <div class="mb-6">
     <?php include '../../components/navBarLogIn.php'; ?>
   </div>

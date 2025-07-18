@@ -1,4 +1,6 @@
+
 <?php
+
 session_start();
 require_once '../../api/key.php';
 require_once '../../api/api.php';
@@ -10,23 +12,17 @@ $CURRENT_USER = 'test_user';
 $_SESSION['username'] = $CURRENT_USER;
 $questionName = $_GET['questionName'] ?? '123';
 
-// Initialize data structures
+// Initialize data structures with per-question isolation
 if (!isset($_SESSION['qa_votes'])) {
-    $_SESSION['qa_votes'] = [
-        'question' => [],
-        'answers' => [],   
-    ];
+    $_SESSION['qa_votes'] = [];
 }
 
 if (!isset($_SESSION['qa_answers'])) {
     $_SESSION['qa_answers'] = []; 
 }
- // array of comment objects
+
 if (!isset($_SESSION['qa_comments'])) {
-    $_SESSION['qa_comments'] = [
-        'question' => [], 
-        'answers' => [],   
-    ];
+    $_SESSION['qa_comments'] = [];
 }
 
 // Initialize viewed questions tracking
@@ -60,6 +56,11 @@ function debugLog($message, $data = null) {
     error_log($logMessage);
 }
 
+// Helper function to get question-specific session key
+function getQuestionSessionKey($questionId, $type) {
+    return $type . '_' . $questionId;
+}
+
 // Handle POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -78,10 +79,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid vote operation');
                 }
                 
-                // Store vote
-                $_SESSION['qa_votes']['question'][$CURRENT_USER] = ($operation === 'upvote') ? 1 : -1;
+                $questionKey = getQuestionSessionKey($actualQuestionId, 'question_votes');
+                if (!isset($_SESSION['qa_votes'][$questionKey])) {
+                    $_SESSION['qa_votes'][$questionKey] = [];
+                }
                 
-                debugLog("Question vote stored", $_SESSION['qa_votes']['question']);
+                // Store vote
+                $_SESSION['qa_votes'][$questionKey][$CURRENT_USER] = ($operation === 'upvote') ? 1 : -1;
+                
+                debugLog("Question vote stored", $_SESSION['qa_votes'][$questionKey]);
                 $message = "Question " . $operation . " successful!";
                 break;
                 
@@ -92,15 +98,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid vote operation');
                 }
                 
-                // Initialize answer votes if not exists
-                if (!isset($_SESSION['qa_votes']['answers'][$answerId])) {
-                    $_SESSION['qa_votes']['answers'][$answerId] = [];
+                $answerKey = getQuestionSessionKey($actualQuestionId, 'answer_votes_' . $answerId);
+                if (!isset($_SESSION['qa_votes'][$answerKey])) {
+                    $_SESSION['qa_votes'][$answerKey] = [];
                 }
                 
                 // Store vote
-                $_SESSION['qa_votes']['answers'][$answerId][$CURRENT_USER] = ($operation === 'upvote') ? 1 : -1;
+                $_SESSION['qa_votes'][$answerKey][$CURRENT_USER] = ($operation === 'upvote') ? 1 : -1;
                 
-                debugLog("Answer vote stored", $_SESSION['qa_votes']['answers'][$answerId]);
+                debugLog("Answer vote stored", $_SESSION['qa_votes'][$answerKey]);
                 $message = "Answer " . $operation . " successful!";
                 break;
 
@@ -108,8 +114,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $commentId = $_POST['comment_id'] ?? '';
                 $operation = $_POST['operation'] ?? '';
                 
+                $questionCommentsKey = getQuestionSessionKey($actualQuestionId, 'question_comments');
+                if (!isset($_SESSION['qa_comments'][$questionCommentsKey])) {
+                    $_SESSION['qa_comments'][$questionCommentsKey] = [];
+                }
+                
                 // Find and update comment
-                foreach ($_SESSION['qa_comments']['question'] as &$comment) {
+                foreach ($_SESSION['qa_comments'][$questionCommentsKey] as &$comment) {
                     if ($comment['id'] === $commentId) {
                         if (!isset($comment['votes'])) {
                             $comment['votes'] = ['upvotes' => 0, 'downvotes' => 0];
@@ -131,20 +142,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $answerId = $_POST['answer_id'] ?? '';
                 $operation = $_POST['operation'] ?? '';
                 
+                $answerCommentsKey = getQuestionSessionKey($actualQuestionId, 'answer_comments_' . $answerId);
+                if (!isset($_SESSION['qa_comments'][$answerCommentsKey])) {
+                    $_SESSION['qa_comments'][$answerCommentsKey] = [];
+                }
+                
                 // Find and update comment 
-                if (isset($_SESSION['qa_comments']['answers'][$answerId])) {
-                    foreach ($_SESSION['qa_comments']['answers'][$answerId] as &$comment) {
-                        if ($comment['id'] === $commentId) {
-                            if (!isset($comment['votes'])) {
-                                $comment['votes'] = ['upvotes' => 0, 'downvotes' => 0];
-                            }
-                            if ($operation === 'upvote') {
-                                $comment['votes']['upvotes']++;
-                            } else {
-                                $comment['votes']['downvotes']++;
-                            }
-                            break;
+                foreach ($_SESSION['qa_comments'][$answerCommentsKey] as &$comment) {
+                    if ($comment['id'] === $commentId) {
+                        if (!isset($comment['votes'])) {
+                            $comment['votes'] = ['upvotes' => 0, 'downvotes' => 0];
                         }
+                        if ($operation === 'upvote') {
+                            $comment['votes']['upvotes']++;
+                        } else {
+                            $comment['votes']['downvotes']++;
+                        }
+                        break;
                     }
                 }
                 
@@ -156,8 +170,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($text === '') throw new Exception('Comment text required');
                 if (strlen($text) > 150) throw new Exception('Comment too long');
                 
+                $questionCommentsKey = getQuestionSessionKey($actualQuestionId, 'question_comments');
+                if (!isset($_SESSION['qa_comments'][$questionCommentsKey])) {
+                    $_SESSION['qa_comments'][$questionCommentsKey] = [];
+                }
+                
                 // Add comment 
-                $_SESSION['qa_comments']['question'][] = [
+                $_SESSION['qa_comments'][$questionCommentsKey][] = [
                     'id' => uniqid(),
                     'text' => $text,
                     'creator' => $CURRENT_USER,
@@ -165,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'votes' => ['upvotes' => 0, 'downvotes' => 0]
                 ];
                 
-                debugLog("Question comment added", $_SESSION['qa_comments']['question']);
+                debugLog("Question comment added", $_SESSION['qa_comments'][$questionCommentsKey]);
                 $message = "Comment added to question!";
                 break;
                 
@@ -175,13 +194,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($text === '') throw new Exception('Comment text required');
                 if (strlen($text) > 150) throw new Exception('Comment too long');
                 
-                // Initialize answer comments if not exists
-                if (!isset($_SESSION['qa_comments']['answers'][$answerId])) {
-                    $_SESSION['qa_comments']['answers'][$answerId] = [];
+                $answerCommentsKey = getQuestionSessionKey($actualQuestionId, 'answer_comments_' . $answerId);
+                if (!isset($_SESSION['qa_comments'][$answerCommentsKey])) {
+                    $_SESSION['qa_comments'][$answerCommentsKey] = [];
                 }
                 
                 // Add comment to session
-                $_SESSION['qa_comments']['answers'][$answerId][] = [
+                $_SESSION['qa_comments'][$answerCommentsKey][] = [
                     'id' => uniqid(),
                     'text' => $text,
                     'creator' => $CURRENT_USER,
@@ -189,18 +208,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'votes' => ['upvotes' => 0, 'downvotes' => 0]
                 ];
                 
-                debugLog("Answer comment added", $_SESSION['qa_comments']['answers'][$answerId]);
+                debugLog("Answer comment added", $_SESSION['qa_comments'][$answerCommentsKey]);
                 $message = "Comment added to answer!";
                 break;
                 
             case 'add_answer':
                 $text = trim($_POST['answer_text'] ?? '');
                 if ($text === '') throw new Exception('Answer text required');
-                if (strlen($text) > 3000) throw new Exception('Answer too long');
+                if (strlen($text) > 5000) throw new Exception('Answer too long');
                 
-                // Add answer to session
-                $answerId = $_SESSION['next_answer_id']++;
-                $_SESSION['qa_answers'][$answerId] = [
+                $answersKey = getQuestionSessionKey($actualQuestionId, 'answers');
+                if (!isset($_SESSION['qa_answers'][$answersKey])) {
+                    $_SESSION['qa_answers'][$answersKey] = [];
+                }
+                
+                // Generate a unique answer ID that's guaranteed to be unique
+                $answerId = $actualQuestionId . '_' . time() . '_' . uniqid();
+                
+                // Create answer with immutable data
+                $answerData = [
                     'answer_id' => $answerId,
                     'text' => $text,
                     'creator' => $CURRENT_USER,
@@ -211,23 +237,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'downvotes' => 0
                 ];
                 
-                debugLog("Answer added", $_SESSION['qa_answers'][$answerId]);
-                $message = "Answer submitted!";
-                $reloadData = true;
+                // Store answer with unique key
+                $_SESSION['qa_answers'][$answersKey][$answerId] = $answerData;
+                
+                debugLog("Answer added", $answerData);
+                $message = "Answer submitted successfully!";
                 break;
                 
             case 'accept_answer':
                 $answerId = $_POST['answer_id'] ?? '';
+                $answersKey = getQuestionSessionKey($actualQuestionId, 'answers');
                 
-                // Check if answer exists in API data
-                $answerExists = isset($_SESSION['qa_answers'][$answerId]);
+                // Check if answer exists in session data
+                $answerExists = isset($_SESSION['qa_answers'][$answersKey][$answerId]);
                 
                 if ($answerExists) {
                     // Unaccept all answers first
-                    foreach ($_SESSION['qa_answers'] as &$ans) {
+                    foreach ($_SESSION['qa_answers'][$answersKey] as &$ans) {
                         $ans['accepted'] = false;
                     }
-                    $_SESSION['qa_answers'][$answerId]['accepted'] = true;
+                    $_SESSION['qa_answers'][$answersKey][$answerId]['accepted'] = true;
                     $message = "Answer accepted!";
                 } else {
                     // Try API call for answers
@@ -254,15 +283,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         debugLog("Exception caught", ['message' => $ex->getMessage(), 'trace' => $ex->getTraceAsString()]);
     }
     
-    // Only redirect if we're not reloading data (for answer submissions)
-    if (!$reloadData) {
-        // Debug: Log redirect parameters
-        debugLog("Redirecting with message", ['message' => $message, 'type' => $messageType]);
-        
-        // Redirect to avoid repost
-        header("Location: " . $_SERVER['PHP_SELF'] . "?questionName=" . urlencode($questionName) . "&msg=" . urlencode($message) . "&type=" . urlencode($messageType));
-        exit;
-    }
+    // Redirect to prevent form resubmission
+    header("Location: " . $_SERVER['PHP_SELF'] . "?questionName=" . urlencode($questionName) . "&msg=" . urlencode($message) . "&type=" . urlencode($messageType));
+    exit;
 }
 
 // Show message from GET
@@ -326,29 +349,36 @@ try {
         $apiAnswers = $answersResult['answers'] ?? [];
     }
     
-    // Merge API answers
+    // Merge API answers with session answers
     $answers = [];
     
     // Add API answers
     foreach ($apiAnswers as $answer) {
         $answerId = $answer['answer_id'];
+        $answerKey = getQuestionSessionKey($actualQuestionId, 'answer_votes_' . $answerId);
+        
         // Apply votes if they exist
-        if (isset($_SESSION['qa_votes']['answers'][$answerId])) {
-            $votes = array_sum($_SESSION['qa_votes']['answers'][$answerId]);
+        if (isset($_SESSION['qa_votes'][$answerKey])) {
+            $votes = array_sum($_SESSION['qa_votes'][$answerKey]);
             $answer['upvotes'] = max(0, ($answer['upvotes'] ?? 0) + $votes);
         }
         $answers[] = $answer;
     }
     
-    // Add answers
-    foreach ($_SESSION['qa_answers'] as $sessionAnswer) {
-        // Calculate points from session votes
-        $answerId = $sessionAnswer['answer_id'];
-        if (isset($_SESSION['qa_votes']['answers'][$answerId])) {
-            $sessionAnswer['points'] = array_sum($_SESSION['qa_votes']['answers'][$answerId]);
-            $sessionAnswer['upvotes'] = max(0, $sessionAnswer['points']);
+    // Add session answers for this specific question
+    $answersKey = getQuestionSessionKey($actualQuestionId, 'answers');
+    if (isset($_SESSION['qa_answers'][$answersKey])) {
+        foreach ($_SESSION['qa_answers'][$answersKey] as $sessionAnswer) {
+            // Calculate points from session votes
+            $answerId = $sessionAnswer['answer_id'];
+            $answerKey = getQuestionSessionKey($actualQuestionId, 'answer_votes_' . $answerId);
+            
+            if (isset($_SESSION['qa_votes'][$answerKey])) {
+                $sessionAnswer['points'] = array_sum($_SESSION['qa_votes'][$answerKey]);
+                $sessionAnswer['upvotes'] = max(0, $sessionAnswer['points']);
+            }
+            $answers[] = $sessionAnswer;
         }
-        $answers[] = $sessionAnswer;
     }
     
     // Get question comments 
@@ -360,8 +390,11 @@ try {
         $questionComments = $commentsResult['comments'] ?? [];
     }
     
-    // Add comments
-    $questionComments = array_merge($questionComments, $_SESSION['qa_comments']['question']);
+    // Add session comments for this specific question
+    $questionCommentsKey = getQuestionSessionKey($actualQuestionId, 'question_comments');
+    if (isset($_SESSION['qa_comments'][$questionCommentsKey])) {
+        $questionComments = array_merge($questionComments, $_SESSION['qa_comments'][$questionCommentsKey]);
+    }
     
     // Get answer comments for each answer
     foreach ($answers as &$answer) {
@@ -376,9 +409,10 @@ try {
             $answer['comments'] = $answerCommentsResult['comments'] ?? [];
         }
         
-        // Add comments
-        if (isset($_SESSION['qa_comments']['answers'][$answerId])) {
-            $answer['comments'] = array_merge($answer['comments'], $_SESSION['qa_comments']['answers'][$answerId]);
+        // Add session comments for this specific answer
+        $answerCommentsKey = getQuestionSessionKey($actualQuestionId, 'answer_comments_' . $answerId);
+        if (isset($_SESSION['qa_comments'][$answerCommentsKey])) {
+            $answer['comments'] = array_merge($answer['comments'], $_SESSION['qa_comments'][$answerCommentsKey]);
         }
     }
     
@@ -390,19 +424,27 @@ try {
 
 // Helper functions
 function formatDate($timestamp) {
+    $timezone = new DateTimeZone('America/Chicago'); // Central Time Zone
+
     if (is_numeric($timestamp)) {
         if ($timestamp > 1000000000000) {
             $timestamp = $timestamp / 1000;
         }
-        return date('M j, Y g:i A', $timestamp);
+        $date = new DateTime("@$timestamp"); // "@" treats it as a Unix timestamp
+    } else {
+        $date = new DateTime($timestamp);
     }
-    return date('M j, Y g:i A', strtotime($timestamp));
+
+    $date->setTimezone($timezone);
+    return $date->format('M j, Y g:i A');
 }
 
 function renderMarkdown($text) {
     $text = htmlspecialchars($text);
     $text = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $text);
     $text = preg_replace('/\*(.*?)\*/', '<em>$1</em>', $text);
+    $text = preg_replace('/`(.*?)`/', '<code class="bg-gray-600 px-1 rounded">$1</code>', $text);
+    $text = preg_replace('/```(.*?)```/s', '<pre class="bg-gray-600 p-2 rounded mt-2 mb-2 overflow-x-auto"><code>$1</code></pre>', $text);
     $text = nl2br($text);
     return $text;
 }
@@ -421,8 +463,9 @@ function getCommentVotes($comment) {
 
 // Calculate question points from session votes
 $questionPoints = ($question['upvotes'] ?? 0);
-if (isset($_SESSION['qa_votes']['question'])) {
-    $sessionVotes = array_sum($_SESSION['qa_votes']['question']);
+$questionKey = getQuestionSessionKey($actualQuestionId, 'question_votes');
+if (isset($_SESSION['qa_votes'][$questionKey])) {
+    $sessionVotes = array_sum($_SESSION['qa_votes'][$questionKey]);
     $questionPoints += $sessionVotes;
 }
 
@@ -456,9 +499,27 @@ if (!$question) {
 <!DOCTYPE html>
 <html lang="en" class="bg-gray-900 text-gray-300">
 <head>
+    
     <meta charset="UTF-8" />
     <title><?php echo htmlspecialchars($question['title'] ?? 'Question'); ?> - Q&A</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tab-button {
+            @apply px-4 py-2 bg-gray-700 text-gray-300 border-b-2 border-transparent hover:bg-gray-600 transition-colors;
+        }
+        .tab-button.active {
+            @apply bg-gray-600 border-blue-500 text-white;
+        }
+        .tab-content {
+            @apply hidden;
+        }
+        .tab-content.active {
+            @apply block;
+        }
+        .markdown-preview {
+            @apply bg-gray-700 p-4 rounded border border-gray-600 min-h-32 max-h-64 overflow-y-auto;
+        }
+    </style>
 </head>
 <body class="max-w-4xl mx-auto p-6 bg-gray-900 text-gray-300 font-sans">
 
@@ -475,13 +536,6 @@ if (!$question) {
                 setTimeout(() => { msg.style.display = 'none'; }, 300);
             }
         }, 3000);
-        
-        // Auto-reload after answer submission to ensure fresh data
-        <?php if ($reloadData && strpos($message, 'Answer submitted') !== false): ?>
-        setTimeout(() => {
-            window.location.href = '<?php echo $_SERVER['PHP_SELF']; ?>?questionName=<?php echo urlencode($questionName); ?>&msg=<?php echo urlencode($message); ?>&type=<?php echo urlencode($messageType); ?>';
-        }, 1500);
-        <?php endif; ?>
     </script>
 <?php endif; ?>
 
@@ -543,7 +597,10 @@ if (!$question) {
     <form method="POST" class="mb-6">
         <input type="hidden" name="action" value="add_question_comment">
         <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-        <input type="text" name="comment_text" maxlength="150" required placeholder="Add a comment..." class="w-full p-2 rounded bg-gray-700 text-gray-300 border border-gray-600">
+        <div class="relative">
+            <input type="text" name="comment_text" maxlength="150" required placeholder="Add a comment..." class="w-full p-2 rounded bg-gray-700 text-gray-300 border border-gray-600 pr-12" oninput="updateCommentCounter(this, 'question-comment-counter')">
+            <span id="question-comment-counter" class="absolute right-2 top-2 text-xs text-gray-500">150</span>
+        </div>
         <button type="submit" class="mt-2 bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded text-white">Add Comment</button>
     </form>
     <?php endif; ?>
@@ -554,8 +611,6 @@ if (!$question) {
 
     <?php if (count($answers) === 0): ?>
         <p class="text-gray-400 mb-8">No answers yet. Be the first to answer!</p>
-    <?php else: ?>
-
     <?php endif; ?>
 
     <?php foreach ($answers as $answer): ?>
@@ -608,44 +663,180 @@ if (!$question) {
                         <li class="border-l-2 border-gray-600 pl-3 py-2 mb-2 bg-gray-750 rounded-r">
                             <div class="flex justify-between items-start">
                                 <div class="flex-1">
-                                    <span class="text-gray-400"><?php echo htmlspecialchars($comment['text'] ?? ''); ?></span> — <em><?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?></em>
+                                    <span><?php echo htmlspecialchars($comment['text'] ?? ''); ?></span> — <em><?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?></em>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs text-gray-500"><?php echo $votes['upvotes'] - $votes['downvotes']; ?></span>
+                                    <form method="POST" class="inline">
+                                        <input type="hidden" name="action" value="vote_answer_comment">
+                                        <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
+                                        <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id']); ?>">
+                                        <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($commentId); ?>">
+                                        <input type="hidden" name="operation" value="upvote">
+                                        <button type="submit" class="text-blue-400 hover:text-blue-300 text-xs">▲</button>
+                                    </form>
+                                    <form method="POST" class="inline">
+                                        <input type="hidden" name="action" value="vote_answer_comment">
+                                        <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
+                                        <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id']); ?>">
+                                        <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($commentId); ?>">
+                                        <input type="hidden" name="operation" value="downvote">
+                                        <button type="submit" class="text-red-400 hover:text-red-300 text-xs">▼</button>
+                                    </form>
                                 </div>
                             </div>
                         </li>
                     <?php endforeach; ?>
-                   <?php else: ?>
+                <?php else: ?>
                     <li class="text-gray-500">No comments yet.</li>
                 <?php endif; ?>
             </ul>
 
             <?php if (canUserInteract($question['status'] ?? null)): ?>
-            <form method="POST">
+            <form method="POST" class="mb-4">
                 <input type="hidden" name="action" value="add_answer_comment">
                 <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
                 <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id']); ?>">
-                <input type="text" name="comment_text" maxlength="150" required placeholder="Add a comment..." class="w-full p-2 rounded bg-gray-700 text-gray-300 border border-gray-600">
+                <div class="relative">
+                    <input type="text" name="comment_text" maxlength="150" required placeholder="Add a comment..." class="w-full p-2 rounded bg-gray-700 text-gray-300 border border-gray-600 pr-12" oninput="updateCommentCounter(this, 'answer-comment-counter-<?php echo htmlspecialchars($answer['answer_id']); ?>')">
+                    <span id="answer-comment-counter-<?php echo htmlspecialchars($answer['answer_id']); ?>" class="absolute right-2 top-2 text-xs text-gray-500">150</span>
+                </div>
                 <button type="submit" class="mt-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white">Add Comment</button>
             </form>
             <?php endif; ?>
         </article>
     <?php endforeach; ?>
-</section>
 
-<?php if (canUserInteract($question['status'] ?? null)): ?>
-<section class="bg-gray-800 rounded-lg p-6 mt-8 shadow-lg">
-    <h2 class="text-white text-2xl font-bold mb-4">Your Answer</h2>
-    <form method="POST">
-        <input type="hidden" name="action" value="add_answer">
-        <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-        <textarea name="answer_text" maxlength="3000" required placeholder="Write your answer here..." class="w-full p-4 rounded bg-gray-700 text-gray-300 border border-gray-600 h-40 resize-vertical"></textarea>
-        <div class="flex justify-between items-center mt-4">
-            <span class="text-gray-400 text-sm">Maximum 3000 characters</span>
-            <button type="submit" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded text-white font-semibold">Submit Answer</button>
+    <?php if (canUserInteract($question['status'] ?? null)): ?>
+    <section class="bg-gray-800 rounded-lg p-6 shadow-lg">
+        <h2 class="text-white text-xl font-bold mb-4">Your Answer</h2>
+        
+        <div class="mb-4">
+            <div class="flex space-x-2 mb-2">
+                <button class="tab-button active" onclick="switchTab('write')">Write</button>
+                <button class="tab-button" onclick="switchTab('preview')">Preview</button>
+            </div>
+            
+            <div id="write-tab" class="tab-content active">
+                <form method="POST">
+                    <input type="hidden" name="action" value="add_answer">
+                    <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
+                    <div class="relative">
+                        <textarea name="answer_text" id="answer-textarea" required maxlength="5000" placeholder="Write your answer here..." class="w-full h-64 p-4 rounded bg-gray-700 text-gray-300 border border-gray-600 resize-none" oninput="updateAnswerCounter(); updatePreview();"></textarea>
+                        <span id="answer-counter" class="absolute bottom-2 right-2 text-xs text-gray-500">5000</span>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center">
+                        <div class="text-sm text-gray-400">
+                            <strong>Formatting examples:</strong> Use **bold**, *italic*, `code`, or ```code blocks```
+                        </div>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded text-white font-semibold">Post Your Answer</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="preview-tab" class="tab-content">
+                <div id="preview-content" class="markdown-preview">
+                    <em class="text-gray-500">Nothing to preview yet. Write something in the "Write" tab.</em>
+                </div>
+            </div>
         </div>
-    </form>
+    </section>
+    <?php else: ?>
+    <div class="bg-gray-800 rounded-lg p-6 text-center">
+        <p class="text-gray-400">This question is closed and no longer accepts new answers.</p>
+    </div>
+    <?php endif; ?>
 </section>
-<?php endif; ?>
 
+<script>
+function updateCommentCounter(input, counterId) {
+    const counter = document.getElementById(counterId);
+    if (counter) {
+        const remaining = 150 - input.value.length;
+        counter.textContent = remaining;
+        counter.className = remaining < 10 ? 'absolute right-2 top-2 text-xs text-red-400' : 'absolute right-2 top-2 text-xs text-gray-500';
+    }
+}
+
+function updateAnswerCounter() {
+    const textarea = document.getElementById('answer-textarea');
+    const counter = document.getElementById('answer-counter');
+    if (textarea && counter) {
+        const remaining = 5000 - textarea.value.length;
+        counter.textContent = remaining;
+        counter.className = remaining < 100 ? 'absolute bottom-2 right-2 text-xs text-red-400' : 'absolute bottom-2 right-2 text-xs text-gray-500';
+    }
+}
+
+function switchTab(tab) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`button[onclick="switchTab('${tab}')"]`).classList.add('active');
+    
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`${tab}-tab`).classList.add('active');
+    
+    // Update preview when switching to preview tab
+    if (tab === 'preview') {
+        updatePreview();
+    }
+}
+
+function updatePreview() {
+    const textarea = document.getElementById('answer-textarea');
+    const preview = document.getElementById('preview-content');
+    
+    if (textarea && preview) {
+        const text = textarea.value;
+        if (text.trim() === '') {
+            preview.innerHTML = '<em class="text-gray-500">Nothing to preview yet. Write something in the "Write" tab.</em>';
+            return;
+        }
+        
+        // Simple markdown rendering (matching PHP renderMarkdown function)
+        let html = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;');
+        
+        // Apply markdown formatting
+        html = html
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code class="bg-gray-600 px-1 rounded">$1</code>')
+            .replace(/```(.*?)```/gs, '<pre class="bg-gray-600 p-2 rounded mt-2 mb-2 overflow-x-auto"><code>$1</code></pre>')
+            .replace(/\n/g, '<br>');
+        
+        preview.innerHTML = html;
+    }
+}
+
+// Initialize counters on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateAnswerCounter();
+    
+    // Initialize all comment counters
+    document.querySelectorAll('input[name="comment_text"]').forEach(input => {
+        const form = input.closest('form');
+        if (form) {
+            const action = form.querySelector('input[name="action"]').value;
+            if (action === 'add_question_comment') {
+                updateCommentCounter(input, 'question-comment-counter');
+            } else if (action === 'add_answer_comment') {
+                const answerId = form.querySelector('input[name="answer_id"]').value;
+                updateCommentCounter(input, 'answer-comment-counter-' + answerId);
+            }
+        }
+    });
+});
+</script>
 
 </body>
 </html>
