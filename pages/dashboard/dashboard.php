@@ -9,10 +9,10 @@
   require_once '../../Api/key.php';
   require_once '../../db.php';
   $api = new qOverflowAPI(API_KEY);
-  //$username = "user1";
+  //$username = "Hello14";
 
-  /*$pdo = new PDO($dsn, $user, $pass);
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);*/
+  $pdo = new PDO($dsn, $user, $pass);
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   
   if (!isset($_SESSION['username'])) {
@@ -20,6 +20,9 @@
     exit();
   } 
   $username = $_SESSION['username'];
+
+
+
 
 
   $AllQuestionInfo= $api->getUserQuestions($username); //getting user questions
@@ -282,7 +285,6 @@ echo '</pre>';
     modal.classList.remove('flex');//remove the flex class to hide it
     });
   };
-
     cancelBtn.onclick = function() { //onlcick of cancel button
     modal.classList.add('hidden');// hide the modal
     modal.classList.remove('flex');//remove the flex class to hide it
