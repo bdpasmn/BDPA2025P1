@@ -7,8 +7,6 @@ require_once '../../api/api.php';
 
 $api = new qOverflowAPI(API_KEY);
 
-// Set current user first line should be removed once windows database works 
-$CURRENT_USER = 'test_user';
 $_SESSION['username'] = $CURRENT_USER;
 $questionName = $_GET['questionName'] ?? '123';
 
@@ -521,8 +519,10 @@ if (!$question) {
         }
     </style>
 </head>
-<body class="max-w-4xl mx-auto p-6 bg-gray-900 text-gray-300 font-sans">
+<body class="bg-gray-900 text-gray-300 font-sans">
+        <?php include '../../components/navBarLogIn.php'; ?>
 
+    <div class="max-w-4xl mx-auto p-6">
 <?php if ($message): ?>
     <div class="fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 <?php echo $messageType === 'success' ? 'bg-green-600' : 'bg-red-600'; ?> text-white" id="status-message">
         <?php echo htmlspecialchars($message); ?>
@@ -837,6 +837,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+</div>
 
 </body>
 </html>
