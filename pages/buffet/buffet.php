@@ -4,7 +4,7 @@ require_once '../../api/key.php';
 require_once '../../api/api.php';
 
 $api = new qOverflowAPI(API_KEY);
-
+$_SESSION['username'] = 'user101';
 $sort = $_GET['sort'] ?? 'recent';
 $currentPage = isset($_GET['page']) && intval($_GET['page']) > 0 ? intval($_GET['page']) : 1;
 $perPage = 20;
@@ -97,13 +97,29 @@ function format_relative_time($timestamp_ms) {
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+  <style>
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
 </head>
 
 <body class="min-h-screen font-sans flex flex-col pt-3 pb-3">
   
   <div class="mb-6">
-    <?php include '../../components/navBarLogIn.php'; ?>
+    <?php 
+      if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
+        include '../../components/navBarLogOut.php';
+      } else {
+        include '../../components/navBarLogIn.php';
+      }
+    ?>
   </div>
+
   <div class="md:hidden px-4 py-5 bg-gray-800 border border-gray-700 rounded-xl mx-4 my-4 shadow-md">
     <div class="flex justify-between items-center">
       <div class="text-3xl text-white font-semibold">
@@ -122,11 +138,14 @@ function format_relative_time($timestamp_ms) {
     </div>
   </div>
 
-  <div class="flex-1 flex flex-col md:flex-row w-full h-full px-5 md:px-5 gap-5 md:gap-5">
+  <div class="flex-1 flex flex-col md:flex-row max-h-[81vh] w-full h-full px-5 md:px-5 gap-5 md:gap-5">
     <aside class="hidden md:flex w-80 bg-gray-800 rounded-2xl p-6 flex-col max-h-[calc(100vh-3rem)] sticky top-6 border border-gray-700">
       <h1 class="text-3xl font-bold mb-6 leading-tight text-white">
-        Welcome <br /><span class="text-blue-400 text-5xl"><?= htmlspecialchars($_SESSION['username']) ?></span>!
+        <?php $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest'; ?>
+        Welcome <br />
+        <span class="text-blue-400 text-5xl"><?= htmlspecialchars($username) ?></span>!
       </h1>
+
       <?php if (isset($_SESSION['username'])): ?>
         <button class="mt-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold transition duration-200 shadow-md" onclick="document.getElementById('modal').classList.remove('hidden')">Ask Question</button>
       <?php else: ?>
@@ -137,7 +156,7 @@ function format_relative_time($timestamp_ms) {
       <?php endif; ?>
     </aside>
 
-    <main class="flex-1 flex flex-col min-h-0 overflow-y-auto pb-4">
+    <main class="flex-1 flex flex-col overflow-y-auto hide-scrollbar">
       <form method="GET" class="mb-4 border-b border-gray-700 flex-shrink-0 overflow-x-auto">
         <input type="hidden" name="page" id="pageInput" value="<?= $currentPage ?>">
         <ul class="flex gap-4 text-base font-medium whitespace-nowrap">
@@ -164,15 +183,15 @@ function format_relative_time($timestamp_ms) {
           $relative = $createdAt ? format_relative_time($createdAt) : 'unknown';
           $exact = $createdAt ? (new DateTime('@' . ($createdAt / 1000)))->setTimezone(new DateTimeZone('America/Chicago'))->format('m/d/Y h:i:s A') : '';
         ?>
-        <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-gray-500 transition">
+        <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-gray-500 transition" data-id="<?= $q['question_id'] ?>">
           <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline block" href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>">
             <?= htmlspecialchars($q['title']) ?>
           </a>
           <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed text-sm sm:text-base" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
           <div class="text-sm text-gray-400 flex flex-wrap gap-4 mt-2">
-            <span><?= intval($q['upvotes'] ?? 0) ?> vote<?= (intval($q['upvotes'] ?? 0) == 1 ? '' : 's') ?></span>
-            <span><?= intval($q['answers'] ?? 0) ?> answer<?= (intval($q['answers'] ?? 0) == 1 ? '' : 's') ?></span>
-            <span><?= intval($q['views'] ?? 0) ?> view<?= (intval($q['views'] ?? 0) == 1 ? '' : 's') ?></span>
+            <span class="js-votes"><?= intval($q['upvotes'] ?? 0) ?> vote<?= (intval($q['upvotes'] ?? 0) == 1 ? '' : 's') ?></span>
+            <span class="js-answers"><?= intval($q['answers'] ?? 0) ?> answer<?= (intval($q['answers'] ?? 0) == 1 ? '' : 's') ?></span>
+            <span class="js-views"><?= intval($q['views'] ?? 0) ?> view<?= (intval($q['views'] ?? 0) == 1 ? '' : 's') ?></span>
           </div>
           <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
             <span><span class="w-2 h-2 bg-white rounded-full inline-block"></span> <?= $creator ?></span>
@@ -244,36 +263,42 @@ function format_relative_time($timestamp_ms) {
       return textarea.value;
     }
 
-    function previewMarkdown() {
-      const textarea = document.getElementById('questionText');
-      if (!textarea) return;
-      const rawMarkdown = textarea.value;
-      const html = converter.makeHtml(rawMarkdown);
-      const previewContent = document.getElementById('previewContent');
-      previewContent.innerHTML = DOMPurify.sanitize(html);
-      document.getElementById('previewModal').classList.remove('hidden');
-    }
-
-    document.getElementById('previewModal').addEventListener('click', function(e) {
-      if (e.target == this) {
-        this.classList.add('hidden');
-      }
-    });
-
-    document.addEventListener('keydown', function(e) {
-      if (e.key == 'Escape') {
-        document.getElementById('previewModal').classList.add('hidden');
-        document.getElementById('modal').classList.add('hidden');
-      }
-    });
-
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('[data-markdown]').forEach(el => {
         const rawMarkdown = decodeHTMLEntities(el.getAttribute('data-markdown') || '');
         const html = converter.makeHtml(rawMarkdown);
         el.innerHTML = DOMPurify.sanitize(html);
       });
+
+      function refreshCounts() {
+        const cards = document.querySelectorAll('[data-id]');
+        const ids = Array.from(cards).map(c => c.getAttribute('data-id')).join(',');
+        if (!ids) return;
+
+        fetch(`/api/questions/summary?ids=${ids}`)
+          .then(res => res.json())
+          .then(data => {
+            (data.questions || []).forEach(q => {
+              const card = document.querySelector(`[data-id="${q.id}"]`);
+              if (!card) return;
+              card.querySelector('.js-votes').textContent = `${q.upvotes} vote${q.upvotes === 1 ? '' : 's'}`;
+              card.querySelector('.js-answers').textContent = `${q.answers} answer${q.answers === 1 ? '' : 's'}`;
+              card.querySelector('.js-views').textContent = `${q.views} view${q.views === 1 ? '' : 's'}`;
+            });
+          });
+      }
+
+      refreshCounts();
+      setInterval(refreshCounts, 15000);
     });
+    
+    function previewMarkdown() {
+      const rawMarkdown = document.getElementById('questionText').value;
+      const html = converter.makeHtml(rawMarkdown);
+      const sanitized = DOMPurify.sanitize(html);
+      document.getElementById('previewContent').innerHTML = sanitized;
+      document.getElementById('previewModal').classList.remove('hidden');
+    }
   </script>
 </body>
 </html>

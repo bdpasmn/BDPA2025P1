@@ -11,8 +11,8 @@
   $api = new qOverflowAPI(API_KEY);
   $username = "Hello15";
 
-  $pdo = new PDO($dsn, $user, $pass);
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  /*$pdo = new PDO($dsn, $user, $pass);
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);*/
 
   /*
   $username = $_SESSION['username'];
