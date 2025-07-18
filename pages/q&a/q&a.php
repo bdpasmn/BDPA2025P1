@@ -7,6 +7,8 @@ require_once '../../api/api.php';
 
 $api = new qOverflowAPI(API_KEY);
 
+// Set current user first line should be removed once windows database works 
+$CURRENT_USER = 'test_user';
 $_SESSION['username'] = $CURRENT_USER;
 $questionName = $_GET['questionName'] ?? '123';
 
@@ -213,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'add_answer':
                 $text = trim($_POST['answer_text'] ?? '');
                 if ($text === '') throw new Exception('Answer text required');
-                if (strlen($text) > 5000) throw new Exception('Answer too long');
+                if (strlen($text) > 3000) throw new Exception('Answer too long');
                 
                 $answersKey = getQuestionSessionKey($actualQuestionId, 'answers');
                 if (!isset($_SESSION['qa_answers'][$answersKey])) {
@@ -722,8 +724,8 @@ if (!$question) {
                     <input type="hidden" name="action" value="add_answer">
                     <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
                     <div class="relative">
-                        <textarea name="answer_text" id="answer-textarea" required maxlength="5000" placeholder="Write your answer here..." class="w-full h-64 p-4 rounded bg-gray-700 text-gray-300 border border-gray-600 resize-none" oninput="updateAnswerCounter(); updatePreview();"></textarea>
-                        <span id="answer-counter" class="absolute bottom-2 right-2 text-xs text-gray-500">5000</span>
+                        <textarea name="answer_text" id="answer-textarea" required maxlength="3000" placeholder="Write your answer here..." class="w-full h-64 p-4 rounded bg-gray-700 text-gray-300 border border-gray-600 resize-none" oninput="updateAnswerCounter(); updatePreview();"></textarea>
+                        <span id="answer-counter" class="absolute bottom-2 right-2 text-xs text-gray-500">3000</span>
                     </div>
                     <div class="mt-4 flex justify-between items-center">
                         <div class="text-sm text-gray-400">
@@ -762,7 +764,7 @@ function updateAnswerCounter() {
     const textarea = document.getElementById('answer-textarea');
     const counter = document.getElementById('answer-counter');
     if (textarea && counter) {
-        const remaining = 5000 - textarea.value.length;
+        const remaining = 3000 - textarea.value.length;
         counter.textContent = remaining;
         counter.className = remaining < 100 ? 'absolute bottom-2 right-2 text-xs text-red-400' : 'absolute bottom-2 right-2 text-xs text-gray-500';
     }
