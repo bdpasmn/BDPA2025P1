@@ -9,7 +9,7 @@
   require_once '../../Api/key.php';
   require_once '../../db.php';
   $api = new qOverflowAPI(API_KEY);
-  //$username = "testing1";
+  $username = "Hello15";
 
   $pdo = new PDO($dsn, $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -23,13 +23,13 @@
   }
   */
 
-    
+  /*
   if (!isset($_SESSION['username'])) {
     header('Location: /pages/auth/login.php');
     exit();
   } 
   $username = $_SESSION['username'];
-
+*/
 
 
 
@@ -227,11 +227,14 @@ function handleApiError($error, $context = '') {
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 px-4 sm:px-6 lg:px-10 hidden" id="answers">
     <?php if (!empty($JustUserAnswer)): ?> <!-- Check if there are user answers -->
       <?php foreach ($JustUserAnswer as $UserAnswer): ?> <!-- Loop through each user answer -->
-        <a href="/pages/q&a/q&a.php">
+       <!-- <a href="/pages/q&a/q&a.php">-->
+        <a href="/pages/q&a/q&a.php?questionName=<?= urlencode($UserAnswer['question_id']) ?>">
+
+          
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md"> <!-- got rid of w-[300px] in the div class -->
           <p class="text-l font-semibold text-blue-400">ANSWER TITLE:</p>
           <p class="mt-2 text-sm font-semibold"><?php echo htmlspecialchars($UserAnswer['text']); ?></p> <!-- Display question title -->
-          <p class="mt-4 text-sm">VOTES: <?php echo $UserAnswer['upvotes'] ?? 0; ?></p><!-- Display answer votes -->
+          <p class="mt-4 text-sm">VOTES: <?php echo $UserAnswer['upvotes'] ?? 'not found'; ?></p><!-- Display answer votes -->
         </div>
         </a>
       <?php endforeach; ?>
@@ -280,6 +283,9 @@ function handleApiError($error, $context = '') {
     currentField = field;  // save which field (email or password)
     modal.classList.remove('hidden');// hide the modal
     modal.classList.add('flex');//show the modal
+
+    document.getElementById('confirmPasswordWrapper').classList.add('hidden');
+
 
     if (field === 'email') {//if the field
       modalTitle.textContent = 'Edit Email';//make the title of the modal Edit Email

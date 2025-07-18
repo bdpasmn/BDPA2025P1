@@ -15,7 +15,7 @@
   $pdo = new PDO($dsn, $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $username = $_SESSION['username'];
+   // $username = $_SESSION['username'];
 
   //$updateUser = $api->updateUser($username);
 
@@ -47,7 +47,8 @@
       $UpdatesInSupabase->execute(['email' => $value, 'username' => $username]);// Execute the SQL statement
       echo "Successfully updated email.";
       exit();
-            }
+    }
+    
     } elseif ($field === 'password') {//if the field is password
           if (
         strlen($value) < 11 ||
