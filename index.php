@@ -59,7 +59,7 @@ session_start();
     <a href="pages/auth/signup.php" class="glow-button text-white px-6 py-3 text-lg rounded-lg font-semibold">
       🚀 Get Started Now
     </a>
-    <a href="pages/buffet.php" class="text-blue-400 border border-blue-400 hover:bg-blue-600 hover:text-white px-6 py-3 text-lg rounded-lg font-semibold transition">
+    <a href="pages/buffet/buffet.php" class="text-blue-400 border border-blue-400 hover:bg-blue-600 hover:text-white px-6 py-3 text-lg rounded-lg font-semibold transition">
       🔍 Browse Questions
     </a>
   </div>
