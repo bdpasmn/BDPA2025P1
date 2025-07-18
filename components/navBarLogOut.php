@@ -30,13 +30,22 @@
         <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo" class="h-9 w-auto">
         <span class="text-2xl font-bold text-white">qOverflow</span>
       </div>
-
+  <form class="flex gap-2" method="get" action="navBarSearch.php">
+          <input type="text" id="searchInput" name="query" placeholder="Search titles, body text or creator"
+                 class="bg-gray-700 border border-gray-600 px-6 py-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg w-96">
+          <button type="submit" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded transition-colors">
+            🔍
+          </button>
+        </form>
       <div class="flex items-center space-x-4">
-        <a href="/pages/login.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
+        <a href="/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
+          Buffet
+        </a>
+        <a href="/pages/auth/login.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
           Login
         </a>
-        <a href="/pages/signup.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
-          Join Now
+        <a href="/pages/auth/signup.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
+          Sign Up
         </a>
       </div>
 
