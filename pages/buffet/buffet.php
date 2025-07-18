@@ -4,7 +4,6 @@ require_once '../../api/key.php';
 require_once '../../api/api.php';
 
 $api = new qOverflowAPI(API_KEY);
-$_SESSION['username'] = 'user101';
 $sort = $_GET['sort'] ?? 'recent';
 $currentPage = isset($_GET['page']) && intval($_GET['page']) > 0 ? intval($_GET['page']) : 1;
 $perPage = 20;
