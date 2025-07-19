@@ -9,10 +9,10 @@
   require_once '../../Api/key.php';
   require_once '../../db.php';
   $api = new qOverflowAPI(API_KEY);
-  //$username = "Hello14";
+  //$username = "user1";
 
-  $pdo = new PDO($dsn, $user, $pass);
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  /*$pdo = new PDO($dsn, $user, $pass);
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);*/
 
   
   if (!isset($_SESSION['username'])) {
@@ -20,9 +20,6 @@
     exit();
   } 
   $username = $_SESSION['username'];
-
-
-
 
 
   $AllQuestionInfo= $api->getUserQuestions($username); //getting user questions
