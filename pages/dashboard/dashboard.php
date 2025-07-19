@@ -9,7 +9,7 @@
   require_once '../../Api/key.php';
   require_once '../../db.php';
   $api = new qOverflowAPI(API_KEY);
-  //$username = "Hello14";
+  //$username = "user101";
 
   $pdo = new PDO($dsn, $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -20,7 +20,6 @@
     exit();
   } 
   $username = $_SESSION['username'];
-
 
 
 
@@ -85,6 +84,36 @@ echo '<pre>';
 print_r($Answers);
 echo '</pre>';
 */
+
+
+$itemsPerPage = 9;//sets amount of questions per page to 9
+
+// Get current page from URL, default to 1
+$currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1; //sees if page is set in the URL, if not, sets to 1
+$currentPage = max($currentPage, 1); // Ensures at least 1 page
+
+$totalItems = count($JustUserQuestions); // Count total of user's questions
+$totalPages = ceil($totalItems / $itemsPerPage); //divides total questions by amount allowed per page to get total pages
+
+// Calculate offset and slice the questions array
+$startIndex = ($currentPage - 1) * $itemsPerPage; // Calculate the starting index for pagination
+$paginatedQuestions = array_slice($JustUserQuestions, $startIndex, $itemsPerPage); // Slice the questions array to get only the items for the current page
+
+
+// Pagination for answers
+$answersPerPage = 9;
+
+// Get current answer page from URL (can use a different GET param to avoid conflict)
+$currentAnswerPage = isset($_GET['answer_page']) ? (int)$_GET['answer_page'] : 1;
+$currentAnswerPage = max($currentAnswerPage, 1);
+
+$totalAnswers = count($JustUserAnswer);
+$totalAnswerPages = ceil($totalAnswers / $answersPerPage);
+
+$startAnswerIndex = ($currentAnswerPage - 1) * $answersPerPage;
+$paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerPage);
+
+
   ?>
 
 
@@ -118,7 +147,7 @@ echo '</pre>';
           Delete Account
         </button>
       </form>
--->
+      -->
      
         <button onclick="openDeleteModal()" class=" bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
           Delete Account
@@ -144,7 +173,8 @@ echo '</pre>';
 
      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 px-4 sm:px-6 lg:px-10" id="questions">
     <?php if (!empty($JustUserQuestions)): ?> <!-- Check if there are user questions -->
-      <?php foreach ($JustUserQuestions as $UserQuestion): ?> <!-- Loop through each user question -->
+      <?php /*foreach ($JustUserQuestions as $UserQuestion): */?> <!-- Loop through each user question -->
+      <?php foreach ($paginatedQuestions as $UserQuestion): ?> <!-- Loop through each paginated user question for that page-->
         <a href="../q&a/q&a.php?questionName=<?= urlencode($UserQuestion['title']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md "> <!-- got rid of w-[300px] in the div class -->
         <p class="text-l font-semibold text-blue-400">QUESTION TITLE:</p>
@@ -158,10 +188,25 @@ echo '</pre>';
     <?php endif; ?>
   </div>
 
+  <?php if ($totalPages > 1): ?> <!-- Check if there are multiple pages -->
+  <div id="questionPagination" class="mt-6 flex justify-center space-x-2 text-sm">
+    <?php for ($i = 1; $i <= $totalPages; $i++): ?> <!-- Loop through each page number -->
+      <a href="?page=<?= $i ?>" class="px-3 py-1 rounded <?= $i === $currentPage ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' ?>"> <!-- Highlight current page -->
+        <?= $i ?> <!-- Display page number -->
+      </a> 
+    <?php endfor; ?>
+  </div>
+<?php endif; ?>
+
+
+
+
+
 
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 px-4 sm:px-6 lg:px-10 hidden" id="answers">
     <?php if (!empty($JustUserAnswer)): ?> <!-- Check if there are user answers -->
-      <?php foreach ($JustUserAnswer as $UserAnswer): ?> <!-- Loop through each user answer -->
+      <?php /*foreach ($JustUserAnswer as $UserAnswer): */?> <!-- Loop through each user answer -->
+        <?php foreach ($paginatedAnswers as $UserAnswer): ?>
         <a href="/pages/q&a/q&a.php?questionName=<?= urlencode($UserAnswer['question_id']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md"> <!-- got rid of w-[300px] in the div class -->
           <p class="text-l font-semibold text-blue-400">ANSWER TITLE:</p>
@@ -174,6 +219,16 @@ echo '</pre>';
       <p class="text-gray-400">You haven't posted any answers yet.</p><!-- Display message if no answers found --> 
     <?php endif; ?>
   </div>  
+
+  <?php if ($totalAnswerPages > 1): ?>
+  <div id="answerPagination" class="mt-6 flex justify-center space-x-2 text-sm">
+    <?php for ($i = 1; $i <= $totalAnswerPages; $i++): ?>
+      <a href="?answer_page=<?= $i ?>" class="px-3 py-1 rounded <?= $i === $currentAnswerPage ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' ?>">
+        <?= $i ?>
+      </a>
+    <?php endfor; ?>
+  </div>
+<?php endif; ?>
 
 
   <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
@@ -293,13 +348,25 @@ echo '</pre>';
 
 
   function showQuestions() { //function to show questions
-    document.getElementById("questions").classList.remove("hidden"); // show the questions section
-    document.getElementById("answers").classList.add("hidden");// hide the answers section
+  document.getElementById("questions").classList.remove("hidden"); // show the questions section
+  document.getElementById("answers").classList.add("hidden");// hide the answers section
+
+  const questionPagination = document.getElementById("questionPagination");
+  const answerPagination = document.getElementById("answerPagination");
+
+  if (questionPagination) questionPagination.classList.remove("hidden");
+  if (answerPagination) answerPagination.classList.add("hidden");
   }
 
   function showAnswers() { //function to show answers
-    document.getElementById("questions").classList.add("hidden");//show the questions section
-    document.getElementById("answers").classList.remove("hidden");//hide the answers section
+  document.getElementById("questions").classList.add("hidden");//show the questions section
+  document.getElementById("answers").classList.remove("hidden");//hide the answers section
+
+  const questionPagination = document.getElementById("questionPagination");
+  const answerPagination = document.getElementById("answerPagination");
+
+  if (questionPagination) questionPagination.classList.add("hidden");
+  if (answerPagination) answerPagination.classList.remove("hidden");
   }
 
 //deleting account modal 
