@@ -60,7 +60,10 @@ try {
                         ];
                     }
                     if (isset($question['creator']) && strpos(strtolower($question['creator']), $searchQueryLower) !== false) {
-                        $creatorMatches[] = $question['title']; // Use title for link
+                        $creatorMatches[] = [
+                            'title' => $question['title'],
+                            'creator' => $question['creator']
+                        ];
                     }
                     foreach ($question as $subval) {
                         if (is_array($subval)) {
@@ -74,7 +77,10 @@ try {
                                 ];
                             }
                             if (isset($subval['creator']) && strpos(strtolower($subval['creator']), $searchQueryLower) !== false) {
-                                $creatorMatches[] = $subval['title']; // Use title for link
+                                $creatorMatches[] = [
+                                    'title' => $subval['title'],
+                                    'creator' => $subval['creator']
+                                ];
                             }
                             if (isset($subval['createdAt']) && strpos(strtolower($subval['createdAt']), $searchQueryLower) !== false) {
                                 $creatorMatches[] = $subval['title']; // Use title for link
@@ -143,8 +149,10 @@ try {
 
       <?php if ($creatorMatches): ?>
         <h2 class="text-xl font-semibold mt-6 mb-2">Titles of Creator Matches:</h2>
-        <?php foreach ($creatorMatches as $creator): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="/pages/q&a/q&a.php?questionName=<?= urlencode($creator) ?>"><?= htmlspecialchars($creator) ?></a>
+        <?php foreach ($creatorMatches as $match): ?>
+          <a class="block text-blue-400 hover:underline text-lg" href="/pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>">
+            <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
+          </a>
         <?php endforeach; ?>
       <?php endif; ?>
 

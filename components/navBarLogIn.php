@@ -1,3 +1,16 @@
+<?php
+require_once '../../db.php';
+
+// Get points and level from session if available, default to 1 if not set
+$points = isset($_SESSION['points']) ? $_SESSION['points'] : 1;
+$level = isset($_SESSION['level']) ? $_SESSION['level'] : 1;
+
+// Generate gravatar URL from session email
+// SHA-256 is a cryptographic hash function
+$email = isset($_SESSION['email']) ? strtolower(trim($_SESSION['email'])) : '';
+$gravatarUrl = 'https://www.gravatar.com/avatar/' . hash('sha256', $email) . '?d=identicon';
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -58,48 +71,50 @@
           <a href="/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
             Buffet
           </a>
-          <form action="/pages/auth/logout.php" method="post" class="inline-block">
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
-              Logout
-            </button>
+          <a href="/pages/q&a/q&a.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/q&a/q&a.php') !== false ? ' active' : ''; ?>">
+            Q&A
+          </a>
+          <a href="/index.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/index.php') !== false ? ' active' : ''; ?>">
+            LogOut
+          </a>
           </form>
         </div>
       </div>
 
-      <!-- Center: Points and Level -->
-      <div class="flex flex-col text-yellow-300 text-sm font-semibold sm:items-center">
-        <span>Points: <span class="text-yellow-200">125</span></span>
-        <span>Level: <span class="text-yellow-200">4</span></span>
-      </div>
+      <!-- Right Side: Points/Level + Search + Avatar -->
+<div class="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
 
-      <!-- Right: Search + Avatar -->
-      <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+  <!-- Points and Level -->
+  <div class="flex flex-col text-white text-sm font-semibold sm:items-start">
+    <span>Points: <span class="text-white"><?php echo htmlspecialchars($points); ?></span></span>
+    <span>Level: <span class="text-white"><?php echo htmlspecialchars($level); ?></span></span>
+  </div>
 
-        <!-- Search form -->
-        <form class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto" method="get" action="/components/navBarSearch.php">
-          <input
-            type="text"
-            name="query"
-            placeholder="Search titles, creators, dates, or body text"
-            class="bg-gray-700 border border-gray-600 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-48"
-          />
-          <button
-            type="submit"
-            class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-lg self-stretch sm:self-auto"
-          >
-            🔍
-          </button>
-        </form>
+  <!-- Search form -->
+  <form class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto" method="get" action="/components/navBarSearch.php">
+    <input
+      type="text"
+      name="query"
+      placeholder="Search titles, creators, dates, or body text"
+      class="bg-gray-700 border border-gray-600 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-48"
+    />
+    <button
+      type="submit"
+      class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-lg self-stretch sm:self-auto"
+    >
+      🔍
+    </button>
+  </form>
 
-        <!-- Profile image -->
-        <a href="/pages/dashboard/dashboard.php" class="flex justify-center">
-          <img
-            src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=identicon"
-            alt="Profile"
-            class="h-10 w-10 rounded-full border-2 border-blue-600"
-          />
-        </a>
-      </div>
+  <!-- Profile image -->
+  <a href="/pages/dashboard/dashboard.php" class="flex justify-center">
+    <img
+      src="<?php echo htmlspecialchars($gravatarUrl); ?>"
+      alt="Profile"
+      class="h-10 w-10 rounded-full border-2 border-blue-600"
+    />
+  </a>
+</div>
     </div>
   </div>
 </nav>

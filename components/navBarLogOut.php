@@ -42,7 +42,7 @@
         <input
           type="text"
           name="query"
-          placeholder="Search (text or MM/DD/YYYY)"
+          placeholder="Search titles, creators, dates, or body text"
           class="bg-gray-700 border border-gray-600 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-64"
           autocomplete="off"
         />
@@ -54,6 +54,8 @@
       <!-- Nav Buttons -->
       <?php
         $current = $_SERVER['REQUEST_URI'];
+        // Get gravatar URL from session if available
+        $gravatarUrl = $_SESSION['gravatarUrl'] ?? 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=identicon';
       ?>
       <div class="flex flex-wrap gap-2 justify-center sm:justify-end w-full sm:w-auto">
         <a href="/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
