@@ -715,8 +715,8 @@ if (!$question) {
         
         <div class="mb-4">
             <div class="flex space-x-2 mb-2">
-                <button class="tab-button active" onclick="switchTab('write')">Write</button>
-                <button class="tab-button" onclick="switchTab('preview')">Preview</button>
+                <button class="tab-button active">Write your answers</button>
+                <button class="tab-button">here</button>
             </div>
             
             <div id="write-tab" class="tab-content active">
