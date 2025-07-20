@@ -9,14 +9,14 @@
   require_once '../../Api/key.php';
   require_once '../../db.php';
   $api = new qOverflowAPI(API_KEY);
-  //$username = "user101";
+  
 
   $pdo = new PDO($dsn, $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   
   if (!isset($_SESSION['username'])) {
-    header('Location: /pages/auth/login.php');
+    header('Location: /index.php');
     exit();
   } 
   $username = $_SESSION['username'];
@@ -47,7 +47,8 @@
   $stmt = $pdo->prepare("DELETE FROM users WHERE username = :username");
   $stmt->execute(['username' => $username]);
   session_destroy();
-  header('Location: /pages/auth/login.php');
+  header('Location: /index.php');
+  exit();
   }
   
 
