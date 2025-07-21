@@ -62,19 +62,19 @@ $gravatarUrl = 'https://www.gravatar.com/avatar/' . hash('sha256', $email) . '?d
           <span class="text-2xl font-bold text-white">qOverflow</span>
         </div>
         <div class="flex flex-wrap gap-2 mt-2 sm:mt-0">
-          <a href="/pages/dashboard/dashboard.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/dashboard/dashboard.php') !== false ? ' active' : ''; ?>">
+          <a href="/BDPA2025P1/pages/dashboard/dashboard.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/dashboard/dashboard.php') !== false ? ' active' : ''; ?>">
             Dashboard
           </a>
-          <a href="/pages/mail/mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/mail/mail.php') !== false ? ' active' : ''; ?>">
+          <a href="/BDPA2025P1/pages/mail/mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/mail/mail.php') !== false ? ' active' : ''; ?>">
             Mail
           </a>
-          <a href="/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
+          <a href="/BDPA2025P1/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
             Buffet
           </a>
-          <a href="/pages/q&a/q&a.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/q&a/q&a.php') !== false ? ' active' : ''; ?>">
+          <a href="/BDPA2025P1/pages/q&a/q&a.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/q&a/q&a.php') !== false ? ' active' : ''; ?>">
             Q&A
           </a>
-          <a href="/index.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/index.php') !== false ? ' active' : ''; ?>">
+          <a href="/BDPA2025P1/index.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/index.php') !== false ? ' active' : ''; ?>">
             LogOut
           </a>
           </form>
@@ -85,13 +85,13 @@ $gravatarUrl = 'https://www.gravatar.com/avatar/' . hash('sha256', $email) . '?d
 <div class="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
 
   <!-- Points and Level -->
-  <div class="flex flex-col text-white text-sm font-semibold sm:items-start">
-    <span>Points: <span class="text-white"><?php echo htmlspecialchars($points); ?></span></span>
-    <span>Level: <span class="text-white"><?php echo htmlspecialchars($level); ?></span></span>
+  <div class="flex flex-col text-blue-400 text-sm font-semibold sm:items-start">
+    <span>Points: <span class="text-blue-400"><?php echo htmlspecialchars($points); ?></span></span>
+    <span>Level: <span class="text-blue-400"><?php echo htmlspecialchars($level); ?></span></span>
   </div>
 
   <!-- Search form -->
-  <form class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto" method="get" action="/components/navBarSearch.php">
+  <form class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto" method="get" action="/BDPA2025P1/components/navBarSearch.php">
     <input
       type="text"
       name="query"
