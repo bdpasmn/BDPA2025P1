@@ -13,10 +13,12 @@ $usernameerror = '';
 $emailerror = '';
 $passworderror = '';
 $captchaerror = '';
-$strengthMessage = ''; // Initialize strength message
-$error = ''; // General error message
+$error = '';
 
-// Initialize form values to preserve them on error
+// Initialize strength message
+$strengthMessage = '';
+
+// Initialize form values
 $username = '';
 $email = '';
 
@@ -68,6 +70,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $usernameerror = "Username is required.";
         $haserror = true;
     }
+
     // Enforce username requirements
     elseif (
         !preg_match('/^[a-zA-Z0-9_-]+$/', $username) || // Only these characters are allowed
@@ -83,6 +86,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $emailerror = "Email is required.";
         $haserror = true;
     }
+
     // Validate email format
     elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $emailerror = "Please enter a valid email address.";
@@ -94,6 +98,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $passworderror = "Password is required.";
         $haserror = true;
     }
+
     // Enforce strong password requirements
     elseif (
         strlen($rawPassword) < 11 || // Must be more than 10 characters
@@ -195,6 +200,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                  value="<?= htmlspecialchars($username) ?>"
                  placeholder="Enter your username"
                  class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3" />
+                
           <?php if (!empty($usernameerror)): ?>
             <div class="text-red-500 mt-1"><?= htmlspecialchars($usernameerror) ?></div>
           <?php endif; ?>
