@@ -58,13 +58,13 @@
         $gravatarUrl = $_SESSION['gravatarUrl'] ?? 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=identicon';
       ?>
       <div class="flex flex-wrap gap-2 justify-center sm:justify-end w-full sm:w-auto">
-        <a href="BDPA2025P1/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
+        <a href="../buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
           Buffet
         </a>
-        <a href="BDPA2025P1/pages/auth/login.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/auth/login.php') !== false ? ' active' : ''; ?>">
+        <a href="../auth/login.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/auth/login.php') !== false ? ' active' : ''; ?>">
           Login
         </a>
-        <a href="BDPA2025P1/pages/auth/signup.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/auth/signup.php') !== false ? ' active' : ''; ?>">
+        <a href="../auth/signup.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/auth/signup.php') !== false ? ' active' : ''; ?>">
           Sign Up
         </a>
       </div>
