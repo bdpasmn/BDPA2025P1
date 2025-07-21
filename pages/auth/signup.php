@@ -190,7 +190,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                  title="Must include both letters and numbers and may include dashes and underscores."
                  placeholder="Enter your username"
                  class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3" />
-                 
+                <label class="block mb-2 text-md font-medium text-white">Username must include both letters and numbers and may include dashes and underscores.</label>
+          
+
           <?php if (!empty($usernameerror)): ?>
                 <div class="text-red-500 mt-1"><?= htmlspecialchars($usernameerror) ?></div>
               <?php endif; ?>
@@ -287,3 +289,4 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   </section>
 </body>
 </html>
+
