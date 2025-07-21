@@ -85,7 +85,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 // Restore session from cookie
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
     $_SESSION['username'] = $_COOKIE['remember_me'];
-    header("Location: /pages/dashboard/dashboard.php");
+    header("Location: /pages/buffet/buffet.php");
     exit;
 }
 ?>

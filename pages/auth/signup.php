@@ -95,16 +95,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $haserror = true;
     }
     // Enforce strong password requirements
-    elseif (
-        strlen($rawPassword) < 11 || // Must be more than 10 characters
-        !preg_match("/[A-Z]/", $rawPassword) || // Must contain at least one uppercase letter
-        !preg_match("/[a-z]/", $rawPassword) || // Must contain at least one lowercase letter
-        !preg_match("/[0-9]/", $rawPassword) || // Must contain at least one number
-        !preg_match("/[\W]/", $rawPassword) // Must contain at least one special character
-    ) {
-        $passworderror = "Password must have: > 10 characters, uppercase letters, lowercase letters, numbers, and special characters";
-        $haserror = true;
-    }
+    elseif (strlen($rawPassword) <= 10) {
+    $passworderror = "Password must be more than 10 characters.";
+    $haserror = true;
+}
 
     // If no validation errors, proceed to DB and API registration
     if (!$haserror) {
@@ -192,13 +186,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <div>
           <label class="block mb-2 text-md font-medium text-white">Username</label>
           <input name="username" type="text" required
-                 value="<?= htmlspecialchars($username) ?>"
+                 pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d_-]+$"
+                 title="Must include both letters and numbers and may include dashes and underscores."
                  placeholder="Enter your username"
                  class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3" />
+                 
           <?php if (!empty($usernameerror)): ?>
-            <div class="text-red-500 mt-1"><?= htmlspecialchars($usernameerror) ?></div>
-          <?php endif; ?>
-        </div>
+                <div class="text-red-500 mt-1"><?= htmlspecialchars($usernameerror) ?></div>
+              <?php endif; ?>
+            </div>
+
 
         <div>
           <label class="block mb-2 text-md font-medium text-white">Email</label>
@@ -214,11 +211,39 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <div>
           <label class="block mb-2 text-md font-medium text-white">Password</label>
           <input name="password" type="password" required
+                 minlength="11"
+                 pattern=".{11,}"
+                 title="Password must be at least 11 characters. Weak (≤10) passwords are rejected. Moderate: 11–17. Strong: 18+."
                  placeholder="Enter your password"
                  class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3" />
-          <?php if (!empty($passworderror)): ?>
+
+       <?php if (!empty($passworderror)): ?>
             <div class="text-red-500 mt-1"><?= htmlspecialchars($passworderror) ?></div>
           <?php endif; ?>
+
+          <small id="strengthMessage" class="block mt-1"></small>
+
+          <script>
+            const passwordInput = document.getElementById("password");
+            const strengthMessage = document.getElementById("strengthMessage");
+
+            passwordInput.addEventListener("input", () => {
+              const length = passwordInput.value.length;
+              if (length === 0) {
+                strengthMessage.textContent = "";
+              } else if (length <= 10) {
+                strengthMessage.textContent = "Weak";
+                strengthMessage.style.color = "#ef4444"; // red
+              } else if (length <= 17) {
+                strengthMessage.textContent = "Moderate";
+                strengthMessage.style.color = "#f97316"; // orange
+              } else {
+                strengthMessage.textContent = "Strong";
+                strengthMessage.style.color = "#22c55e"; // green
+              }
+            });
+          </script>
+
           
           <?php if (!empty($strengthMessage)): ?>
             <div class="mt-1" style="color: 
@@ -229,7 +254,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     echo '#f97316'; // orange-500
                 } else {
                     echo '#22c55e'; // green-500
-                }
+                }git
               ?>;
             ">
               <?= htmlspecialchars($strengthMessage) ?>
