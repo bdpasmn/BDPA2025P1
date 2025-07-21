@@ -71,11 +71,18 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
     <div class="px-6 pb-8 pt-2 flex-1 flex flex-col">
       <?php if ($activeTab === 'compose'): ?>
         <?php if (isset($mail_success)): ?>
-          <div class="bg-green-600 text-white text-base py-2 px-4 text-center mb-4 rounded shadow">Message sent successfully!</div>
+          <div class="bg-green-600 text-white text-base py-2 px-4 text-center mb-4 rounded shadow auto-hide-banner">Message sent successfully!</div>
         <?php endif; ?>
         <?php if (isset($error)): ?>
-          <div class="bg-red-600 text-white text-base py-2 px-4 text-center mb-4 rounded shadow"><?= htmlspecialchars($error) ?></div>
+          <div class="bg-red-600 text-white text-base py-2 px-4 text-center mb-4 rounded shadow auto-hide-banner"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
+        <script>
+          setTimeout(() => {
+            document.querySelectorAll('.auto-hide-banner').forEach(el => {
+              el.style.display = 'none';
+            });
+          }, 2000);
+        </script>
         <form method="POST" class="flex flex-col gap-5 w-full max-w-lg mx-auto">
           <h2 class="text-white font-bold text-2xl mb-2 text-center">Compose Message</h2>
           <div>
