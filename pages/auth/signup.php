@@ -140,8 +140,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $stmt->execute([$username, $email]);
                     
                     // Store session data
-                    $_SESSION['user_id'] = $result['id'] ?? null;
-                    $_SESSION['username'] = $username;
+                    //$_SESSION['user_id'] = $result['id'] ?? null;
+                    //$_SESSION['username'] = $username;
                     
                     // Redirect to login page
                     header("Location: login.php");
