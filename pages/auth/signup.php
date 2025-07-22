@@ -13,12 +13,19 @@ $usernameerror = '';
 $emailerror = '';
 $passworderror = '';
 $captchaerror = '';
+<<<<<<< HEAD
 $error = '';
 
 // Initialize strength message
 $strengthMessage = '';
 
 // Initialize form values
+=======
+$strengthMessage = ''; // Initialize strength message
+$error = ''; // General error message
+
+// Initialize form values to preserve them on error
+>>>>>>> 7499711b4a0c610fd32f91c0bfa95d23258798d6
 $username = '';
 $email = '';
 
@@ -70,7 +77,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $usernameerror = "Username is required.";
         $haserror = true;
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 7499711b4a0c610fd32f91c0bfa95d23258798d6
     // Enforce username requirements
     elseif (
         !preg_match('/^[a-zA-Z0-9_-]+$/', $username) || // Only these characters are allowed
@@ -86,6 +96,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $emailerror = "Email is required.";
         $haserror = true;
     }
+<<<<<<< HEAD
 
     // Validate email format
     elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -108,8 +119,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         !preg_match("/[\W]/", $rawPassword) // Must contain at least one special character
     ) {
         $passworderror = "Password must have: > 10 characters, uppercase letters, lowercase letters, numbers, and special characters";
+=======
+    // Validate email format
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $emailerror = "Please enter a valid email address.";
+>>>>>>> 7499711b4a0c610fd32f91c0bfa95d23258798d6
         $haserror = true;
     }
+
+    // Validate password is not empty
+    if (empty($rawPassword)) {
+        $passworderror = "Password is required.";
+        $haserror = true;
+    }
+    // Enforce strong password requirements
+    elseif (strlen($rawPassword) <= 10) {
+    $passworderror = "Password must be more than 10 characters.";
+    $haserror = true;
+}
 
     // If no validation errors, proceed to DB and API registration
     if (!$haserror) {
@@ -151,8 +178,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $stmt->execute([$username, $email]);
                     
                     // Store session data
+<<<<<<< HEAD
                     $_SESSION['user_id'] = $result['id'] ?? null;
                     $_SESSION['username'] = $username;
+=======
+                    //$_SESSION['user_id'] = $result['id'] ?? null;
+                    //$_SESSION['username'] = $username;
+>>>>>>> 7499711b4a0c610fd32f91c0bfa95d23258798d6
                     
                     // Redirect to login page
                     header("Location: login.php");
@@ -197,6 +229,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <div>
           <label class="block mb-2 text-md font-medium text-white">Username</label>
           <input name="username" type="text" required
+<<<<<<< HEAD
                  value="<?= htmlspecialchars($username) ?>"
                  placeholder="Enter your username"
                  class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3" />
@@ -206,6 +239,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           <?php endif; ?>
         </div>
 
+=======
+                 pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d_-]+$"
+                 title="Must include both letters and numbers and may include dashes and underscores."
+                 placeholder="Enter your username"
+                 class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3" />
+                <label class="block mb-2 text-md font-medium text-white">Username must include both letters and numbers and may include dashes and underscores.</label>
+          
+
+          <?php if (!empty($usernameerror)): ?>
+                <div class="text-red-500 mt-1"><?= htmlspecialchars($usernameerror) ?></div>
+              <?php endif; ?>
+            </div>
+
+
+>>>>>>> 7499711b4a0c610fd32f91c0bfa95d23258798d6
         <div>
           <label class="block mb-2 text-md font-medium text-white">Email</label>
           <input name="email" type="email" required
@@ -220,8 +268,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <div>
           <label class="block mb-2 text-md font-medium text-white">Password</label>
           <input name="password" type="password" required
+                 minlength="11"
+                 pattern=".{11,}"
+                 title="Password must be at least 11 characters. Weak (≤10) passwords are rejected. Moderate: 11–17. Strong: 18+."
                  placeholder="Enter your password"
                  class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3" />
+<<<<<<< HEAD
           <?php if (!empty($passworderror)): ?>
             <div class="text-red-500 mt-1"><?= htmlspecialchars($passworderror) ?></div>
           <?php endif; ?>
@@ -243,6 +295,54 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           <?php endif; ?>
         </div>
 
+=======
+
+       <?php if (!empty($passworderror)): ?>
+            <div class="text-red-500 mt-1"><?= htmlspecialchars($passworderror) ?></div>
+          <?php endif; ?>
+
+          <small id="strengthMessage" class="block mt-1"></small>
+
+          <script>
+            const passwordInput = document.getElementById("password");
+            const strengthMessage = document.getElementById("strengthMessage");
+
+            passwordInput.addEventListener("input", () => {
+              const length = passwordInput.value.length;
+              if (length === 0) {
+                strengthMessage.textContent = "";
+              } else if (length <= 10) {
+                strengthMessage.textContent = "Weak";
+                strengthMessage.style.color = "#ef4444"; // red
+              } else if (length <= 17) {
+                strengthMessage.textContent = "Moderate";
+                strengthMessage.style.color = "#f97316"; // orange
+              } else {
+                strengthMessage.textContent = "Strong";
+                strengthMessage.style.color = "#22c55e"; // green
+              }
+            });
+          </script>
+
+          
+          <?php if (!empty($strengthMessage)): ?>
+            <div class="mt-1" style="color: 
+              <?php
+                if (strpos($strengthMessage, 'Weak') !== false) {
+                    echo '#ef4444'; // red-500
+                } elseif (strpos($strengthMessage, 'Moderate') !== false) {
+                    echo '#f97316'; // orange-500
+                } else {
+                    echo '#22c55e'; // green-500
+                }git
+              ?>;
+            ">
+              <?= htmlspecialchars($strengthMessage) ?>
+            </div>
+          <?php endif; ?>
+        </div>
+
+>>>>>>> 7499711b4a0c610fd32f91c0bfa95d23258798d6
         <div>
           <label for="captcha" class="block mb-2 text-md font-medium text-white">
             What is <?= $num1 ?> + <?= $num2 ?>?
@@ -267,4 +367,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </div>
   </section>
 </body>
+<<<<<<< HEAD
 </html>
+=======
+<<<<<<< Updated upstream
+</html>
+
+=======
+</html>
+>>>>>>> Stashed changes
+>>>>>>> 7499711b4a0c610fd32f91c0bfa95d23258798d6

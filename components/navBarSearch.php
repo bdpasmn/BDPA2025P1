@@ -1,7 +1,7 @@
 <?php
 session_start();
-require_once '../../api/key.php';
-require_once '../../api/api.php';
+require_once 'C:/xampp/htdocs/BDPA2025P1/Api/key.php';
+require_once 'C:/xampp/htdocs/BDPA2025P1/Api/api.php';
 
 $api = new qOverflowAPI(API_KEY);
 
@@ -18,9 +18,9 @@ $textMatches = [];
 $creatorMatches = [];
 
 try {
-    // Check if datetime is provided
+    // Accept MM/DD/YYYY format for datetime
     if (!empty($datetime)) {
-        $date = DateTime::createFromFormat('Y-m-d\TH:i', $datetime);
+        $date = DateTime::createFromFormat('m/d/Y', $datetime, new DateTimeZone('UTC'));
         if ($date) {
             $startOfDay = $date->setTime(0, 0, 0)->getTimestamp() * 1000;
             $endOfDay = $date->setTime(23, 59, 59)->getTimestamp() * 1000 + 999;
@@ -31,7 +31,7 @@ try {
             if (is_array($results)) {
                 foreach ($results as $question) {
                     if (is_array($question)) {
-                        $qTime = $question['time'] ?? $question['createdAt'] ?? null;
+                        $qTime = $question['createdAt'] ?? null;
                         if ($qTime !== null && is_numeric($qTime) && $qTime >= $startOfDay && $qTime <= $endOfDay) {
                             $dateMatches[] = $question['title'];
                         }
@@ -54,10 +54,16 @@ try {
                         $titleMatches[] = $question['title'];
                     }
                     if (isset($question['text']) && strpos(strtolower($question['text']), $searchQueryLower) !== false) {
-                        $textMatches[] = $question['text'];
+                        $textMatches[] = [
+                            'snippet' => $question['text'],
+                            'title' => $question['title']
+                        ];
                     }
                     if (isset($question['creator']) && strpos(strtolower($question['creator']), $searchQueryLower) !== false) {
-                        $creatorMatches[] = $question['creator'];
+                        $creatorMatches[] = [
+                            'title' => $question['title'],
+                            'creator' => $question['creator']
+                        ];
                     }
                     foreach ($question as $subval) {
                         if (is_array($subval)) {
@@ -65,10 +71,19 @@ try {
                                 $titleMatches[] = $subval['title'];
                             }
                             if (isset($subval['text']) && strpos(strtolower($subval['text']), $searchQueryLower) !== false) {
-                                $textMatches[] = $subval['text'];
+                                $textMatches[] = [
+                                    'snippet' => $subval['text'],
+                                    'title' => $subval['title']
+                                ];
                             }
                             if (isset($subval['creator']) && strpos(strtolower($subval['creator']), $searchQueryLower) !== false) {
-                                $creatorMatches[] = $subval['creator'];
+                                $creatorMatches[] = [
+                                    'title' => $subval['title'],
+                                    'creator' => $subval['creator']
+                                ];
+                            }
+                            if (isset($subval['createdAt']) && strpos(strtolower($subval['createdAt']), $searchQueryLower) !== false) {
+                                $creatorMatches[] = $subval['title']; // Use title for link
                             }
                         }
                     }
@@ -121,28 +136,30 @@ try {
       <?php if ($titleMatches): ?>
         <h2 class="text-xl font-semibold mt-6 mb-2">Title Matches:</h2>
         <?php foreach ($titleMatches as $title): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="../q&a/q&a.php?questionName=<?= urlencode($title) ?>"><?= htmlspecialchars($title) ?></a>
+          <a class="block text-blue-400 hover:underline text-lg" href="/BDPA2025P1/pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>"><?= htmlspecialchars($title) ?></a>
         <?php endforeach; ?>
       <?php endif; ?>
 
       <?php if ($textMatches): ?>
         <h2 class="text-xl font-semibold mt-6 mb-2">Body Text Matches:</h2>
-        <?php foreach ($textMatches as $text): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="../q&a/q&a.php?questionName=<?= urlencode($text) ?>"><?= htmlspecialchars($text) ?></a>
+        <?php foreach ($textMatches as $match): ?>
+          <a class="block text-blue-400 hover:underline text-lg" href="/BDPA2025P1/pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>"><?= htmlspecialchars($match['snippet']) ?></a>
         <?php endforeach; ?>
       <?php endif; ?>
 
       <?php if ($creatorMatches): ?>
-        <h2 class="text-xl font-semibold mt-6 mb-2">Creator Matches:</h2>
-        <?php foreach ($creatorMatches as $creator): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="../q&a/q&a.php?questionName=<?= urlencode($creator) ?>"><?= htmlspecialchars($creator) ?></a>
+        <h2 class="text-xl font-semibold mt-6 mb-2">Titles of Creator Matches:</h2>
+        <?php foreach ($creatorMatches as $match): ?>
+          <a class="block text-blue-400 hover:underline text-lg" href="/BDPA2025P1/pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>">
+            <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
+          </a>
         <?php endforeach; ?>
       <?php endif; ?>
 
       <?php if ($dateMatches): ?>
         <h2 class="text-xl font-semibold mt-6 mb-2">Date Matches:</h2>
         <?php foreach ($dateMatches as $title): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="../q&a/q&a.php?questionName=<?= urlencode($title) ?>"><?= htmlspecialchars($title) ?></a>
+          <a class="block text-blue-400 hover:underline text-lg" href="/BDPA2025P1/pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>"><?= htmlspecialchars($title) ?></a>
         <?php endforeach; ?>
       <?php endif; ?>
 
