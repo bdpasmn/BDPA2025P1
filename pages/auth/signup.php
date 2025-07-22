@@ -288,5 +288,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </div>
   </section>
 </body>
+<<<<<<< Updated upstream
 </html>
 
+=======
+</html>
+>>>>>>> Stashed changes
