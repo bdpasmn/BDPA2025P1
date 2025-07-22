@@ -1,5 +1,6 @@
 <?php
 session_start();
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,20 +34,9 @@ session_start();
 </head>
 <body class="text-white font-sans">
 
-<nav class="bg-gray-900 shadow-lg">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-between items-center h-16">
-      <div class="flex items-center space-x-3">
-        <img class="h-9 w-auto" src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo">
-        <span class="text-2xl font-bold text-white">qOverflow</span>
-      </div>
-      <div class="hidden sm:flex space-x-4 items-center">
-        <a href="pages/auth/login.php" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Login</a>
-        <a href="pages/auth/signup.php" class="glow-button px-5 py-2 rounded-lg text-white font-medium">Join Now</a>
-      </div>
-    </div>
-  </div>
-</nav>
+<?php
+include 'components/navBarLogOut.php';
+?>
 
 <section class="text-center px-6 py-28">
   <h1 class="text-5xl sm:text-6xl font-extrabold leading-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500">

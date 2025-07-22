@@ -7,9 +7,9 @@ require_once '../../api/api.php';
 $api = new qOverflowAPI(API_KEY);
 
 // Set current user first line should be removed once windows database works 
-$CURRENT_USER = 'test_user';
-$_SESSION['username'] = $CURRENT_USER;
-$questionName = $_GET['questionName'] ?? '123';
+//$CURRENT_USER = 'test_user';
+//$_SESSION['username'] = $CURRENT_USER;
+//$questionName = $_GET['questionName'] ?? '123';
 
 // Initialize data structures with per-question isolation
 if (!isset($_SESSION['qa_votes'])) {

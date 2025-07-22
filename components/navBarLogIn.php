@@ -71,10 +71,7 @@ $gravatarUrl = 'https://www.gravatar.com/avatar/' . hash('sha256', $email) . '?d
           <a href="../buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
             Buffet
           </a>
-          <a href="../q&a/q&a.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/q&a/q&a.php') !== false ? ' active' : ''; ?>">
-            Q&A
-          </a>
-          <a href="../index.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/index.php') !== false ? ' active' : ''; ?>">
+          <a href="index.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/index.php') !== false ? ' active' : ''; ?>">
             LogOut
           </a>
           </form>
@@ -82,7 +79,7 @@ $gravatarUrl = 'https://www.gravatar.com/avatar/' . hash('sha256', $email) . '?d
       </div>
 
       <!-- Right Side: Points/Level + Search + Avatar -->
-<div class="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
+       <div class="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
 
   <!-- Points and Level -->
   <div class="flex flex-col text-blue-400 text-sm font-semibold sm:items-start">
