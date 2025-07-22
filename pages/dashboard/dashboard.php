@@ -9,11 +9,7 @@
   require_once '../../Api/key.php';
   require_once '../../db.php';
   $api = new qOverflowAPI(API_KEY);
-<<<<<<< HEAD
   //$username = "user101";
-=======
-  
->>>>>>> 7499711b4a0c610fd32f91c0bfa95d23258798d6
 
   $pdo = new PDO($dsn, $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
