@@ -1,5 +1,6 @@
 <?php
 session_start();
+include __DIR__ . '/../../components/navBarLogOut.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -63,12 +64,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $recoveryLink = "http://$host/qOverflow/BDPA2025P1/pages/accountRecovery/resetPassword.php?user_id=" . urlencode($userIdOrUsername);
             $showPopup = true;
 
-<<<<<<< Updated upstream
-=======
             // Store token in API (in `key` field)
             $username = $user['username'];
-            //$response = $api->updateUser($username, ['key' => $token]);
-            $response = $api->updateUser($username, ['reset_token' => $token]);
+            $token = bin2hex(random_bytes(32)); // Generate a secure token
+            $passwordHash = hash_pbkdf2("sha256", $value,  $salt,100000, 128, false);// Hash the password with the salt
             if (
         strlen($value) < 11 ||
         !preg_match("/[A-Z]/", $value) || // Check for uppercase letter
@@ -100,12 +99,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $showPopup = false;
                 echo "<pre>"; print_r($response); echo "</pre>";
             }
->>>>>>> Stashed changes
         } else {
             $error = "Email not found in our records.";
         }
-    }
-}
 ?>
 
 <!DOCTYPE html>

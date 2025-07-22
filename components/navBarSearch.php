@@ -1,7 +1,8 @@
 <?php
 session_start();
-require_once 'C:/xampp/htdocs/BDPA2025P1/Api/key.php';
-require_once 'C:/xampp/htdocs/BDPA2025P1/Api/api.php';
+
+  require_once '../Api/api.php';
+  require_once '../Api/key.php';
 
 $api = new qOverflowAPI(API_KEY);
 
@@ -136,21 +137,21 @@ try {
       <?php if ($titleMatches): ?>
         <h2 class="text-xl font-semibold mt-6 mb-2">Title Matches:</h2>
         <?php foreach ($titleMatches as $title): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="/BDPA2025P1/pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>"><?= htmlspecialchars($title) ?></a>
+          <a class="block text-blue-400 hover:underline text-lg" href="../pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>"><?= htmlspecialchars($title) ?></a>
         <?php endforeach; ?>
       <?php endif; ?>
 
       <?php if ($textMatches): ?>
         <h2 class="text-xl font-semibold mt-6 mb-2">Body Text Matches:</h2>
         <?php foreach ($textMatches as $match): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="/BDPA2025P1/pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>"><?= htmlspecialchars($match['snippet']) ?></a>
+          <a class="block text-blue-400 hover:underline text-lg" href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>"><?= htmlspecialchars($match['snippet']) ?></a>
         <?php endforeach; ?>
       <?php endif; ?>
 
       <?php if ($creatorMatches): ?>
         <h2 class="text-xl font-semibold mt-6 mb-2">Titles of Creator Matches:</h2>
         <?php foreach ($creatorMatches as $match): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="/BDPA2025P1/pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>">
+          <a class="block text-blue-400 hover:underline text-lg" href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>">
             <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
           </a>
         <?php endforeach; ?>
@@ -159,7 +160,7 @@ try {
       <?php if ($dateMatches): ?>
         <h2 class="text-xl font-semibold mt-6 mb-2">Date Matches:</h2>
         <?php foreach ($dateMatches as $title): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="/BDPA2025P1/pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>"><?= htmlspecialchars($title) ?></a>
+          <a class="block text-blue-400 hover:underline text-lg" href="../pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>"><?= htmlspecialchars($title) ?></a>
         <?php endforeach; ?>
       <?php endif; ?>
 
