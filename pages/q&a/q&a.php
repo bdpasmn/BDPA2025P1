@@ -1,3 +1,4 @@
+
 <?php
 
 session_start();
@@ -7,9 +8,9 @@ require_once '../../api/api.php';
 $api = new qOverflowAPI(API_KEY);
 
 // Set current user first line should be removed once windows database works 
-//$CURRENT_USER = 'test_user';
-//$_SESSION['username'] = $CURRENT_USER;
-//$questionName = $_GET['questionName'] ?? '123';
+$CURRENT_USER = 'test_user';
+$_SESSION['username'] = $CURRENT_USER;
+$questionName = $_GET['questionName'] ?? '123';
 
 // Initialize data structures with per-question isolation
 if (!isset($_SESSION['qa_votes'])) {
@@ -24,12 +25,18 @@ if (!isset($_SESSION['qa_comments'])) {
     $_SESSION['qa_comments'] = [];
 }
 
+// Initialize viewed questions tracking
 if (!isset($_SESSION['viewed_questions'])) {
     $_SESSION['viewed_questions'] = [];
 }
 
+// Initialize session view counts for questions
 if (!isset($_SESSION['question_views'])) {
     $_SESSION['question_views'] = [];
+}
+
+if (!isset($_SESSION['next_answer_id'])) {
+    $_SESSION['next_answer_id'] = 1;
 }
 
 $message = '';
@@ -52,20 +59,6 @@ function debugLog($message, $data = null) {
 // Helper function to get question-specific session key
 function getQuestionSessionKey($questionId, $type) {
     return $type . '_' . $questionId;
-}
-
-// Enhanced session debugging function
-function debugSessionAnswers($actualQuestionId) {
-    $answersKey = 'answers_for_question_' . $actualQuestionId;
-    
-    debugLog("=== SESSION ANSWERS DEBUG ===", [
-        'questionId' => $actualQuestionId,
-        'answersKey' => $answersKey,
-        'sessionAnswersExist' => isset($_SESSION['qa_answers'][$answersKey]),
-        'sessionAnswersCount' => isset($_SESSION['qa_answers'][$answersKey]) ? count($_SESSION['qa_answers'][$answersKey]) : 0,
-        'allSessionKeys' => array_keys($_SESSION['qa_answers'] ?? []),
-        'fullSessionData' => $_SESSION['qa_answers'][$answersKey] ?? 'NOT SET'
-    ]);
 }
 
 // Handle POST actions
@@ -105,19 +98,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid vote operation');
                 }
                 
-                // Simplified vote key
-                $voteKey = 'answer_votes_' . $actualQuestionId . '_' . $answerId;
-                if (!isset($_SESSION['qa_votes'][$voteKey])) {
-                    $_SESSION['qa_votes'][$voteKey] = [];
+                $answerKey = getQuestionSessionKey($actualQuestionId, 'answer_votes_' . $answerId);
+                if (!isset($_SESSION['qa_votes'][$answerKey])) {
+                    $_SESSION['qa_votes'][$answerKey] = [];
                 }
                 
                 // Store vote
-                $_SESSION['qa_votes'][$voteKey][$CURRENT_USER] = ($operation === 'upvote') ? 1 : -1;
+                $_SESSION['qa_votes'][$answerKey][$CURRENT_USER] = ($operation === 'upvote') ? 1 : -1;
                 
-                debugLog("Answer vote stored", [
-                    'voteKey' => $voteKey,
-                    'votes' => $_SESSION['qa_votes'][$voteKey]
-                ]);
+                debugLog("Answer vote stored", $_SESSION['qa_votes'][$answerKey]);
                 $message = "Answer " . $operation . " successful!";
                 break;
 
@@ -199,37 +188,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = "Comment added to question!";
                 break;
                 
-            // IMPROVED: Better answer ID generation and management
+            case 'add_answer_comment':
+                $answerId = $_POST['answer_id'] ?? '';
+                $text = trim($_POST['comment_text'] ?? '');
+                if ($text === '') throw new Exception('Comment text required');
+                if (strlen($text) > 150) throw new Exception('Comment too long');
+                
+                $answerCommentsKey = getQuestionSessionKey($actualQuestionId, 'answer_comments_' . $answerId);
+                if (!isset($_SESSION['qa_comments'][$answerCommentsKey])) {
+                    $_SESSION['qa_comments'][$answerCommentsKey] = [];
+                }
+                
+                // Add comment to session
+                $_SESSION['qa_comments'][$answerCommentsKey][] = [
+                    'id' => uniqid(),
+                    'text' => $text,
+                    'creator' => $CURRENT_USER,
+                    'created' => date('Y-m-d H:i:s'),
+                    'votes' => ['upvotes' => 0, 'downvotes' => 0]
+                ];
+                
+                debugLog("Answer comment added", $_SESSION['qa_comments'][$answerCommentsKey]);
+                $message = "Comment added to answer!";
+                break;
+                
             case 'add_answer':
                 $text = trim($_POST['answer_text'] ?? '');
                 if ($text === '') throw new Exception('Answer text required');
                 if (strlen($text) > 3000) throw new Exception('Answer too long');
                 
-                // Use a more reliable key structure
-                $answersKey = 'answers_for_question_' . $actualQuestionId;
-                
+                $answersKey = getQuestionSessionKey($actualQuestionId, 'answers');
                 if (!isset($_SESSION['qa_answers'][$answersKey])) {
                     $_SESSION['qa_answers'][$answersKey] = [];
                 }
                 
-                // IMPROVED: Generate truly unique answer ID with better uniqueness guarantees
-                $timestamp = str_replace('.', '', microtime(true)); // Remove decimal point
-                $random = mt_rand(100000, 999999); // 6-digit random number
-                $userHash = substr(md5($CURRENT_USER), 0, 4); // 4 chars from user hash
+                // Generate a unique answer ID that's guaranteed to be unique
+                $answerId = $actualQuestionId . '_' . time() . '_' . uniqid();
                 
-                // Create a guaranteed unique answer ID
-                $answerId = "ans_{$actualQuestionId}_{$timestamp}_{$random}_{$userHash}";
-                
-                // IMPROVED: Double-check uniqueness and increment if needed
-                $counter = 1;
-                $originalAnswerId = $answerId;
-                while (isset($_SESSION['qa_answers'][$answersKey][$answerId])) {
-                    $answerId = $originalAnswerId . '_' . $counter;
-                    $counter++;
-                    if ($counter > 100) break; // Safety valve
-                }
-                
-                // Create answer data with all required fields
+                // Create answer with immutable data
                 $answerData = [
                     'answer_id' => $answerId,
                     'text' => $text,
@@ -238,39 +234,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'points' => 0,
                     'accepted' => false,
                     'upvotes' => 0,
-                    'downvotes' => 0,
-                    'question_id' => $actualQuestionId // Add this for reference
+                    'downvotes' => 0
                 ];
                 
-                // IMPROVED: Store with answer ID as key - this prevents overwrites
+                // Store answer with unique key
                 $_SESSION['qa_answers'][$answersKey][$answerId] = $answerData;
                 
-                // Enhanced debug logging
-                debugLog("Answer stored successfully", [
-                    'answerId' => $answerId,
-                    'answersKey' => $answersKey,
-                    'questionId' => $actualQuestionId,
-                    'totalAnswers' => count($_SESSION['qa_answers'][$answersKey]),
-                    'allAnswerIds' => array_keys($_SESSION['qa_answers'][$answersKey]),
-                    'answerText' => substr($text, 0, 50) . '...'
-                ]);
-                
-                $message = "Answer submitted successfully! ID: " . $answerId;
+                debugLog("Answer added", $answerData);
+                $message = "Answer submitted successfully!";
                 break;
                 
             case 'accept_answer':
                 $answerId = $_POST['answer_id'] ?? '';
-                $answersKey = 'answers_for_question_' . $actualQuestionId;
+                $answersKey = getQuestionSessionKey($actualQuestionId, 'answers');
                 
-                // Check if it's a session answer
-                if (isset($_SESSION['qa_answers'][$answersKey][$answerId])) {
-                    // Unaccept all session answers for this question
-                    foreach ($_SESSION['qa_answers'][$answersKey] as &$answer) {
-                        $answer['accepted'] = false;
+                // Check if answer exists in session data
+                $answerExists = isset($_SESSION['qa_answers'][$answersKey][$answerId]);
+                
+                if ($answerExists) {
+                    // Unaccept all answers first
+                    foreach ($_SESSION['qa_answers'][$answersKey] as &$ans) {
+                        $ans['accepted'] = false;
                     }
-                    unset($answer); // Clean up reference
-                    
-                    // Accept the specific answer
                     $_SESSION['qa_answers'][$answersKey][$answerId]['accepted'] = true;
                     $message = "Answer accepted!";
                 } else {
@@ -278,7 +263,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $result = $api->updateAnswer($actualQuestionId, $answerId, ['accepted' => true]);
                     
                     if (isset($result['error'])) {
-                        $message = "Answer accepted! (Simulated - no database)";
+                        if (strpos($result['error'], 'user') !== false || strpos($result['error'], 'not found') !== false) {
+                            $message = "Answer accepted! (Simulated - no database)";
+                        } else {
+                            throw new Exception($result['error']);
+                        }
                     } else {
                         $message = "Answer accepted!";
                     }
@@ -305,9 +294,8 @@ if (isset($_GET['msg'])) {
     $messageType = $_GET['type'] ?? 'success';
 }
 
-// Get question data and answers - IMPROVED LOGIC
+// Get question data (keep original API-based approach)
 try {
-    // Get the question first
     $questionResult = $api->getQuestion($questionName);
     
     debugLog("Question lookup", ['questionName' => $questionName, 'result' => $questionResult]);
@@ -352,95 +340,46 @@ try {
         debugLog("View tracked for question", ['questionId' => $actualQuestionId, 'totalViews' => $_SESSION['question_views'][$actualQuestionId]]);
     }
     
-    // IMPROVED: Better answer retrieval and merging
     // Get API answers
     $answersResult = $api->getAnswers($actualQuestionId);
+    debugLog("Answers lookup", $answersResult);
+    
     $apiAnswers = [];
     if (!isset($answersResult['error'])) {
         $apiAnswers = $answersResult['answers'] ?? [];
     }
-
-    // IMPROVED: Initialize answers array with better structure
-    $allAnswers = [];
-
-    // Add API answers first (these have their own unique IDs from the API)
+    
+    // Merge API answers with session answers
+    $answers = [];
+    
+    // Add API answers
     foreach ($apiAnswers as $answer) {
         $answerId = $answer['answer_id'];
+        $answerKey = getQuestionSessionKey($actualQuestionId, 'answer_votes_' . $answerId);
         
-        // Apply session votes if they exist
-        $voteKey = 'answer_votes_' . $actualQuestionId . '_' . $answerId;
-        if (isset($_SESSION['qa_votes'][$voteKey])) {
-            $votes = array_sum($_SESSION['qa_votes'][$voteKey]);
+        // Apply votes if they exist
+        if (isset($_SESSION['qa_votes'][$answerKey])) {
+            $votes = array_sum($_SESSION['qa_votes'][$answerKey]);
             $answer['upvotes'] = max(0, ($answer['upvotes'] ?? 0) + $votes);
-            $answer['points'] = ($answer['points'] ?? 0) + $votes;
         }
-        
-        // Mark as API answer for debugging
-        $answer['source'] = 'api';
-        $allAnswers[$answerId] = $answer;
+        $answers[] = $answer;
     }
-
-    // IMPROVED: Add session answers (these have our generated unique IDs)
-    $answersKey = 'answers_for_question_' . $actualQuestionId;
-    if (isset($_SESSION['qa_answers'][$answersKey]) && is_array($_SESSION['qa_answers'][$answersKey])) {
-        
-        debugLog("Loading session answers", [
-            'questionId' => $actualQuestionId,
-            'answersKey' => $answersKey,
-            'sessionAnswerCount' => count($_SESSION['qa_answers'][$answersKey]),
-            'sessionAnswerIds' => array_keys($_SESSION['qa_answers'][$answersKey])
-        ]);
-        
-        foreach ($_SESSION['qa_answers'][$answersKey] as $answerId => $sessionAnswer) {
-            // IMPROVED: Ensure we don't overwrite API answers
-            if (isset($allAnswers[$answerId])) {
-                debugLog("Answer ID conflict detected", [
-                    'answerId' => $answerId,
-                    'existingSource' => $allAnswers[$answerId]['source'] ?? 'unknown',
-                    'skipping' => 'session answer'
-                ]);
-                continue; // Skip this session answer if ID already exists
+    
+    // Add session answers for this specific question
+    $answersKey = getQuestionSessionKey($actualQuestionId, 'answers');
+    if (isset($_SESSION['qa_answers'][$answersKey])) {
+        foreach ($_SESSION['qa_answers'][$answersKey] as $sessionAnswer) {
+            // Calculate points from session votes
+            $answerId = $sessionAnswer['answer_id'];
+            $answerKey = getQuestionSessionKey($actualQuestionId, 'answer_votes_' . $answerId);
+            
+            if (isset($_SESSION['qa_votes'][$answerKey])) {
+                $sessionAnswer['points'] = array_sum($_SESSION['qa_votes'][$answerKey]);
+                $sessionAnswer['upvotes'] = max(0, $sessionAnswer['points']);
             }
-            
-            // Apply session votes if they exist
-            $voteKey = 'answer_votes_' . $actualQuestionId . '_' . $answerId;
-            if (isset($_SESSION['qa_votes'][$voteKey])) {
-                $votes = array_sum($_SESSION['qa_votes'][$voteKey]);
-                $sessionAnswer['points'] = $votes;
-                $sessionAnswer['upvotes'] = max(0, $votes);
-            }
-            
-            // Mark as session answer for debugging
-            $sessionAnswer['source'] = 'session';
-            
-            // Add to answers array - unique ID prevents overwrites
-            $allAnswers[$answerId] = $sessionAnswer;
-            
-            debugLog("Session answer added", [
-                'answerId' => $answerId,
-                'text' => substr($sessionAnswer['text'], 0, 30) . '...',
-                'creator' => $sessionAnswer['creator']
-            ]);
+            $answers[] = $sessionAnswer;
         }
     }
-
-    // Convert to indexed array for display, preserving order
-    $answers = array_values($allAnswers);
-
-    debugLog("Final answers for display", [
-        'totalCount' => count($answers),
-        'answerDetails' => array_map(function($answer) {
-            return [
-                'id' => $answer['answer_id'],
-                'source' => $answer['source'] ?? 'unknown',
-                'creator' => $answer['creator'],
-                'text_preview' => substr($answer['text'], 0, 30) . '...'
-            ];
-        }, $answers)
-    ]);
-
-    // Call debugging function
-    debugSessionAnswers($actualQuestionId);
     
     // Get question comments 
     $commentsResult = $api->getQuestionComments($actualQuestionId);
@@ -774,7 +713,11 @@ if (!$question) {
     <section class="bg-gray-800 rounded-lg p-6 shadow-lg">
         <h2 class="text-white text-xl font-bold mb-4">Your Answer</h2>
         
-
+        <div class="mb-4">
+            <div class="flex space-x-2 mb-2">
+                <button class="tab-button active">Write your answers</button>
+                <button class="tab-button">here</button>
+            </div>
             
             <div id="write-tab" class="tab-content active">
                 <form method="POST">

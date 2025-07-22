@@ -66,7 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     if ($remember_me) {
                         setcookie('remember_me', $authResponse['username'], time() + 60 * 60 * 24 * 30, "/");
                     }
-                    header("Location: /pages/dashboard/dashboard.php");
+                    header("Location: /pages/buffet/buffet.php");
                     exit;
                 } else {
                     // Password hash didn't match — count as failed attempt
