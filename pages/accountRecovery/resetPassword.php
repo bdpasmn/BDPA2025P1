@@ -23,13 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($password !== $confirm) {
         $error = "Passwords do not match.";
     } elseif (
-        strlen($password) < 11 ||
-        !preg_match('/[A-Z]/', $password) ||
-        !preg_match('/[a-z]/', $password) ||
-        !preg_match('/[0-9]/', $password) ||
-        !preg_match('/[\W]/', $password)
-    ) {
-        $error = "Password must be at least 11 characters and include uppercase, lowercase, number, and symbol.";
+        strlen($password) < 11) {
+        $error = "Password must be more than 10 character";
     } else {
         $users = $api->listUsers();
         $matchedUser = null;
@@ -83,24 +78,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (pw.length > 17) lengthCategory = "Strong";
       else if (pw.length >= 11) lengthCategory = "Moderate";
 
-      const hasUpper = /[A-Z]/.test(pw);
-      const hasLower = /[a-z]/.test(pw);
-      const hasNumber = /[0-9]/.test(pw);
-      const hasSymbol = /[\W]/.test(pw);
-
-      let missing = [];
-      if (!hasUpper) missing.push("uppercase letter");
-      if (!hasLower) missing.push("lowercase letter");
-      if (!hasNumber) missing.push("number");
-      if (!hasSymbol) missing.push("symbol");
-
-      let message = `Password strength: ${lengthCategory}`;
-      if (missing.length > 0) {
-        message += " - Missing " + missing.join(", ");
-      }
-
+      const message = `Password strength: ${lengthCategory}`;
       strength.textContent = message;
     }
+
   </script>
 </head>
 <body class="bg-gray-900 text-white">
