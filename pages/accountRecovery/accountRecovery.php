@@ -1,6 +1,5 @@
 <?php
 session_start();
-include __DIR__ . '/../../components/navBarLogOut.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -57,13 +56,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (empty($email_err) && empty($captcha_err)) {
         $user = getUserByEmail($api, $email);
 
-        if ($user && isset($user['username'])) {
-            $userIdOrUsername = $user['user_id'] ?? $user['username']; 
+        if ($user) {
+            $idForUrl = $user['user_id'] ?? $user['username'] ?? null;
 
-            $host = $_SERVER['HTTP_HOST'];
-            $recoveryLink = "http://$host/qOverflow/BDPA2025P1/pages/accountRecovery/resetPassword.php?user_id=" . urlencode($userIdOrUsername);
-            $showPopup = true;
-
+<<<<<<< Updated upstream
+            if ($idForUrl === null) {
+                $error = "User record missing identifier.";
+            } else {
+                $host = $_SERVER['HTTP_HOST'];
+                $recoveryLink = "http://$host/pages/accountRecovery/resetPassword.php?user_id=" . urlencode($idForUrl);
+                $showPopup = true;
+=======
             // Store token in API (in `key` field)
             $username = $user['username'];
             //$response = $api->updateUser($username, ['key' => $token]);
@@ -98,10 +101,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $error = "Failed to generate recovery link.";
                 $showPopup = false;
                 echo "<pre>"; print_r($response); echo "</pre>";
+>>>>>>> Stashed changes
             }
         } else {
             $error = "Email not found in our records.";
         }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -112,7 +118,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white">
-
+<?php include __DIR__ . '/../../components/navBarLogOut.php'; ?>
 <?php if ($showPopup): ?>
 <script>
   window.onload = () => {
@@ -129,7 +135,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </h1>
 
     <?php if (!empty($error)): ?>
-      <p class="text-red-400 mb-4"><?= htmlspecialchars($error) ?></p>
+      <p class="text-gray-300 font-bold mb-4"><?= htmlspecialchars($error) ?></p>
     <?php endif; ?>
 
     <form class="space-y-6" method="POST" action="">
@@ -139,7 +145,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3"
                value="<?= htmlspecialchars($email) ?>">
         <?php if (!empty($email_err)): ?>
-          <p class="text-red-400 mt-1"><?= htmlspecialchars($email_err) ?></p>
+          <p class="text-gray-300 font-bold mt-1"><?= htmlspecialchars($email_err) ?></p>
         <?php endif; ?>
       </div>
 
@@ -151,7 +157,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3"
                value="">
         <?php if (!empty($captcha_err)): ?>
-          <p class="text-red-400 mt-1"><?= htmlspecialchars($captcha_err) ?></p>
+          <p class="text-gray-300 font-bold mt-1"><?= htmlspecialchars($captcha_err) ?></p>
         <?php endif; ?>
       </div>
 
@@ -165,9 +171,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </section>
 
 <?php if ($showPopup): ?>
-<div id="popup" class="fixed inset-0 bg-black/30 flex items-center justify-center p-4 md:p-10 hidden z-[90] overflow-auto">
-  <div class="bg-gray-800 w-full max-w-2xl p-6 md:p-8 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
-   <div class="flex justify-between mb-4 items-center">
+<div id="popup" class="fixed inset-0 bg-black/30 flex items-center justify-center p-3 md:p-10 hidden z-[90] overflow-auto">
+  <div class="bg-gray-800 w-full max-w-xl p-6 md:p-8 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between mb-4 items-center">
       <h2 class="text-xl font-semibold text-white">Recovery Link Generated</h2>
       <button onclick="document.getElementById('popup').classList.add('hidden')" class="text-white text-xl font-bold">✕</button>
     </div>
@@ -175,11 +181,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       Use the following link to reset your password:
     </p>
     <div class="text-blue-400 text-m bg-gray-700 p-3 rounded mb-5 break-all">
-      <?= htmlspecialchars($recoveryLink) ?>
+      <a href="<?= htmlspecialchars($recoveryLink) ?>" class="underline hover:text-blue-300">
+        <?= htmlspecialchars($recoveryLink) ?>
+      </a>
     </div>
   </div>
 </div>
 <?php endif; ?>
-
 </body>
 </html>

@@ -102,70 +102,97 @@ try {
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>qOverflow — Search Results</title>
       <script src="https://cdn.tailwindcss.com"></script>
-      <style>
-        body {
-          background: radial-gradient(ellipse at top, #0f172a, #0b1120);
-          font-family: 'Inter', sans-serif;
-          color: white;
-        }
-        h1 {
-          font-size: 2.5rem;
-          font-weight: bold;
-          margin-bottom: 1rem;
-        }
-        .custom-shadow {
-          box-shadow: 0 0 16px rgba(59, 130, 246, 0.5);
-          transition: box-shadow 0.3s ease, transform 0.2s ease;
-        }
-        .custom-shadow:hover {
-          box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
-          transform: translateY(-2px);
-        }
-      </style>
     </head>
-    <body class="p-8">
-      <h1>Search Results</h1>
+    <body class="bg-gray-900 text-white font-sans">
+<!--
+    <div class="mb-6">
+    <?php 
+    /*
+      if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
+        include 'navBarLogOut.php';
+      } else {
+        include 'navBarLogIn.php';
+      }
+        */
+    ?>
+  </div>
+    -->
+      <h1 class="text-3xl font-bold mb-2 text-center">Search Results</h1>
 
       <?php if (!empty($searchQuery)): ?>
-        <p class="mb-4 text-lg">Query: <span class="text-blue-400"><?= htmlspecialchars($searchQuery) ?></span></p>
+        <p class="mb-4 text-lg text-center">Your Query: <span class="text-blue-400"><?= htmlspecialchars($searchQuery) ?></span></p>
       <?php endif; ?>
 
       <?php if (!empty($datetime)): ?>
         <p class="mb-4 text-lg">Date: <span class="text-blue-400"><?= htmlspecialchars($datetime) ?></span></p>
       <?php endif; ?>
 
+      
       <?php if ($titleMatches): ?>
-        <h2 class="text-xl font-semibold mt-6 mb-2">Title Matches:</h2>
-        <?php foreach ($titleMatches as $title): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="../pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>"><?= htmlspecialchars($title) ?></a>
-        <?php endforeach; ?>
+        <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
+        <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center ">Title Matches:</h2>
+      <ul class="space-y-2">
+      <?php foreach ($titleMatches as $title): ?>
+        <li>
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition">
+            <?= htmlspecialchars($title) ?>
+          </a>
+        </li>
+      <?php endforeach; ?>
+       </div>
       <?php endif; ?>
-
+     
       <?php if ($textMatches): ?>
-        <h2 class="text-xl font-semibold mt-6 mb-2">Body Text Matches:</h2>
+         <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
+        <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center ">Body Text Matches:</h2>
+        <ul class="space-y-2">
         <?php foreach ($textMatches as $match): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>"><?= htmlspecialchars($match['snippet']) ?></a>
+        <li>
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition">
+          <?= htmlspecialchars($match['snippet']) ?>
+        </a>
+       </li>
         <?php endforeach; ?>
+        </div>
       <?php endif; ?>
+      
 
+      
       <?php if ($creatorMatches): ?>
-        <h2 class="text-xl font-semibold mt-6 mb-2">Titles of Creator Matches:</h2>
+        <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
+        <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center " > 👤 Titles of Creator Matches:</h2>
+        <ul class="space-y-2">
         <?php foreach ($creatorMatches as $match): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>">
+          <li>
+          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition">
             <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
           </a>
+          </li>
         <?php endforeach; ?>
+        </div>
       <?php endif; ?>
 
+
+      
       <?php if ($dateMatches): ?>
-        <h2 class="text-xl font-semibold mt-6 mb-2">Date Matches:</h2>
+        <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
+        <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center ">Date Matches:</h2>
+        <ul class="space-y-2">
         <?php foreach ($dateMatches as $title): ?>
-          <a class="block text-blue-400 hover:underline text-lg" href="../pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>"><?= htmlspecialchars($title) ?></a>
+          <li>
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition">
+            <?= htmlspecialchars($title) ?>
+          </a>
+        </li>
         <?php endforeach; ?>
+        </div>
       <?php endif; ?>
+
 
       <?php if (!$titleMatches && !$textMatches && !$creatorMatches && !$dateMatches): ?>
+        <div class="bg-gray-800 rounded-lg p-4 w-[500px] h-[100px] mx-auto text-center">
         <p class="mt-6 text-red-400">No matching results found.</p>
+        </div>
       <?php endif; ?>
 
     </body>
