@@ -6,8 +6,19 @@ ini_set('display_errors', 1);
 require_once '../../api/key.php';
 require_once '../../api/api.php';
 
+require_once '../../api/key.php';
+require_once '../../api/api.php';
+
 $api = new qOverflowAPI(API_KEY);
 
+$showPopup = false;
+$recoveryLink = '';
+$error = '';
+$email = '';
+$email_err = '';
+$captcha_err = '';
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $showPopup = false;
 $recoveryLink = '';
 $error = '';
@@ -40,7 +51,22 @@ function getUserByEmail($api, $email) {
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST['email'] ?? '');
     $captcha = trim($_POST['captcha'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $captcha = trim($_POST['captcha'] ?? '');
 
+    if (empty($email)) {
+        $email_err = "Please enter your email.";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $email_err = "Please enter a valid email address.";
+    }
+
+    if (empty($captcha)) {
+        $captcha_err = "Please answer the captcha.";
+    } elseif (intval($captcha) !== ($_SESSION['captcha_answer'] ?? -1)) {
+        $captcha_err = "Incorrect captcha answer.";
+    }
+
+    if (empty($email_err) && empty($captcha_err)) {
     if (empty($email)) {
         $email_err = "Please enter your email.";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -56,6 +82,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (empty($email_err) && empty($captcha_err)) {
         $user = getUserByEmail($api, $email);
 
+        if ($user) {
+            $idForUrl = $user['user_id'] ?? $user['username'] ?? null;
+
+            if ($idForUrl === null) {
+                $error = "User record missing identifier.";
+            } else {
+                $host = $_SERVER['HTTP_HOST'];
+                $recoveryLink = "http://$host/pages/accountRecovery/resetPassword.php?user_id=" . urlencode($idForUrl);
+                $showPopup = true;
         if ($user) {
             $idForUrl = $user['user_id'] ?? $user['username'] ?? null;
 
@@ -82,6 +117,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </head>
 <body class="bg-gray-900 text-white">
 <?php include __DIR__ . '/../../components/navBarLogOut.php'; ?>
+<body class="bg-gray-900 text-white">
+<?php include __DIR__ . '/../../components/navBarLogOut.php'; ?>
 <?php if ($showPopup): ?>
 <script>
   window.onload = () => {
@@ -95,10 +132,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <div class="w-full bg-gray-800 rounded-2xl shadow-lg border border-gray-700 sm:max-w-lg p-8 sm:p-10">
   <h1 class="mb-2 text-2xl font-bold leading-tight tracking-tight text-white md:text-3xl">
       Forgot Your Password?
+<div class="w-full bg-gray-800 rounded-2xl shadow-lg border border-gray-700 sm:max-w-lg p-8 sm:p-10">
+  <h1 class="mb-2 text-2xl font-bold leading-tight tracking-tight text-white md:text-3xl">
+      Forgot Your Password?
     </h1>
 
     <?php if (!empty($error)): ?>
-      <p class="text-red-400 mb-4"><?= htmlspecialchars($error) ?></p>
+      <p class="text-gray-300 font-bold mb-4"><?= htmlspecialchars($error) ?></p>
     <?php endif; ?>
 
     <form class="space-y-6" method="POST" action="">
@@ -140,9 +180,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       <h2 class="text-xl font-semibold text-white">Recovery Link Generated</h2>
       <button onclick="document.getElementById('popup').classList.add('hidden')" class="text-white text-xl font-bold">✕</button>
     </div>
+<div id="popup" class="fixed inset-0 bg-black/30 flex items-center justify-center p-3 md:p-10 hidden z-[90] overflow-auto">
+  <div class="bg-gray-800 w-full max-w-xl p-6 md:p-8 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between mb-4 items-center">
+      <h2 class="text-xl font-semibold text-white">Recovery Link Generated</h2>
+      <button onclick="document.getElementById('popup').classList.add('hidden')" class="text-white text-xl font-bold">✕</button>
+    </div>
     <p class="text-base text-gray-300 mb-5">
       Use the following link to reset your password:
     </p>
+    <div class="text-blue-400 text-m bg-gray-700 p-3 rounded mb-5 break-all">
+      <a href="<?= htmlspecialchars($recoveryLink) ?>" class="underline hover:text-blue-300">
+        <?= htmlspecialchars($recoveryLink) ?>
+      </a>
     <div class="text-blue-400 text-m bg-gray-700 p-3 rounded mb-5 break-all">
       <a href="<?= htmlspecialchars($recoveryLink) ?>" class="underline hover:text-blue-300">
         <?= htmlspecialchars($recoveryLink) ?>
