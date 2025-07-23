@@ -157,11 +157,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
                 <?= !empty($usernameerror) ? 'border-red-500' : 'border-gray-600' ?>"
         />
-        <p class="text-sm mt-1 <?= !empty($usernameerror) ? 'text-red-500' : 'text-gray-500' ?>">
+        <p class="text-sm mt-1 <?= !empty($usernameerror) ? 'text-red-500' : 'text-gray-400' ?>">
           Username must include both letters and numbers and may include dashes and underscores.
         </p>
         <?php if (!empty($usernameerror)): ?>
-          <p class="text-red-500 mt-1 font-bold"><?= htmlspecialchars($usernameerror) ?></p>
+          <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($usernameerror) ?></p>
         <?php endif; ?>
       </div>
 
