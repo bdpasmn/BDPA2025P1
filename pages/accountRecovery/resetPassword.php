@@ -7,7 +7,6 @@ $api = new qOverflowAPI(API_KEY);
 
 $user_id = $_GET['user_id'] ?? '';
 $error = '';
-$success = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_id = $_POST['user_id'] ?? '';
@@ -18,6 +17,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "All fields are required.";
     } elseif ($password !== $confirm) {
         $error = "Passwords do not match.";
+    } elseif (
+        strlen($password) < 11 ||
+        !preg_match('/[A-Z]/', $password) ||
+        !preg_match('/[a-z]/', $password) ||
+        !preg_match('/[0-9]/', $password) ||
+        !preg_match('/[\W]/', $password)
+    ) {
+        $error = "Password must be at least 11 characters and include uppercase, lowercase, number, and symbol.";
     } else {
         $users = $api->listUsers();
         $matchedUser = null;
@@ -32,10 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($matchedUser && isset($matchedUser['username'])) {
             $username = $matchedUser['username'];
 
-            // Generate a new random salt (32 hex chars = 16 bytes)
             $salt = bin2hex(random_bytes(16));
-
-            // Use PBKDF2 with sha256, 100000 iterations, output length 128 hex chars (64 bytes)
             $key = hash_pbkdf2("sha256", $password, $salt, 100000, 128, false);
 
             $res = $api->updateUser($username, [
@@ -62,8 +66,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8" />
   <title>Reset Password</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    function checkStrength(pw) {
+      const strength = document.getElementById("strength");
+      if (!pw) {
+        strength.textContent = "";
+        return;
+      }
+
+      let lengthCategory = "Weak (11 characters minimum)";
+      if (pw.length > 17) lengthCategory = "Strong";
+      else if (pw.length >= 11) lengthCategory = "Moderate";
+
+      const hasUpper = /[A-Z]/.test(pw);
+      const hasLower = /[a-z]/.test(pw);
+      const hasNumber = /[0-9]/.test(pw);
+      const hasSymbol = /[\W]/.test(pw);
+
+      let missing = [];
+      if (!hasUpper) missing.push("uppercase letter");
+      if (!hasLower) missing.push("lowercase letter");
+      if (!hasNumber) missing.push("number");
+      if (!hasSymbol) missing.push("symbol");
+
+      let message = `Password strength: ${lengthCategory}`;
+      if (missing.length > 0) {
+        message += " - Missing " + missing.join(", ");
+      }
+
+      strength.textContent = message;
+    }
+  </script>
 </head>
 <body class="bg-gray-900 text-white">
+<?php include __DIR__ . '/../../components/navBarLogOut.php'; ?>
 
 <section class="min-h-screen flex flex-col items-center justify-center px-6 py-10 mx-auto">
   <div class="w-full bg-gray-800 rounded-2xl shadow-lg border border-gray-700 sm:max-w-lg p-8 sm:p-10">
@@ -72,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </h1>
 
     <?php if ($error): ?>
-      <p class="text-red-400 mb-6 text-center"><?= htmlspecialchars($error) ?></p>
+      <p class="text-white mb-6 text-center"><?= htmlspecialchars($error) ?></p>
     <?php endif; ?>
 
     <form method="POST" class="space-y-6" novalidate>
@@ -82,14 +118,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label for="password" class="block mb-2 text-md font-medium text-white">New Password</label>
         <input type="password" name="password" id="password" required
                class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3"
-               placeholder="Enter a new password" autocomplete="new-password" minlength="6">
+               placeholder="Enter a new password" autocomplete="new-password" minlength="11"
+               oninput="checkStrength(this.value)">
+        <div id="strength" class="text-white text-sm mt-1"></div>
       </div>
 
       <div>
         <label for="confirm" class="block mb-2 text-md font-medium text-white">Confirm Password</label>
         <input type="password" name="confirm" id="confirm" required
                class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3"
-               placeholder="Confirm your password" autocomplete="new-password" minlength="6">
+               placeholder="Confirm your password" autocomplete="new-password" minlength="11">
       </div>
 
       <button type="submit"

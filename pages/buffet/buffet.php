@@ -108,7 +108,7 @@ function format_relative_time($timestamp_ms) {
   </style>
 </head>
 
-<body class="min-h-screen font-sans flex flex-col pt-3 pb-3">
+<body class="min-h-screen font-sans flex flex-col">
   
   <div class="mb-6">
     <?php 
@@ -138,7 +138,7 @@ function format_relative_time($timestamp_ms) {
     </div>
   </div>
 
-  <div class="flex-1 flex flex-col md:flex-row max-h-[81vh] w-full h-full px-5 md:px-5 gap-5 md:gap-5">
+  <div class="flex-1 flex flex-col md:flex-row max-h-[84vh] w-full h-full px-5 md:px-5 gap-5 md:gap-5">
     <aside class="hidden md:flex w-80 bg-gray-800 rounded-2xl p-6 flex-col max-h-[calc(100vh-3rem)] sticky top-6 border border-gray-700">
       <h1 class="text-3xl font-bold mb-6 leading-tight text-white">
         <?php $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest'; ?>
