@@ -85,6 +85,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if ($user) {
             $idForUrl = $user['user_id'] ?? $user['username'] ?? null;
 
+<<<<<<< Updated upstream
             if ($idForUrl === null) {
                 $error = "User record missing identifier.";
             } else {
@@ -93,6 +94,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $showPopup = true;
         if ($user) {
             $idForUrl = $user['user_id'] ?? $user['username'] ?? null;
+=======
+            // Store token in API (in `key` field)
+            $username = $user['username'];
+            //$response = $api->updateUser($username, ['key' => $token]);
+            $response = $api->updateUser($username, ['reset_token' => $token]);
+            if (
+        strlen($value) < 11 ||
+        !preg_match("/[A-Z]/", $value) || // Check for uppercase letter
+        !preg_match("/[a-z]/", $value) ||// Check for lowercase letter
+        !preg_match("/[0-9]/", $value) ||// Check for number
+        !preg_match("/[\W]/", $value)// Check for special character
+    ) {
+        echo "Password must be at least 11 characters and include uppercase, lowercase, number, and special character.";
+        exit();
+    }
+      $salt = bin2hex(random_bytes(16));// Generate a secure random salt
+      $passwordHash = hash_pbkdf2("sha256", $value,  $salt,100000, 128, false);// Hash the password with the salt
+      //$UpdatesInSupabase = json_encode(['password' => $passwordHash]);
+
+      $UpdatesInApi = $api->updateUser($username, [ // Prepare the data for API update
+            'key' => $passwordHash,// Hash the password
+            'salt' => $salt// Include the salt
+        ]);
+
+      $UpdatesInSupabase = $pdo->prepare("UPDATE users SET password = :password WHERE username = :username"); // Prepare the SQL statement for Supabase
+      $UpdatesInSupabase->execute(['password' => $passwordHash, 'username' => $username]);// Execute the SQL statement
+      echo "Successfully updated password."; 
+        exit();
+    }
+  }
+>>>>>>> Stashed changes
 
             if ($idForUrl === null) {
                 $error = "User record missing identifier.";
