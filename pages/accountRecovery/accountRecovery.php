@@ -1,5 +1,6 @@
 <?php
 session_start();
+include __DIR__ . '/../../components/navBarLogOut.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -63,11 +64,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $recoveryLink = "http://$host/qOverflow/BDPA2025P1/pages/accountRecovery/resetPassword.php?user_id=" . urlencode($userIdOrUsername);
             $showPopup = true;
 
+            // Store token in API (in `key` field)
+            $username = $user['username'];
+            //$response = $api->updateUser($username, ['key' => $token]);
+            $response = $api->updateUser($username, ['reset_token' => $token]);
+            if (
+        strlen($value) < 11 ||
+        !preg_match("/[A-Z]/", $value) || // Check for uppercase letter
+        !preg_match("/[a-z]/", $value) ||// Check for lowercase letter
+        !preg_match("/[0-9]/", $value) ||// Check for number
+        !preg_match("/[\W]/", $value)// Check for special character
+    ) {
+        echo "Password must be at least 11 characters and include uppercase, lowercase, number, and special character.";
+        exit();
+    }
+      $salt = bin2hex(random_bytes(16));// Generate a secure random salt
+      $passwordHash = hash_pbkdf2("sha256", $value,  $salt,100000, 128, false);// Hash the password with the salt
+      //$UpdatesInSupabase = json_encode(['password' => $passwordHash]);
+
+      $UpdatesInApi = $api->updateUser($username, [ // Prepare the data for API update
+            'key' => $passwordHash,// Hash the password
+            'salt' => $salt// Include the salt
+        ]);
+
+      $UpdatesInSupabase = $pdo->prepare("UPDATE users SET password = :password WHERE username = :username"); // Prepare the SQL statement for Supabase
+      $UpdatesInSupabase->execute(['password' => $passwordHash, 'username' => $username]);// Execute the SQL statement
+      echo "Successfully updated password."; 
+        exit();
+    }
+  }
+
+            if (isset($response['error'])) {
+                $error = "Failed to generate recovery link.";
+                $showPopup = false;
+                echo "<pre>"; print_r($response); echo "</pre>";
+            }
         } else {
             $error = "Email not found in our records.";
         }
-    }
-}
 ?>
 
 <!DOCTYPE html>
