@@ -61,19 +61,16 @@ $gravatarUrl = 'https://www.gravatar.com/avatar/' . hash('sha256', $email) . '?d
           <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo" class="h-9 w-auto">
           <span class="text-2xl font-bold text-white">qOverflow</span>
         </div>
-        <div class="flex flex-wrap gap-2 mt-2 sm:mt-0">
-          <a href="../dashboard/dashboard.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/dashboard/dashboard.php') !== false ? ' active' : ''; ?>">
+        <div class="flex flex-wrap gap-2 mt-2 sm:mt-0">       
+        <a href="../buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
+            Buffet
+          </a> 
+        <a href="../dashboard/dashboard.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/dashboard/dashboard.php') !== false ? ' active' : ''; ?>">
             Dashboard
           </a>
           <a href="../mail/mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/mail/mail.php') !== false ? ' active' : ''; ?>">
             Mail
-          </a>
-          <a href="../buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
-            Buffet
-          </a>
-          <a href="../q&a/q&a.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/q&a/q&a.php') !== false ? ' active' : ''; ?>">
-            Q&A
-          </a>
+          </a>    
           <a href="/pages/auth/logout.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/auth/logout.php') !== false ? ' active' : ''; ?>">
             LogOut
           </a>
