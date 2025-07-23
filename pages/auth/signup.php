@@ -67,7 +67,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         !preg_match('/[a-zA-Z]/', $username) ||
         !preg_match('/[0-9]/', $username)
     ) {
-        $usernameerror = "Username must include both letters and numbers and may include dashes and underscores.";
+        $usernameerror = " ";
         $haserror = true;
     }
 
@@ -79,7 +79,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         !preg_match("/[0-9]/", $rawPassword) ||
         !preg_match("/[\W]/", $rawPassword)
     ) {
-        $passworderror = "Password must have: > 10 characters, uppercase letters, lowercase letters, numbers, and special characters.";
+        $passworderror = " ";
         $haserror = true;
     }
 
@@ -158,7 +158,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <?= !empty($usernameerror) ? 'border-red-500' : 'border-gray-600' ?>"
         />
         <p class="text-sm mt-1 <?= !empty($usernameerror) ? 'text-red-500' : 'text-gray-400' ?>">
-          Must include letters, numbers, dashes, and underscores.
+          Username must include both letters and numbers and may include dashes and underscores.
         </p>
         <?php if (!empty($usernameerror)): ?>
           <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($usernameerror) ?></p>
@@ -188,7 +188,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <?= !empty($passworderror) ? 'border-red-500' : 'border-gray-600' ?>"
         />
         <p class="text-sm mt-1 <?= !empty($passworderror) ? 'text-red-500' : 'text-gray-400' ?>">
-          Must be >10 chars, with upper/lowercase, number & symbol.
+          Password must have: > 10 characters, uppercase letters, lowercase letters, numbers, and special characters.
         </p>
         <?php if (!empty($passworderror)): ?>
           <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($passworderror) ?></p>
@@ -231,4 +231,3 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   </section>
 </body>
 </html>
-
