@@ -98,7 +98,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </h1>
 
     <?php if (!empty($error)): ?>
-      <p class="text-red-400 mb-4"><?= htmlspecialchars($error) ?></p>
+      <p class="text-gray-300 font-bold mb-4"><?= htmlspecialchars($error) ?></p>
     <?php endif; ?>
 
     <form class="space-y-6" method="POST" action="">
@@ -108,7 +108,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3"
                value="<?= htmlspecialchars($email) ?>">
         <?php if (!empty($email_err)): ?>
-          <p class="text-red-400 mt-1"><?= htmlspecialchars($email_err) ?></p>
+          <p class="text-gray-300 font-bold mt-1"><?= htmlspecialchars($email_err) ?></p>
         <?php endif; ?>
       </div>
 
@@ -120,7 +120,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3"
                value="">
         <?php if (!empty($captcha_err)): ?>
-          <p class="text-red-400 mt-1"><?= htmlspecialchars($captcha_err) ?></p>
+          <p class="text-gray-300 font-bold mt-1"><?= htmlspecialchars($captcha_err) ?></p>
         <?php endif; ?>
       </div>
 

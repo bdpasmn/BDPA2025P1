@@ -101,14 +101,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="bg-gray-900 text-white">
 <?php include __DIR__ . '/../../components/navBarLogOut.php'; ?>
 
-<section class="min-h-screen flex flex-col items-center justify-center px-6 py-10 mx-auto">
+<section class="min-h-screen flex flex-col items-center justify-center x-auto">
   <div class="w-full bg-gray-800 rounded-2xl shadow-lg border border-gray-700 sm:max-w-lg p-8 sm:p-10">
-    <h1 class="mb-6 text-3xl font-bold leading-tight tracking-tight text-white text-center">
+    <h1 class="mb-2 text-3xl font-bold leading-tight tracking-tight text-white">
       Reset Your Password
     </h1>
 
     <?php if ($error): ?>
-      <p class="text-white mb-6 text-center"><?= htmlspecialchars($error) ?></p>
+        <p class="text-gray-300 font-bold"><?= htmlspecialchars($error) ?></p>
     <?php endif; ?>
 
     <form method="POST" class="space-y-6" novalidate>
