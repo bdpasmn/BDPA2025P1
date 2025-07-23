@@ -14,12 +14,12 @@
   $pdo = new PDO($dsn, $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  
-  if (!isset($_SESSION['username'])) {
+   
+  if (!isset($_SESSION['username'])) { //if session username is not set, redirect to index.php
     header('Location: /index.php');
     exit();
   } 
-  $username = $_SESSION['username'];
+  $username = $_SESSION['username']; //set username to the session username
 
 
 
