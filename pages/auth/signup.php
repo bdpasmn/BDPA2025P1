@@ -183,7 +183,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <?= !empty($passworderror) ? 'border-red-500' : 'border-gray-600' ?>"
         />
         <p class="text-sm mt-1 <?= !empty($passworderror) ? 'text-red-500' : 'text-gray-400' ?>">
-          Password must have at least 11 characters
+          Password must be more than 10 characters
         </p>
         <?php if (!empty($passworderror)): ?>
           <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($passworderror) ?></p>
