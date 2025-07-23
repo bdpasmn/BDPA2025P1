@@ -8,6 +8,11 @@ $api = new qOverflowAPI(API_KEY);
 $user_id = $_GET['user_id'] ?? '';
 $error = '';
 
+if (!$user_id) {
+    header('Location: http://127.0.0.1:3000/');
+    exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_id = $_POST['user_id'] ?? '';
     $password = $_POST['password'] ?? '';
