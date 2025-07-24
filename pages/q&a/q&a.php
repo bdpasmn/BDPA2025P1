@@ -1,6 +1,7 @@
 <?php
 
 session_start();
+require_once '../../api/error.php';
 require_once '../../api/key.php';
 require_once '../../api/api.php';
   require_once '../../db.php';
