@@ -52,6 +52,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <style>
     body { font-family: 'Inter', sans-serif; background: radial-gradient(ellipse at top, #0f172a, #0b1120); }
     .message-body ul {
