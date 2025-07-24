@@ -178,7 +178,7 @@ function format_relative_time($timestamp_ms) {
       <div class="space-y-6">
         <?php foreach ($questions as $q):
           $rawMarkdown = $q['text'] ?? '';
-          $creator = htmlspecialchars($q['creator'] ?? 'unknown');
+          $creator = htmlspecialchars($q['creator']);
           $createdAt = $q['createdAt'] ?? null;
           $relative = $createdAt ? format_relative_time($createdAt) : 'unknown';
           $exact = $createdAt ? (new DateTime('@' . ($createdAt / 1000)))->setTimezone(new DateTimeZone('America/Chicago'))->format('m/d/Y h:i:s A') : '';
@@ -194,7 +194,20 @@ function format_relative_time($timestamp_ms) {
             <span class="js-views"><?= intval($q['views'] ?? 0) ?> view<?= (intval($q['views'] ?? 0) == 1 ? '' : 's') ?></span>
           </div>
           <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
-            <span><span class="w-2 h-2 bg-white rounded-full inline-block"></span> <?= $creator ?></span>
+            <?php
+              $userData = $api->getUser($creator);
+
+              if (isset($userData['user']['email']) && !empty($userData['user']['email'])) {
+                  $email = trim(strtolower($userData['user']['email']));
+              }
+
+              $gravatarHash = md5($email);
+              $gravatarUrl = "https://www.gravatar.com/avatar/$gravatarHash?d=identicon";
+            ?>
+            <span class="flex items-center gap-2">
+              <img src="<?= htmlspecialchars($gravatarUrl) ?>" alt="Avatar" class="w-6 h-6 rounded-full border border-gray-600">
+              <?= htmlspecialchars($creator) ?>
+            </span>
             <span><?= $relative ?> <span class="text-gray-500">•</span> <?= $exact ?></span>
           </div>
         </div>
