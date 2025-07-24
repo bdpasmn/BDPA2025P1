@@ -51,7 +51,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
   <title>Mail • qOverflow</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     body { font-family: 'Inter', sans-serif; background: radial-gradient(ellipse at top, #0f172a, #0b1120); }
   </style>
@@ -122,11 +122,9 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
 </div>
 
 <script>
-  const converter = new showdown.Converter({
-    simpleLineBreaks: true,
-    openLinksInNewWindow: true,
-    emoji: true
-  });
+  function convertMarkdown(raw) {
+    return marked.parse(raw || '');
+  }
 
   // Inbox pagination and search
   const inboxMessages = <?php echo json_encode($inboxMessages); ?>;
@@ -180,7 +178,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
           if (/\n\s*\n/.test(msg.text || '')) {
             fullDiv.innerHTML = `<pre class='whitespace-pre-wrap font-mono text-sm text-gray-200'>${escapeHtml(msg.text || '')}</pre>`;
           } else {
-            fullDiv.innerHTML = `<span class='text-sm message-body text-gray-200 whitespace-pre-line'>${converter.makeHtml(msg.text || '')}</span>`;
+            fullDiv.innerHTML = `<span class='text-sm message-body text-gray-200 whitespace-pre-line'>${convertMarkdown(msg.text || '')}</span>`;
           }
           fullDiv.classList.remove('hidden');
           toggleBtn.textContent = 'Hide Full Message';
@@ -194,8 +192,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
     });
     // Render markdown for message bodies
     inboxList.querySelectorAll('.message-body').forEach(el => {
-      const raw = el.getAttribute('data-md') || '';
-      el.innerHTML = converter.makeHtml(raw);
+      // No need to re-render, already rendered with convertMarkdown
     });
     // Pagination controls
     if (paginationControls) {
@@ -248,7 +245,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
     if (/\n\s*\n/.test(raw)) {
       messageHtml = `<pre class='whitespace-pre-wrap font-mono text-sm text-gray-200'>${escapeHtml(raw)}</pre>`;
     } else {
-      messageHtml = `<span class='text-sm message-body text-gray-200 whitespace-pre-line'>${converter.makeHtml(raw)}</span>`;
+      messageHtml = `<span class='text-sm message-body text-gray-200 whitespace-pre-line'>${convertMarkdown(raw)}</span>`;
     }
     previewCard.innerHTML = `
       <div class='bg-gray-700 rounded-lg p-3 border border-gray-600 shadow flex flex-col gap-1 relative min-h-[90px]'>
