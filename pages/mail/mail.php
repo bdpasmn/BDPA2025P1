@@ -249,9 +249,11 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
     }
     previewCard.innerHTML = `
       <div class='bg-gray-700 rounded-lg p-3 border border-gray-600 shadow flex flex-col gap-1 relative min-h-[90px]'>
-        <div class='font-semibold text-white text-base mb-1 truncate'>${escapeHtml(subject)}</div>
+        <div class='font-semibold text-white text-base mb-1 truncate'>${convertMarkdown(subject)}</div>
         <div class='flex items-baseline gap-2 mb-6'>
-          <span class='font-bold text-blue-300 text-sm whitespace-nowrap'>${escapeHtml(username)}:</span>
+          <span class='font-bold text-blue-300 text-sm whitespace-nowrap' style='display:inline;'>
+            <span style='display:inline;'>${convertMarkdown(username).replace(/<\/?(p|div)[^>]*>/g, '')}</span><span class='text-blue-300' style='margin-left:-2px;'>:</span>
+          </span>
           ${messageHtml}
         </div>
         <div class='absolute bottom-2 right-3 text-xs text-gray-400'>Preview</div>
@@ -260,6 +262,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
   }
   if (textarea && previewCard) {
     textarea.addEventListener('input', renderPreviewCard);
+    textarea.addEventListener('paste', function() { setTimeout(renderPreviewCard, 0); });
     if (composeUsername) composeUsername.addEventListener('input', renderPreviewCard);
     if (composeSubject) composeSubject.addEventListener('input', renderPreviewCard);
     renderPreviewCard();
