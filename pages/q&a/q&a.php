@@ -40,29 +40,6 @@ function getUserEmail($pdo, $username) {
     }
 }
 
-// Create Comments table if it doesn't exist
-function createCommentsTable($pdo) {
-    try {
-        $sql = "CREATE TABLE IF NOT EXISTS Comments (
-            id SERIAL PRIMARY KEY,
-            question_id VARCHAR(255) NOT NULL,
-            answer_id VARCHAR(255) NULL,
-            Comment TEXT NOT NULL,
-            username VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            points INTEGER DEFAULT 0,
-            upvotes INTEGER DEFAULT 0,
-            downvotes INTEGER DEFAULT 0
-        )";
-        $pdo->exec($sql);
-        debugLog("Comments table created/verified");
-    } catch (PDOException $e) {
-        debugLog("Error creating Comments table", ['error' => $e->getMessage()]);
-    }
-}
-
-// Initialize Comments table
-createCommentsTable($pdo);
 
 // User authentication check
 $CURRENT_USER = $_SESSION['username'] ?? null;
