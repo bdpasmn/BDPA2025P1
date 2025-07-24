@@ -51,9 +51,20 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
   <title>Mail • qOverflow</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <style>
     body { font-family: 'Inter', sans-serif; background: radial-gradient(ellipse at top, #0f172a, #0b1120); }
+    .message-body ul {
+      list-style-type: disc;
+      margin-left: 1.5em;
+      padding-left: 0;
+    }
+    .message-body ol {
+      list-style-type: decimal;
+      margin-left: 1.5em;
+      padding-left: 0;
+    }
   </style>
 </head>
 <body class="text-white min-h-screen flex flex-col">
@@ -122,11 +133,15 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
 </div>
 
 <script>
-  const converter = new showdown.Converter({
-    simpleLineBreaks: true,
-    openLinksInNewWindow: true,
-    emoji: true
-  });
+  marked.setOptions({ breaks: true });
+  function convertMarkdown(raw) {
+    return marked.parse(raw || '');
+  }
+  // Preprocess to preserve multiple blank lines
+  function preserveBlankLines(text) {
+    // Replace 2+ consecutive newlines with \n&nbsp;\n to force a visible blank line
+    return text.replace(/\n{2,}/g, '\n&nbsp;\n');
+  }
 
   // Inbox pagination and search
   const inboxMessages = <?php echo json_encode($inboxMessages); ?>;
@@ -180,7 +195,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
           if (/\n\s*\n/.test(msg.text || '')) {
             fullDiv.innerHTML = `<pre class='whitespace-pre-wrap font-mono text-sm text-gray-200'>${escapeHtml(msg.text || '')}</pre>`;
           } else {
-            fullDiv.innerHTML = `<span class='text-sm message-body text-gray-200 whitespace-pre-line'>${converter.makeHtml(msg.text || '')}</span>`;
+            fullDiv.innerHTML = `<span class='text-sm message-body text-gray-200 whitespace-pre-line'>${convertMarkdown(msg.text || '')}</span>`;
           }
           fullDiv.classList.remove('hidden');
           toggleBtn.textContent = 'Hide Full Message';
@@ -194,8 +209,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
     });
     // Render markdown for message bodies
     inboxList.querySelectorAll('.message-body').forEach(el => {
-      const raw = el.getAttribute('data-md') || '';
-      el.innerHTML = converter.makeHtml(raw);
+      // No need to re-render, already rendered with convertMarkdown
     });
     // Pagination controls
     if (paginationControls) {
@@ -240,22 +254,19 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
   const composeSubject = document.getElementById('compose-subject');
   function renderPreviewCard() {
     if (!previewCard) return;
-    const username = composeUsername && composeUsername.value.trim() ? composeUsername.value.trim() : 'You';
+    const username = composeUsername && composeUsername.value.trim() ? composeUsername.value.trim() : '(username)';
     const subject = composeSubject && composeSubject.value.trim() ? composeSubject.value.trim() : '(No Subject)';
     const raw = textarea ? textarea.value : '';
-    // If message has multiple blank lines, use <pre> for whitespace preservation
-    let messageHtml;
-    if (/\n\s*\n/.test(raw)) {
-      messageHtml = `<pre class='whitespace-pre-wrap font-mono text-sm text-gray-200'>${escapeHtml(raw)}</pre>`;
-    } else {
-      messageHtml = `<span class='text-sm message-body text-gray-200 whitespace-pre-line'>${converter.makeHtml(raw)}</span>`;
-    }
+    // Preprocess for blank lines
+    const processedRaw = preserveBlankLines(raw);
     previewCard.innerHTML = `
       <div class='bg-gray-700 rounded-lg p-3 border border-gray-600 shadow flex flex-col gap-1 relative min-h-[90px]'>
-        <div class='font-semibold text-white text-base mb-1 truncate'>${escapeHtml(subject)}</div>
-        <div class='flex items-baseline gap-2 mb-6'>
-          <span class='font-bold text-blue-300 text-sm whitespace-nowrap'>${escapeHtml(username)}:</span>
-          ${messageHtml}
+        <div class='font-semibold text-white text-base mb-1 truncate'>${convertMarkdown(subject)}</div>
+        <div class='text-sm message-body text-gray-200 mb-6' style='display:flex; align-items:flex-start;'>
+          <span class='font-bold text-blue-300 text-sm' style='display:inline-block; white-space:nowrap;'>${convertMarkdown(username).replace(/<\/?(p|div)[^>]*>/g, '')}<span class='text-blue-300'>:</span></span>
+          <div style='flex:1; display:block; padding-left:4px;'>
+            ${convertMarkdown(processedRaw)}
+          </div>
         </div>
         <div class='absolute bottom-2 right-3 text-xs text-gray-400'>Preview</div>
       </div>
@@ -263,6 +274,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
   }
   if (textarea && previewCard) {
     textarea.addEventListener('input', renderPreviewCard);
+    textarea.addEventListener('paste', function() { setTimeout(renderPreviewCard, 0); });
     if (composeUsername) composeUsername.addEventListener('input', renderPreviewCard);
     if (composeSubject) composeSubject.addEventListener('input', renderPreviewCard);
     renderPreviewCard();

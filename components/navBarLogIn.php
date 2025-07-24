@@ -88,20 +88,18 @@ $gravatarUrl = 'https://www.gravatar.com/avatar/' . hash('sha256', $email) . '?d
   </div>
 
   <!-- Search form -->
-  <form class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto" method="get" action="/BDPA2025P1/components/navBarSearch.php">
+  <form class="w-full sm:w-auto" method="get" action="/BDPA2025P1/components/navBarSearch.php">
+  <div class="relative">
+    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-sm">🔍</span>
+
     <input
       type="text"
       name="query"
-      placeholder="Search titles, creators, dates, or body text"
-      class="bg-gray-700 border border-gray-600 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-48"
+      placeholder="Search titles, creators, dates.."
+      class="bg-gray-700 border border-gray-600 pl-10 pr-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-64"
     />
-    <button
-      type="submit"
-      class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-lg self-stretch sm:self-auto"
-    >
-      🔍
-    </button>
-  </form>
+  </div>
+</form>
 
   <!-- Profile image -->
   <a href="../dashboard/dashboard.php" class="flex justify-center">

@@ -51,11 +51,13 @@
     
     } elseif ($field === 'password') {//if the field is password
           if (
-        strlen($value) < 11 ||
+        strlen($value) < 10   /*||
+        /*
         !preg_match("/[A-Z]/", $value) || // Check for uppercase letter
         !preg_match("/[a-z]/", $value) ||// Check for lowercase letter
         !preg_match("/[0-9]/", $value) ||// Check for number
         !preg_match("/[\W]/", $value)// Check for special character
+        */
     ) {
         echo "Password must be at least 11 characters and include uppercase, lowercase, number, and special character.";
         exit();

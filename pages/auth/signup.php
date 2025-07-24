@@ -9,7 +9,7 @@ require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../Api/api.php';
 $api = new qOverflowAPI(API_KEY);
 
-// Error placeholders for form validation
+// Error placeholders
 $usernameerror = '';
 $emailerror = '';
 $passworderror = '';
@@ -36,7 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $rawPassword = $_POST['password'];
     $captcha = trim($_POST['captcha']);
 
-    // Create PDO connection early, before DB queries
+    // Create PDO
     try {
         $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     } catch (PDOException $e) {
@@ -44,7 +44,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $haserror = true;
     }
 
-    // Password strength
+    // Password strength message
     $passwordLength = strlen($rawPassword);
     if ($passwordLength <= 10) {
         $passwordStrength = "Weak";
@@ -72,15 +72,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     // Password validation
-    if (
-        strlen($rawPassword) < 11 ){
+    if (strlen($rawPassword) < 11) {
         $passworderror = " ";
         $haserror = true;
     }
 
-    // If no error so far and $pdo exists, check for username/email uniqueness
+    // Uniqueness checks
     if (!$haserror && isset($pdo)) {
-        // Username exists?
         $userCheck = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
         $userCheck->execute([$username]);
         if ($userCheck->fetchColumn() > 0) {
@@ -88,7 +86,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $haserror = true;
         }
 
-        // Email exists?
         $emailCheck = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
         $emailCheck->execute([$email]);
         if ($emailCheck->fetchColumn() > 0) {
@@ -102,18 +99,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
 
         try {
-            $insertQuery = "INSERT INTO users (username, email) VALUES (?, ?)";
-            $stmt = $pdo->prepare($insertQuery);
+            $stmt = $pdo->prepare("INSERT INTO users (username, email) VALUES (?, ?)");
             $stmt->execute([$username, $email]);
 
             $result = $api->createUser($username, $email, $salt, $passwordHash);
             if ($result['error']) {
-                $error = "Login failed, try again later" . $result['error'];
+                $error = "Login failed, try again later: " . $result['error'];
             } else {
                 $_SESSION['user_id'] = $result['id'] ?? null;
             }
 
-            //$_SESSION['username'] = $username;
             header("Location: login.php");
             exit;
         } catch (PDOException $e) {
@@ -129,7 +124,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sign Up</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white">
   <section class="min-h-screen flex flex-col items-center justify-center px-6 py-10 mx-auto">
@@ -143,86 +138,98 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
       <form class="space-y-6" method="POST" action="">
 
-      <!-- Username -->
-      <div>
-        <label class="block mb-2 text-md font-medium text-white">Username</label>
-        <input name="username" type="text" required
-          value="<?= htmlspecialchars($username ?? '') ?>"
-          placeholder="Enter your username"
-          class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
-                <?= !empty($usernameerror) ? 'border-red-500' : 'border-gray-600' ?>"
-        />
-        <p class="text-sm mt-1 <?= !empty($usernameerror) ? 'text-red-500' : 'text-gray-400' ?>">
-          Username must include both letters and numbers and may include dashes and underscores.
-        </p>
-        <?php if (!empty($usernameerror)): ?>
-          <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($usernameerror) ?></p>
-        <?php endif; ?>
-      </div>
-
-      <!-- Email -->
-      <div>
-        <label class="block mb-2 text-md font-medium text-white">Email</label>
-        <input name="email" type="email" required
-          value="<?= htmlspecialchars($email ?? '') ?>"
-          placeholder="Enter your email"
-          class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
-                <?= !empty($emailerror) ? 'border-red-500' : 'border-gray-600' ?>"
-        />
-        <?php if (!empty($emailerror)): ?>
-          <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($emailerror) ?></p>
-        <?php endif; ?>
-      </div>
-
-      <!-- Password -->
-      <div>
-        <label class="block mb-2 text-md font-medium text-white">Password</label>
-        <input name="password" type="password" required
-          placeholder="Enter your password"
-          class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
-                <?= !empty($passworderror) ? 'border-red-500' : 'border-gray-600' ?>"
-        />
-        <p class="text-sm mt-1 <?= !empty($passworderror) ? 'text-red-500' : 'text-gray-400' ?>">
-          Password must have at least 11 characters
-        </p>
-        <?php if (!empty($passworderror)): ?>
-          <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($passworderror) ?></p>
-        <?php endif; ?>
-        <?php if (!empty($strengthMessage)): ?>
-          <p class="mt-1 font-semibold" style="color:
-            <?php
-              echo (strpos($strengthMessage, 'Weak') !== false) ? 'red' :
-                   ((strpos($strengthMessage, 'Moderate') !== false) ? 'orange' : 'limegreen');
-            ?>;">
-            <?= htmlspecialchars($strengthMessage) ?>
+        <!-- Username -->
+        <div>
+          <label class="block mb-2 text-md font-medium text-white">Username</label>
+          <input name="username" type="text" required
+            value="<?= htmlspecialchars($username ?? '') ?>"
+            placeholder="Enter your username"
+            class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
+                  <?= !empty($usernameerror) ? 'border-red-500' : 'border-gray-600' ?>"
+          />
+          <p class="text-sm mt-1 <?= !empty($usernameerror) ? 'text-red-500' : 'text-gray-400' ?>">
+            Username must include both letters and numbers and may include dashes and underscores.
           </p>
-        <?php endif; ?>
-      </div>
+          <?php if (!empty($usernameerror)): ?>
+            <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($usernameerror) ?></p>
+          <?php endif; ?>
+        </div>
 
-      <!-- CAPTCHA -->
-      <div>
-        <label for="captcha" class="block mb-2 text-md font-medium text-white">
-          What is <?= $num1 ?> + <?= $num2 ?>?
-        </label>
-        <input type="text" id="captcha" name="captcha" placeholder="Answer"
-              class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3">
-        <?php if (!empty($captchaerror)): ?>
-          <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($captchaerror) ?></p>
-        <?php endif; ?>
-      </div>
+        <!-- Email -->
+        <div>
+          <label class="block mb-2 text-md font-medium text-white">Email</label>
+          <input name="email" type="email" required
+            value="<?= htmlspecialchars($email ?? '') ?>"
+            placeholder="Enter your email"
+            class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
+                  <?= !empty($emailerror) ? 'border-red-500' : 'border-gray-600' ?>"
+          />
+          <?php if (!empty($emailerror)): ?>
+            <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($emailerror) ?></p>
+          <?php endif; ?>
+        </div>
 
-      <!-- Submit -->
-      <button type="submit"
-              class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3">
-        Sign Up
-      </button>
-    </form>
+        <!-- Password -->
+        <div>
+          <label class="block mb-2 text-md font-medium text-white">Password</label>
+          <input name="password" type="password" required
+            oninput="checkStrength(this.value)"
+            placeholder="Enter your password"
+            class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
+                  <?= !empty($passworderror) ? 'border-red-500' : 'border-gray-600' ?>"
+          />
+          <p class="text-sm mt-1 <?= !empty($passworderror) ? 'text-red-500' : 'text-gray-400' ?>">
+            Password must be more than 10 characters
+          </p>
+          <?php if (!empty($passworderror)): ?>
+            <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($passworderror) ?></p>
+          <?php endif; ?>
+          <p id="strength" class="mt-1 text-sm text-gray-400">
+          </p>
+        </div>
 
-    <p class="mt-4 text-sm text-gray-300">
-      Already have an account?
-      <a href="login.php" class="text-blue-400 hover:underline">Log in</a>
-    </p>
+        <!-- CAPTCHA -->
+        <div>
+          <label for="captcha" class="block mb-2 text-md font-medium text-white">
+            What is <?= $num1 ?> + <?= $num2 ?>?
+          </label>
+          <input type="text" id="captcha" name="captcha" placeholder="Answer"
+                class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3">
+          <?php if (!empty($captchaerror)): ?>
+            <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($captchaerror) ?></p>
+          <?php endif; ?>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit"
+                class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3">
+          Sign Up
+        </button>
+      </form>
+
+      <p class="mt-4 text-sm text-gray-300">
+        Already have an account?
+        <a href="login.php" class="text-blue-400 hover:underline">Log in</a>
+      </p>
     </div>
   </section>
+
+  <script>
+    function checkStrength(pw) {
+      const strength = document.getElementById("strength");
+      if (!pw) {
+        strength.textContent = "";
+        return;
+      }
+
+      let level = "Weak";
+      if (pw.length > 17) level = "Strong";
+      else if (pw.length >= 11) level = "Moderate";
+
+      strength.textContent = `Password strength: ${level}`;
+      strength.style.color = level === "Strong" ? "limegreen" :
+                             level === "Moderate" ? "orange" : "red";
+    }
+  </script>
 </body>
 </html>
