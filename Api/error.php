@@ -53,10 +53,16 @@ class APIErrorHandler {
         return null;
     }
 
-    public static function displayErrorPage($errorData, $returnUrl = null) {
+    public static function displayErrorPage($errorData, $returnUrl = null, $embedded = false) {
         $httpCode = $errorData['http_code'] ?? 500;
         $errorMessage = $errorData['error'] ?? 'Unknown error occurred';
         $retryAfter = $errorData['retry_after'] ?? null;
+        
+        // If this is being included in another page, don't output full HTML structure
+        if ($embedded) {
+            self::displayEmbeddedError($httpCode, $errorMessage, $retryAfter, $returnUrl, $errorData);
+            return;
+        }
         
         ?>
         <!DOCTYPE html>
@@ -174,7 +180,7 @@ class APIErrorHandler {
                     <?php if ($returnUrl): ?>
                     <a href="<?php echo htmlspecialchars($returnUrl); ?>" class="btn btn-secondary">Return to Home</a>
                     <?php endif; ?>
-                    <a href="javascript:location.reload()" class="btn btn-secondary">Try Again</a>
+                    <a href="javascript:location.reload()" class="btn btn-secondary" id="retryBtn">Try Again</a>
                 </div>
 
                 <div style="margin-top: 20px;">
@@ -206,8 +212,10 @@ class APIErrorHandler {
                     }
                 }
 
-                let countdown = 3;
-                const retryBtn = document.querySelector('[href="javascript:location.reload()"]');
+                // Auto-retry functionality for certain error codes
+                <?php if ($httpCode === 500 || $httpCode === 555): ?>
+                let countdown = 5;
+                const retryBtn = document.getElementById('retryBtn');
                 const originalText = retryBtn.textContent;
                 
                 const timer = setInterval(() => {
@@ -226,18 +234,79 @@ class APIErrorHandler {
         <?php
     }
 
-    public static function checkAndHandleError($response, $httpCode = 200, $returnUrl = null) {
+    private static function displayEmbeddedError($httpCode, $errorMessage, $retryAfter, $returnUrl, $errorData) {
+        ?>
+        <div class="api-error-embedded" style="
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">
+            <h3 style="margin: 0 0 10px 0; color: #721c24;">API Error <?php echo $httpCode; ?></h3>
+            <p style="margin: 0 0 15px 0;"><?php echo htmlspecialchars($errorMessage); ?></p>
+            
+            <?php if ($retryAfter): ?>
+            <div style="background: #fff3cd; color: #856404; padding: 10px; border-radius: 3px; margin: 10px 0;">
+                <strong>Rate Limited:</strong> Please wait <?php echo $retryAfter; ?> seconds before retrying.
+            </div>
+            <?php endif; ?>
+
+            <div style="margin-top: 15px;">
+                <button onclick="location.reload()" style="
+                    background: #dc3545;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 3px;
+                    cursor: pointer;
+                    margin-right: 10px;
+                ">Try Again</button>
+                
+                <?php if ($returnUrl): ?>
+                <a href="<?php echo htmlspecialchars($returnUrl); ?>" style="
+                    background: #6c757d;
+                    color: white;
+                    text-decoration: none;
+                    padding: 8px 16px;
+                    border-radius: 3px;
+                    display: inline-block;
+                ">Return to Home</a>
+                <?php endif; ?>
+            </div>
+            
+            <details style="margin-top: 15px;">
+                <summary style="cursor: pointer; color: #495057;">Error Details</summary>
+                <div style="margin-top: 10px; font-family: monospace; font-size: 0.9rem; background: #f8f9fa; padding: 10px; border-radius: 3px;">
+                    <strong>HTTP Code:</strong> <?php echo $httpCode; ?><br>
+                    <strong>Timestamp:</strong> <?php echo date('Y-m-d H:i:s'); ?><br>
+                    <?php if ($retryAfter): ?>
+                    <strong>Retry After:</strong> <?php echo $retryAfter; ?> seconds<br>
+                    <?php endif; ?>
+                    <strong>Raw Response:</strong><br>
+                    <pre style="margin: 5px 0; white-space: pre-wrap;"><?php echo htmlspecialchars(json_encode($errorData['raw_response'], JSON_PRETTY_PRINT)); ?></pre>
+                </div>
+            </details>
+        </div>
+        <?php
+    }
+
+    public static function checkAndHandleError($response, $httpCode = 200, $returnUrl = null, $embedded = false) {
         $result = self::handleResponse($response, $httpCode);
         
         if (!$result['success']) {
-            self::displayErrorPage($result, $returnUrl);
-            exit;
+            self::displayErrorPage($result, $returnUrl, $embedded);
+            if (!$embedded) {
+                exit;
+            }
         }
         
         return $result['data'];
     }
 
-    public static function makeRequestWithErrorHandling($apiInstance, $method, $endpoint, $data = null, $query = [], $autoHandle = true, $returnUrl = null) {
+    public static function makeRequestWithErrorHandling($apiInstance, $method, $endpoint, $data = null, $query = [], $autoHandle = true, $returnUrl = null, $embedded = false) {
         $url = $apiInstance->baseUrl . $endpoint;
 
         if (!empty($query)) {
@@ -265,18 +334,19 @@ class APIErrorHandler {
         $decodedResponse = json_decode($response, true);
 
         if ($autoHandle) {
-            return self::checkAndHandleError($decodedResponse, $httpCode, $returnUrl);
+            return self::checkAndHandleError($decodedResponse, $httpCode, $returnUrl, $embedded);
         } else {
             return self::handleResponse($decodedResponse, $httpCode);
         }
     }
 }
 
-function handleApiError($response, $httpCode = 200, $returnUrl = null) {
-    return APIErrorHandler::checkAndHandleError($response, $httpCode, $returnUrl);
+// Helper functions for backward compatibility
+function handleApiError($response, $httpCode = 200, $returnUrl = null, $embedded = false) {
+    return APIErrorHandler::checkAndHandleError($response, $httpCode, $returnUrl, $embedded);
 }
 
-function showErrorPage($httpCode, $message, $retryAfter = null, $returnUrl = null) {
+function showErrorPage($httpCode, $message, $retryAfter = null, $returnUrl = null, $embedded = false) {
     $errorData = [
         'success' => false,
         'error' => $message,
@@ -285,8 +355,10 @@ function showErrorPage($httpCode, $message, $retryAfter = null, $returnUrl = nul
         'raw_response' => ['error' => $message]
     ];
     
-    APIErrorHandler::displayErrorPage($errorData, $returnUrl);
-    exit;
+    APIErrorHandler::displayErrorPage($errorData, $returnUrl, $embedded);
+    if (!$embedded) {
+        exit;
+    }
 }
 
 ?>

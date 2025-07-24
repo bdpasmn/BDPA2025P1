@@ -9,6 +9,7 @@ require_once '../../api/api.php';
 $api = new qOverflowAPI(API_KEY);
 
 
+
 try {
     $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 } catch (PDOException $e) {
