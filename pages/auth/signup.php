@@ -17,6 +17,8 @@ $captchaerror = '';
 $strengthMessage = '';
 $error = '';
 
+$level = 1;
+
 // CAPTCHA generation
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     $num1 = rand(1, 10);
@@ -99,8 +101,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO users (username, email) VALUES (?, ?)");
-            $stmt->execute([$username, $email]);
+            $stmt = $pdo->prepare("INSERT INTO users (username, email, level) VALUES (?, ?, ?)");
+            $stmt->execute([$username, $email, $level]);
 
             $result = $api->createUser($username, $email, $salt, $passwordHash);
             if ($result['error']) {
