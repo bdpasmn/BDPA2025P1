@@ -147,7 +147,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
                   <?= !empty($usernameerror) ? 'border-red-500' : 'border-gray-600' ?>"
           />
-          <p class="text-sm mt-1 <?= !empty($usernameerror) ? 'text-red-500' : 'text-gray-400' ?>">
+          <p class="text-sm mt-1 <?= !empty($usernameerror) ? 'text-red-500' : 'text-white-400' ?>">
             Username must include both letters and numbers and may include dashes and underscores.
           </p>
           <?php if (!empty($usernameerror)): ?>
@@ -178,7 +178,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
                   <?= !empty($passworderror) ? 'border-red-500' : 'border-gray-600' ?>"
           />
-          <p class="text-sm mt-1 <?= !empty($passworderror) ? 'text-red-500' : 'text-gray-400' ?>">
+          <p class="text-sm mt-1 <?= !empty($passworderror) ? 'text-red-500' : 'text-white-400' ?>">
             Password must be more than 10 characters
           </p>
           <?php if (!empty($passworderror)): ?>
