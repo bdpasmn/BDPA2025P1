@@ -49,7 +49,7 @@
           <span class="text-2xl font-bold text-white">qOverflow</span>
         </div>
         <div class="flex flex-wrap gap-2 mt-2 sm:mt-0">       
-        <a href="pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
+        <a href="/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
             Buffet                    
           </a> 
           <a href="/pages/auth/login.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/auth/login.php') !== false ? ' active' : ''; ?>">
