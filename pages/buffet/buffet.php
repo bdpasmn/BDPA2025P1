@@ -1,10 +1,21 @@
 <?php
 session_start();
+
 require_once '../../api/key.php';
 require_once '../../api/api.php';
 
+try {
+    require_once '../../db.php';
+
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    ]);
+} catch (PDOException $e) {
+    $pdo = null; 
+}
 
 $api = new qOverflowAPI(API_KEY);
+
 $sort = $_GET['sort'] ?? 'recent';
 $currentPage = isset($_GET['page']) && intval($_GET['page']) > 0 ? intval($_GET['page']) : 1;
 $perPage = 20;
@@ -22,11 +33,10 @@ switch ($sort) {
         $match['answers'] = 0;
         break;
     case 'hottest':
-        $params['sort'] = 'uvac';
+        $params['sort'] = 'uvac'; 
         $match['hasAcceptedAnswer'] = false;
         break;
     default:
-        $sort = 'recent';
         break;
 }
 
@@ -34,41 +44,96 @@ if (!empty($match)) {
     $params['match'] = json_encode($match);
 }
 
+// Posting a question
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (isset($_POST['title'], $_POST['text'])) {
-        if (!isset($_SESSION['username'])) {
-            header("Location: /login.php");
-            exit();
-        }
+  if (isset($_POST['title'], $_POST['text'], $_SESSION['username'])) {
+      $title = trim(strip_tags($_POST['title']));
+      $text = trim($_POST['text']);
+      $username = $_SESSION['username'];
 
-        $title = trim(strip_tags($_POST['title']));
-        $text = trim($_POST['text']);
+      $api->createQuestion($username, $title, $text);
 
-        $api->createQuestion($_SESSION['username'], $title, $text);
-        header("Location: buffet.php?sort=$sort&page=$currentPage");
-        exit();
-    }
+      // After posting, add 1 point to the user and possibly update their level
+      try {
+          require_once '../../db.php';
+
+          $pdo_post = new PDO($dsn, $user, $pass, [
+              PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+          ]);
+
+          $stmt = $pdo_post->prepare("UPDATE users SET points = COALESCE(points, 0) + 1 WHERE username = :username");
+          $stmt->execute(['username' => $username]);
+
+          $stmt = $pdo_post->prepare("SELECT points, level FROM users WHERE username = :username");
+          $stmt->execute(['username' => $username]);
+          $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+          if ($user) {
+              $points = (int)$user['points'];
+              $currentLevel = (int)$user['level'];
+
+              // Determine level based on points
+              $newLevel = 1;
+              if ($points >= 10000) {
+                  $newLevel = 7;
+              } elseif ($points >= 3000) {
+                  $newLevel = 6;
+              } elseif ($points >= 1000) {
+                  $newLevel = 5;
+              } elseif ($points >= 125) {
+                  $newLevel = 4;
+              } elseif ($points >= 50) {
+                  $newLevel = 3;
+              } elseif ($points >= 15) {
+                  $newLevel = 2;
+              } elseif ($points >= 1) {
+                  $newLevel = 1;
+              }
+
+              // Check if lebel needs to be updated
+              if ($newLevel !== $currentLevel) {
+                  $stmt = $pdo_post->prepare("UPDATE users SET level = :level WHERE username = :username");
+                  $stmt->execute([
+                      'level' => $newLevel,
+                      'username' => $username
+                  ]);
+              }
+          }
+      } catch (PDOException $e) {
+          error_log("Error updating user points or level: " . $e->getMessage());
+      }
+
+      header("Location: buffet.php?sort=$sort&page=$currentPage");
+      exit();
+  }
 }
 
 $all = [];
 $after = null;
+
 $totalPagesEstimate = ceil($maxItems / $perPage);
+
 $neededItems = $currentPage * $perPage;
 
 for ($page = 1; $page <= $totalPagesEstimate && count($all) < $neededItems; $page++) {
     if ($after !== null) {
         $params['after'] = $after;
     }
+
     $res = $api->searchQuestions($params);
     $batch = $res['questions'] ?? [];
+
     if (empty($batch)) break;
+
     $all = array_merge($all, $batch);
     $after = end($batch)['question_id'];
 }
 
 $startIndex = ($currentPage - 1) * $perPage;
 $questions = array_slice($all, $startIndex, $perPage);
+
 $totalCount = min(count($all), $maxItems);
+
 $totalPages = max(ceil($totalCount / $perPage), 1);
 
 if ($currentPage > $totalPages) {
@@ -76,10 +141,12 @@ if ($currentPage > $totalPages) {
     exit();
 }
 
+// User-friendly timestamp
 function format_relative_time($timestamp_ms) {
     $time = $timestamp_ms / 1000;
     $now = time();
     $diff = $now - $time;
+
     if ($diff < 60) return 'Just now';
     if ($diff < 3600) return floor($diff / 60) . ' minute' . (floor($diff / 60) == 1 ? '' : 's') . ' ago';
     if ($diff < 86400) return floor($diff / 3600) . ' hour' . (floor($diff / 3600) == 1 ? '' : 's') . ' ago';
@@ -94,9 +161,10 @@ function format_relative_time($timestamp_ms) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Home • qOverflow</title>
+  <link rel="icon" href="../../favicon.ico" type="image/x-icon" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/showdown/dist/showdown.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
   <style>
     .hide-scrollbar::-webkit-scrollbar {
       display: none;
@@ -109,7 +177,7 @@ function format_relative_time($timestamp_ms) {
 </head>
 
 <body class="min-h-screen font-sans flex flex-col">
-  
+  <!-- Including NavBar -->
   <div class="mb-6">
     <?php 
       if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
@@ -120,10 +188,12 @@ function format_relative_time($timestamp_ms) {
     ?>
   </div>
 
+  <!-- Welcome + Ask Question/Login/Signup (Phone/Tablet View) -->
   <div class="md:hidden px-4 py-5 bg-gray-800 border border-gray-700 rounded-xl mx-4 my-4 shadow-md">
     <div class="flex justify-between items-center">
       <div class="text-3xl text-white font-semibold">
-        Welcome <span class="text-blue-400 font-bold"><?= htmlspecialchars($_SESSION['username']) ?></span>
+        <?php $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest'; ?>
+        Welcome <span class="text-blue-400 max-w-full truncate block" style="max-width: 100%;"><?= htmlspecialchars($username) ?></span>
       </div>
       <div class="flex gap-2">
         <?php if (isset($_SESSION['username'])): ?>
@@ -138,6 +208,7 @@ function format_relative_time($timestamp_ms) {
     </div>
   </div>
 
+  <!-- Welcome + Ask Question/Login/Signup (Computer) View) -->
   <div class="flex-1 flex flex-col md:flex-row max-h-[84vh] w-full h-full px-5 md:px-5 gap-5 md:gap-5">
     <aside class="hidden md:flex w-80 bg-gray-800 rounded-2xl p-6 flex-col max-h-[calc(100vh-3rem)] sticky top-6 border border-gray-700">
       <h1 class="text-3xl font-bold mb-6 leading-tight text-white">
@@ -156,7 +227,9 @@ function format_relative_time($timestamp_ms) {
       <?php endif; ?>
     </aside>
 
+    <!-- Main content (Questions + Tabs) -->
     <main class="flex-1 flex flex-col overflow-y-auto hide-scrollbar">
+      <!-- Sorting tabs -->
       <form method="GET" class="mb-4 border-b border-gray-700 flex-shrink-0 overflow-x-auto">
         <input type="hidden" name="page" id="pageInput" value="<?= $currentPage ?>">
         <ul class="flex gap-4 text-base font-medium whitespace-nowrap">
@@ -175,6 +248,7 @@ function format_relative_time($timestamp_ms) {
         </ul>
       </form>
 
+      <!-- Question boxs -->
       <div class="space-y-6">
         <?php foreach ($questions as $q):
           $rawMarkdown = $q['text'] ?? '';
@@ -195,18 +269,32 @@ function format_relative_time($timestamp_ms) {
           </div>
           <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
             <?php
-              $userData = $api->getUser($creator);
+              $email = '';
+              $level = null;
 
-              if (isset($userData['user']['email']) && !empty($userData['user']['email'])) {
-                  $email = trim(strtolower($userData['user']['email']));
+              if ($pdo) {
+                  $stmt = $pdo->prepare("SELECT email, level FROM users WHERE username = :username LIMIT 1");
+                  $stmt->execute(['username' => $creator]);
+                  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                  if ($row) {
+                      if (!empty($row['email'])) {
+                          $email = trim(strtolower($row['email']));
+                      }
+                      if (isset($row['level'])) {
+                          $level = intval($row['level']);
+                      }
+                  }
               }
 
               $gravatarHash = md5($email);
               $gravatarUrl = "https://www.gravatar.com/avatar/$gravatarHash?d=identicon";
             ?>
-            <span class="flex items-center gap-2">
+            <span class="flex items-center gap-1">
               <img src="<?= htmlspecialchars($gravatarUrl) ?>" alt="Avatar" class="w-6 h-6 rounded-full border border-gray-600">
               <?= htmlspecialchars($creator) ?>
+              <?php if (!is_null($level)): ?>
+                <span class="text-xs text-gray-400 bg-gray-700 px-1 py-0.5 rounded-md border border-gray-600 ml-1">Level <?= $level ?></span>
+              <?php endif; ?>
             </span>
             <span><?= $relative ?> <span class="text-gray-500">•</span> <?= $exact ?></span>
           </div>
@@ -214,6 +302,7 @@ function format_relative_time($timestamp_ms) {
         <?php endforeach; ?>
       </div>
 
+      <!-- Pagination -->
       <?php if ($totalCount > $perPage): ?>
       <div class="flex flex-wrap justify-end mt-4 gap-1 text-sm text-gray-400">
         <form method="GET" class="flex flex-wrap items-center gap-1">
@@ -233,6 +322,7 @@ function format_relative_time($timestamp_ms) {
     </main>
   </div>
 
+  <!-- Ask Question Modal -->
   <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 md:p-10 hidden z-[70] overflow-auto">
     <form method="POST" class="bg-gray-800 w-full max-w-3xl p-6 md:p-8 rounded-xl shadow-xl space-y-5 relative">
       <div class="flex justify-between items-center">
@@ -247,7 +337,10 @@ function format_relative_time($timestamp_ms) {
         <label class="text-gray-300 text-sm">Question Body • Max 3000 characters</label>
         <textarea id="questionText" name="text" rows="8" maxlength="3000" placeholder="Explain your question in detail..." required class="w-full mt-1 p-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 resize-none"></textarea>
       </div>
-      <div class="flex justify-between items-center pt-4">
+      <div class="text-sm text-gray-400">
+       <strong>Formatting examples:</strong> Use **bold**, *italic*, `code`, and [links](https://example.com)
+      </div>
+      <div class="flex justify-between items-center pt-2">
         <button type="button" onclick="previewMarkdown()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">Preview</button>
         <div class="flex space-x-3">
           <button type="button" onclick="document.getElementById('modal').classList.add('hidden')" class="px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">Cancel</button>
@@ -257,6 +350,7 @@ function format_relative_time($timestamp_ms) {
     </form>
   </div>
 
+  <!-- Markdown Preview Modal -->
   <div id="previewModal" class="fixed inset-0 bg-black/30 flex items-center justify-center p-4 md:p-10 hidden z-[90] overflow-auto">
     <div class="bg-gray-800 w-full max-w-2xl p-6 md:p-8 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between mb-4 items-center">
@@ -268,8 +362,7 @@ function format_relative_time($timestamp_ms) {
   </div>
 
   <script>
-    const converter = new showdown.Converter({ simplifiedAutoLink: true, tables: true });
-
+    // Markdown stuff
     function decodeHTMLEntities(text) {
       const textarea = document.createElement('textarea');
       textarea.innerHTML = text;
@@ -279,10 +372,11 @@ function format_relative_time($timestamp_ms) {
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('[data-markdown]').forEach(el => {
         const rawMarkdown = decodeHTMLEntities(el.getAttribute('data-markdown') || '');
-        const html = converter.makeHtml(rawMarkdown);
+        const html = marked.parse(rawMarkdown);
         el.innerHTML = DOMPurify.sanitize(html);
       });
-
+      
+      // Auto refresh data
       function refreshCounts() {
         const cards = document.querySelectorAll('[data-id]');
         const ids = Array.from(cards).map(c => c.getAttribute('data-id')).join(',');
@@ -304,10 +398,11 @@ function format_relative_time($timestamp_ms) {
       refreshCounts();
       setInterval(refreshCounts, 15000);
     });
-    
+
+    // Preview markdown function
     function previewMarkdown() {
       const rawMarkdown = document.getElementById('questionText').value;
-      const html = converter.makeHtml(rawMarkdown);
+      const html = marked.parse(rawMarkdown);
       const sanitized = DOMPurify.sanitize(html);
       document.getElementById('previewContent').innerHTML = sanitized;
       document.getElementById('previewModal').classList.remove('hidden');

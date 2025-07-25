@@ -2,14 +2,81 @@
 require_once '../../db.php';
 
 // Get points and level from session if available, default to 1 if not set
+/*
 $points = isset($_SESSION['points']) ? $_SESSION['points'] : 1;
 $level = isset($_SESSION['level']) ? $_SESSION['level'] : 1;
+*/
+$points = 1;
+$level = 1;
+
+if (isset($_SESSION['username'])) {
+    try {
+        $pdo = new PDO($dsn, $user, $pass, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]);
+
+        $stmt = $pdo->prepare("SELECT points, level FROM users WHERE username = :username");
+        $stmt->execute(['username' => $_SESSION['username']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user) {
+            $points = intval($user['points'] ?? 1);
+            $level = intval($user['level'] ?? 1);
+        }
+    } catch (PDOException $e) {
+        error_log("Error updating user points: " . $e->getMessage());
+    }
+}
+
 
 // Generate gravatar URL from session email
 // SHA-256 is a cryptographic hash function
+/*
 $email = isset($_SESSION['email']) ? strtolower(trim($_SESSION['email'])) : '';
-$gravatarUrl = 'https://www.gravatar.com/avatar/' . hash('sha256', $email) . '?d=identicon';
+$gravatarUrl = "https://www.gravatar.com/avatar/$email?d=identicon" . hash('sha256', $email) . '?d=identicon';
+*/
+
+/*
+$email = $loggedInUser['email'] ?? ' '; //gets email of logged in user, if not found, sets to empty string
+$NormalizedEmail = strtolower(trim($email)); // Normalize email by converting to lowercase and trimming whitespace
+$HashedEmail = md5( $NormalizedEmail); // Hash the normalized email using SHA-256
+$gravatarUrl = "https://www.gravatar.com/avatar/$HashedEmail?d=identicon"; // Generate Gravatar URL with identicon fallback
+*/
+
+/*
+$email = '';
+
+// Try to get email from logged-in user
+if (isset($_SESSION['username'])) {
+    try {
+        $userInfo = $api->getUser($_SESSION['username']);
+        if (!empty($userInfo['user']['email'])) {
+            $email = strtolower(trim($userInfo['user']['email']));
+        }
+    } catch (Exception $e) {
+        // Handle error silently or log it if needed
+        $email = '';
+    }
+}
+*/
+
+  $email = '';
+
+  if ($pdo) {
+      $stmt = $pdo->prepare("SELECT email FROM users WHERE username = :username LIMIT 1");
+      $stmt->execute(['username' => ($_SESSION['username'])]);
+      $row = $stmt->fetch(PDO::FETCH_ASSOC);
+      if ($row && !empty($row['email'])) {
+          $email = trim(strtolower($row['email']));
+      }
+  }
+  
+$hashedEmail = md5($email);
+$gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
 ?>
+
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -106,13 +173,13 @@ $gravatarUrl = 'https://www.gravatar.com/avatar/' . hash('sha256', $email) . '?d
 </form>
 
   <!-- Profile image -->
-  <a href="../dashboard/dashboard.php" class="flex justify-center">
+  <div class="flex justify-center">
     <img
-      src="<?php echo htmlspecialchars($gravatarUrl); ?>"
+      src="<?= $gravatarUrl ?>"
       alt="Profile"
       class="h-10 w-10 rounded-full border-2 border-blue-600"
     />
-  </a>
+  </div>
 </div>
     </div>
   </div>

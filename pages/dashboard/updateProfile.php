@@ -59,7 +59,7 @@
         !preg_match("/[\W]/", $value)// Check for special character
         */
     ) {
-        echo "Password must be at least 11 characters and include uppercase, lowercase, number, and special character.";
+        echo "Password must be at least 10 charactersr.";
         exit();
     }
       $salt = bin2hex(random_bytes(16));// Generate a secure random salt
