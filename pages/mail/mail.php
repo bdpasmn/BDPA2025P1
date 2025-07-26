@@ -113,26 +113,14 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
             <div id="preview-card" class="mt-2"></div>
           </div>
           <div class="flex justify-end">
-            <button type="submit" id="send-button" class="bg-blue-600 hover:bg-blue-700 text-white px-7 py-2 rounded-lg text-base font-semibold shadow transition">
-              <span id="send-text">Send</span>
-              <span id="send-spinner" class="hidden">
-                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block"></div>
-              </span>
-            </button>
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-7 py-2 rounded-lg text-base font-semibold shadow transition">Send</button>
           </div>
         </form>
       <?php else: ?>
-        <div class="mb-2 flex gap-2">
-          <input type="text" id="inbox-search" placeholder="Search by sender or subject..." class="flex-1 p-2 rounded bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-blue-500" autocomplete="off">
+        <div class="mb-2">
+          <input type="text" id="inbox-search" placeholder="Search by sender or subject..." class="w-full p-2 rounded bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-blue-500" autocomplete="off">
         </div>
         <div class="mb-2 text-xs text-gray-400">Note: Only the first line of each message is shown here.</div>
-        
-        <!-- Spinner for API loading -->
-        <div id="api-spinner" class="flex justify-center items-center py-8 bg-gray-700 rounded-lg border border-gray-600 hidden">
-          <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <span class="ml-3 text-gray-300 font-medium">Loading messages...</span>
-        </div>
-        
         <div id="inbox-list" class="flex flex-col gap-2"></div>
         <div class="flex justify-between items-center mt-4" id="pagination-controls" style="display:none;">
           <button id="prev-page" class="px-3 py-1 rounded bg-gray-700 text-white text-xs hover:bg-gray-600">Previous</button>
@@ -256,121 +244,8 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
   if (prevBtn) prevBtn.addEventListener('click', function() { if (page > 1) { page--; renderInbox(); } });
   if (nextBtn) nextBtn.addEventListener('click', function() { if (page < Math.ceil(filtered.length / MESSAGES_PER_PAGE)) { page++; renderInbox(); } });
 
-  // API spinner functions
-  function showApiSpinner() {
-    const spinner = document.getElementById('api-spinner');
-    const inboxList = document.getElementById('inbox-list');
-    const paginationControls = document.getElementById('pagination-controls');
-    
-    if (spinner) spinner.classList.remove('hidden');
-    if (inboxList) inboxList.style.display = 'none';
-    if (paginationControls) paginationControls.style.display = 'none';
-  }
-  
-  function hideApiSpinner() {
-    const spinner = document.getElementById('api-spinner');
-    const inboxList = document.getElementById('inbox-list');
-    const paginationControls = document.getElementById('pagination-controls');
-    
-    if (spinner) spinner.classList.add('hidden');
-    if (inboxList) inboxList.style.display = 'flex';
-    if (paginationControls) paginationControls.style.display = 'flex';
-  }
-  
-  // Initial render (no spinner needed since data is already loaded)
+  // Initial render
   if (inboxList) renderInbox();
-  
-  // Function to refresh inbox with API call
-  function refreshInbox() {
-    // Clear current content first
-    const inboxList = document.getElementById('inbox-list');
-    if (inboxList) {
-      inboxList.innerHTML = '';
-    }
-    
-    // Show spinner and hide content
-    showApiSpinner();
-    
-    // Simulate API call to refresh messages
-    fetch(window.location.href)
-      .then(response => response.text())
-      .then(html => {
-        // Parse the new messages from the response
-        // For now, we'll just hide the spinner
-        // In a real implementation, you'd update the messages array
-        setTimeout(() => {
-          hideApiSpinner();
-          // Re-render with potentially new data
-          renderInbox();
-        }, 1000); // Simulate API delay
-      })
-      .catch(error => {
-        console.error('Error refreshing inbox:', error);
-        hideApiSpinner();
-      });
-  }
-  
-
-  
-  // Add refresh functionality to search
-  if (searchInput) {
-    searchInput.addEventListener('input', function() {
-      const q = this.value.trim().toLowerCase();
-      
-      // Show spinner for search operations
-      if (q.length > 0) {
-        // Clear current content and show spinner
-        const inboxList = document.getElementById('inbox-list');
-        if (inboxList) {
-          inboxList.innerHTML = '';
-        }
-        showApiSpinner();
-        
-        // Simulate API search delay
-        setTimeout(() => {
-          filtered = inboxMessages.filter(msg =>
-            msg.sender.toLowerCase().includes(q) ||
-            msg.subject.toLowerCase().includes(q)
-          );
-          page = 1;
-          renderInbox();
-          hideApiSpinner();
-        }, 300); // 300ms delay for search
-      } else {
-        // No search term, show all messages immediately
-        filtered = inboxMessages.slice();
-        page = 1;
-        renderInbox();
-      }
-    });
-  }
-  
-
-  
-  // Handle keyboard refresh (Ctrl+R, Cmd+R)
-  document.addEventListener('keydown', function(event) {
-    // Check for Ctrl+R (Windows/Linux) or Cmd+R (Mac)
-    if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
-      event.preventDefault(); // Prevent default browser refresh
-      refreshInbox(); // Use our custom refresh function
-    }
-  });
-  
-  // Form submission spinner
-  const composeForm = document.querySelector('form[method="POST"]');
-  if (composeForm) {
-    composeForm.addEventListener('submit', function(e) {
-      const sendText = document.getElementById('send-text');
-      const sendSpinner = document.getElementById('send-spinner');
-      const sendButton = document.getElementById('send-button');
-      
-      if (sendText && sendSpinner && sendButton) {
-        sendText.classList.add('hidden');
-        sendSpinner.classList.remove('hidden');
-        sendButton.disabled = true;
-      }
-    });
-  }
 
   // Live preview for Compose (only if present)
   const textarea = document.getElementById('body');
