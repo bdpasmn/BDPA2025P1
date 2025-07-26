@@ -3,6 +3,8 @@ session_start();
 
 require_once '../../api/key.php';
 require_once '../../api/api.php';
+include '../../levels/getUserLevel.php';
+include '../../levels/updateUserPoints.php';
 
 try {
     require_once '../../db.php';
@@ -18,7 +20,7 @@ $api = new qOverflowAPI(API_KEY);
 
 $sort = $_GET['sort'] ?? 'recent';
 $currentPage = isset($_GET['page']) && intval($_GET['page']) > 0 ? intval($_GET['page']) : 1;
-$perPage = 20;
+$perPage = 10;
 $maxItems = 100;
 
 $match = [];
@@ -53,19 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
       $api->createQuestion($username, $title, $text);
 
-      // After posting, add 1 point to the user
-      try {
-          require_once '../../db.php';
-
-          $pdo_post = new PDO($dsn, $user, $pass, [
-              PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-          ]);
-
-          $stmt = $pdo_post->prepare("UPDATE users SET points = COALESCE(points, 0) + 1 WHERE username = :username");
-          $stmt->execute(['username' => $username]);
-      } catch (PDOException $e) {
-          error_log("Error updating user points: " . $e->getMessage());
-      }
+      updateUserPoints($username, 1);
 
       header("Location: buffet.php?sort=$sort&page=$currentPage");
       exit();
@@ -156,6 +146,7 @@ function format_relative_time($timestamp_ms) {
   <div class="md:hidden px-4 py-5 bg-gray-800 border border-gray-700 rounded-xl mx-4 my-4 shadow-md">
     <div class="flex justify-between items-center">
       <div class="text-3xl text-white font-semibold">
+        <?php $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest'; ?>
         Welcome <span class="text-blue-400 text-5xl max-w-full truncate block" style="max-width: 100%;"><?= htmlspecialchars($username) ?></span>
       </div>
       <div class="flex gap-2">
@@ -220,15 +211,16 @@ function format_relative_time($timestamp_ms) {
         <?php foreach ($questions as $q):
           $rawMarkdown = $q['text'] ?? '';
           $creator = htmlspecialchars($q['creator']);
+          $levelInfo = getUserLevel($creator);
           $createdAt = $q['createdAt'] ?? null;
           $relative = $createdAt ? format_relative_time($createdAt) : 'unknown';
           $exact = $createdAt ? (new DateTime('@' . ($createdAt / 1000)))->setTimezone(new DateTimeZone('America/Chicago'))->format('m/d/Y h:i:s A') : '';
         ?>
         <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-gray-500 transition" data-id="<?= $q['question_id'] ?>">
-          <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline block" href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>">
+          <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline block break-words" href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>">
             <?= htmlspecialchars($q['title']) ?>
           </a>
-          <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed text-sm sm:text-base" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
+          <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed text-sm sm:text-base break-words" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
           <div class="text-sm text-gray-400 flex flex-wrap gap-4 mt-2">
             <span class="js-votes"><?= intval($q['upvotes'] ?? 0) ?> vote<?= (intval($q['upvotes'] ?? 0) == 1 ? '' : 's') ?></span>
             <span class="js-answers"><?= intval($q['answers'] ?? 0) ?> answer<?= (intval($q['answers'] ?? 0) == 1 ? '' : 's') ?></span>
@@ -237,22 +229,26 @@ function format_relative_time($timestamp_ms) {
           <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
             <?php
               $email = '';
+              $level = null;
 
               if ($pdo) {
-                  $stmt = $pdo->prepare("SELECT email FROM users WHERE username = :username LIMIT 1");
+                  $stmt = $pdo->prepare("SELECT email, level FROM users WHERE username = :username LIMIT 1");
                   $stmt->execute(['username' => $creator]);
                   $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                  if ($row && !empty($row['email'])) {
-                      $email = trim(strtolower($row['email']));
+                  if ($row) {
+                      if (!empty($row['email'])) {
+                          $email = trim(strtolower($row['email']));
+                      }
                   }
               }
 
               $gravatarHash = md5($email);
               $gravatarUrl = "https://www.gravatar.com/avatar/$gravatarHash?d=identicon";
             ?>
-            <span class="flex items-center gap-2">
+            <span class="flex items-center gap-1">
               <img src="<?= htmlspecialchars($gravatarUrl) ?>" alt="Avatar" class="w-6 h-6 rounded-full border border-gray-600">
               <?= htmlspecialchars($creator) ?>
+              <span class="text-xs text-gray-400 bg-gray-700 px-1 py-0.5 rounded-md border border-gray-600 ml-1">Level <?= $levelInfo['level'] ?></span>
             </span>
             <span><?= $relative ?> <span class="text-gray-500">•</span> <?= $exact ?></span>
           </div>
@@ -366,7 +362,7 @@ function format_relative_time($timestamp_ms) {
       document.getElementById('previewModal').classList.remove('hidden');
     }
 
-    //Trigger spinner
+    // Trigger spinner
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('spinner').classList.add('hidden');
       document.getElementById('question-list').classList.remove('hidden');
