@@ -130,6 +130,11 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
 
 <?php  include '../../../BDPA2025P1/components/navBarLogIn.php';  ?>
+ <div id="spinner" class="flex justify-center items-center py-20">
+    <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+
+<div id="dashboard" class="hidden">
 
   <div class="bg-gray-800 rounded-lg mx-10 mt-10 p-6 flex items-center shadow-md">
   <img src="<?= $gravatarUrl ?>" alt="Profile Picture" class="w-32 h-32 rounded-lg mr-6"/> <!-- genreate gravatar URL with identicon fallback -->
@@ -141,15 +146,6 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
         <p>Password:  <span id="passwordDisplay">********</span>
         <i class="fas fa-pen-alt ml-2 pb-4" onclick="openEditModal('password')"></i>
       </p>
-
-      <!--
-      <form method="POST" onsubmit="return confirm('Are you sure you want to delete your account? This action cannot be undone.')">
-        <button type="submit" name="delete_account" class=" bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
-          Delete Account
-        </button>
-      </form>
-      -->
-     
         <button onclick="openDeleteModal()" class=" bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
           Delete Account
         </button>
@@ -269,7 +265,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
   </div>
 </div>
 
-
+</div>
 
 <script>
 
@@ -381,6 +377,10 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
     document.getElementById('deleteModal').classList.remove('flex');
   }
 
+  window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('spinner').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+});
   
 </script>
 
