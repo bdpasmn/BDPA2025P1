@@ -1,364 +1,129 @@
-<?php
+<?php 
 
-class APIErrorHandler {
-    private static $errorMessages = [
-        400 => 'Bad Request - Invalid request format or parameters',
-        401 => 'Unauthorized - Invalid or missing API key',
-        403 => 'Forbidden - Access denied',
-        404 => 'Not Found - Resource does not exist',
-        413 => 'Request Too Large - Request size exceeds 100KB limit',
-        429 => 'Too Many Requests - Rate limit exceeded (max 10 requests/second)',
-        500 => 'Internal Server Error - Something went wrong on our end',
-        555 => 'Random API Error - This is expected behavior for testing resilience',
-    ];
+header('Content-Type: text/html; charset=UTF-8');
 
-    public static function handleResponse($response, $httpCode = 200) {
-        if ($httpCode >= 200 && $httpCode < 300) {
-            return [
-                'success' => true,
-                'data' => $response
-            ];
+// Retrieve error code from URL query string or use default
+$errorCode = isset($_GET['code']) ? htmlspecialchars($_GET['code'], ENT_QUOTES, 'UTF-8') : 'Uh oh...';
+//echo 'error code is ' . $errorCode;
+// Default error message
+$errorMessage = 'Something went wrong with qOverflow. Please try again later';
+
+//  error codes to user-friendly messages 
+$errorMessages = array(
+    '400' => 'Your qOverflow request has a problem. Please check your input and try again.',
+    '401' => 'You need to authenticate to access qOverflow resources.',
+    '403' => 'You don\'t have permission to perform this qOverflow action.',
+    '404' => 'The qOverflow resource you\'re looking for isn\'t available.',
+    '409' => 'There\'s a conflict with your qOverflow request. The resource may already exist.',
+    '413' => 'Your qOverflow request is too large.',
+    '422' => 'Your qOverflow request data is invalid. Please check your input.',
+    '429' => 'Too many qOverflow requests. Please wait a moment and try again.',
+    '500' => 'qOverflow server error. Please try again later.',
+    '502' => 'qOverflow service is temporarily unavailable.',
+    '503' => 'qOverflow service is temporarily down for maintenance.',
+    '504' => 'qOverflow request timed out. Please try again.',
+    'Uh oh...' => 'Something went wrong with qOverflow. Please try again later.',
+);
+
+if (is_numeric($errorCode) && $errorCode >= 500 && $errorCode <= 529) {
+    $displayMessage = 'Something happened on the qOverflow server that is outside of our control. Please try again later.';
+} else {
+    error_log("qOverflow API Error Code: " . $errorCode);
+    $displayMessage = isset($errorMessages[$errorCode]) ? $errorMessages[$errorCode] : $errorMessage;
+    error_log("qOverflow Display Message: " . $displayMessage);
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>qOverflow Error</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .error-icon-filter {
+            filter: brightness(0) invert(1);
         }
-
-        $errorMessage = self::getErrorMessage($httpCode, $response);
-        $retryAfter = self::getRetryAfter($response, $httpCode);
-
-        error_log("API Error [{$httpCode}]: {$errorMessage}");
-
-        return [
-            'success' => false,
-            'error' => $errorMessage,
-            'http_code' => $httpCode,
-            'retry_after' => $retryAfter,
-            'raw_response' => $response
-        ];
-    }
-
-    private static function getErrorMessage($httpCode, $response) {
-        if (is_array($response) && isset($response['error'])) {
-            return $response['error'];
+        .text-shadow {
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
-
-        if (isset(self::$errorMessages[$httpCode])) {
-            return self::$errorMessages[$httpCode];
+        .text-shadow-sm {
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
         }
-
-        return "HTTP {$httpCode}: An unexpected error occurred";
-    }
-
-    private static function getRetryAfter($response, $httpCode) {
-        if ($httpCode === 429 && is_array($response) && isset($response['retryAfter'])) {
-            return $response['retryAfter'];
-        }
-        return null;
-    }
-
-    public static function displayErrorPage($errorData, $returnUrl = null, $embedded = false) {
-        $httpCode = $errorData['http_code'] ?? 500;
-        $errorMessage = $errorData['error'] ?? 'Unknown error occurred';
-        $retryAfter = $errorData['retry_after'] ?? null;
-        
-        // If this is being included in another page, don't output full HTML structure
-        if ($embedded) {
-            self::displayEmbeddedError($httpCode, $errorMessage, $retryAfter, $returnUrl, $errorData);
-            return;
-        }
-        
-        ?>
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>API Error <?php echo $httpCode; ?></title>
-            <style>
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    margin: 0;
-                    padding: 20px;
-                    min-height: 100vh;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .error-container {
-                    background: white;
-                    padding: 40px;
-                    border-radius: 10px;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.1);
-                    text-align: center;
-                    max-width: 500px;
-                    width: 100%;
-                }
-                .error-code {
-                    font-size: 4rem;
-                    font-weight: bold;
-                    color: #e74c3c;
-                    margin: 0;
-                }
-                .error-message {
-                    font-size: 1.2rem;
-                    color: #555;
-                    margin: 20px 0 30px;
-                    line-height: 1.5;
-                }
-                .retry-info {
-                    background: #fff3cd;
-                    border: 1px solid #ffeaa7;
-                    color: #856404;
-                    padding: 15px;
-                    border-radius: 5px;
-                    margin: 20px 0;
-                }
-                .btn {
-                    display: inline-block;
-                    padding: 12px 24px;
-                    margin: 10px;
-                    text-decoration: none;
-                    border-radius: 5px;
-                    font-weight: 500;
-                    transition: all 0.3s ease;
-                }
-                .btn-primary {
-                    background: #3498db;
-                    color: white;
-                }
-                .btn-primary:hover {
-                    background: #2980b9;
-                }
-                .btn-secondary {
-                    background: #95a5a6;
-                    color: white;
-                }
-                .btn-secondary:hover {
-                    background: #7f8c8d;
-                }
-                .error-details {
-                    text-align: left;
-                    background: #f8f9fa;
-                    padding: 15px;
-                    border-radius: 5px;
-                    margin-top: 20px;
-                    font-family: monospace;
-                    font-size: 0.9rem;
-                    display: none;
-                }
-                .toggle-details {
-                    color: #3498db;
-                    cursor: pointer;
-                    text-decoration: underline;
-                    font-size: 0.9rem;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="error-container">
-                <h1 class="error-code"><?php echo $httpCode; ?></h1>
-                <p class="error-message"><?php echo htmlspecialchars($errorMessage); ?></p>
-                
-                <?php if ($retryAfter): ?>
-                <div class="retry-info">
-                    <strong>Rate Limited:</strong> Please wait <?php echo $retryAfter; ?> seconds before retrying.
-                </div>
-                <?php endif; ?>
-
-                <?php if ($httpCode === 429): ?>
-                <div class="retry-info">
-                    <strong>Tip:</strong> Limit your requests to 10 per second to avoid rate limiting.
-                </div>
-                <?php endif; ?>
-
-                <?php if ($httpCode === 555): ?>
-                <div class="retry-info">
-                    <strong>Note:</strong> This is a random test error. Your app should handle this gracefully and retry.
-                </div>
-                <?php endif; ?>
-
-                <div>
-                    <a href="javascript:history.back()" class="btn btn-primary">Go Back</a>
-                    <?php if ($returnUrl): ?>
-                    <a href="<?php echo htmlspecialchars($returnUrl); ?>" class="btn btn-secondary">Return to Home</a>
-                    <?php endif; ?>
-                    <a href="javascript:location.reload()" class="btn btn-secondary" id="retryBtn">Try Again</a>
-                </div>
-
-                <div style="margin-top: 20px;">
-                    <span class="toggle-details" onclick="toggleDetails()">Show Error Details</span>
-                </div>
-
-                <div id="errorDetails" class="error-details">
-                    <strong>HTTP Code:</strong> <?php echo $httpCode; ?><br>
-                    <strong>Timestamp:</strong> <?php echo date('Y-m-d H:i:s'); ?><br>
-                    <?php if ($retryAfter): ?>
-                    <strong>Retry After:</strong> <?php echo $retryAfter; ?> seconds<br>
-                    <?php endif; ?>
-                    <strong>Raw Response:</strong><br>
-                    <pre><?php echo htmlspecialchars(json_encode($errorData['raw_response'], JSON_PRETTY_PRINT)); ?></pre>
-                </div>
+    </style>
+</head>
+<body class="bg-gray-900 m-0 p-0 font-sans text-white flex justify-start items-center min-h-screen text-left">
+    <div class="absolute top-5 left-5 text-white text-lg font-bold text-shadow-sm">qOverflow</div>
+    
+    <div class="max-w-4xl w-full px-5">
+        <div class="flex items-center justify-start flex-row mb-5 ml-7">
+            <div class="mr-5">
+                <img src="https://static.thenounproject.com/png/1648939-200.png" 
+                     alt="Question Mark Error Icon" 
+                     class="w-28 h-auto error-icon-filter lg:w-32 md:w-25 sm:w-20">
             </div>
-
-            <script>
-                function toggleDetails() {
-                    const details = document.getElementById('errorDetails');
-                    const toggle = document.querySelector('.toggle-details');
-                    
-                    if (details.style.display === 'none' || details.style.display === '') {
-                        details.style.display = 'block';
-                        toggle.textContent = 'Hide Error Details';
-                    } else {
-                        details.style.display = 'none';
-                        toggle.textContent = 'Show Error Details';
-                    }
-                }
-
-                // Auto-retry functionality for certain error codes
-                <?php if ($httpCode === 500 || $httpCode === 555): ?>
-                let countdown = 5;
-                const retryBtn = document.getElementById('retryBtn');
-                const originalText = retryBtn.textContent;
-                
-                const timer = setInterval(() => {
-                    countdown--;
-                    retryBtn.textContent = `Auto-retry in ${countdown}s`;
-                    
-                    if (countdown <= 0) {
-                        clearInterval(timer);
-                        location.reload();
-                    }
-                }, 1000);
-                <?php endif; ?>
-            </script>
-        </body>
-        </html>
-        <?php
-    }
-
-    private static function displayEmbeddedError($httpCode, $errorMessage, $retryAfter, $returnUrl, $errorData) {
-        ?>
-        <div class="api-error-embedded" style="
-            background: #f8d7da;
-            color: #721c24;
-            padding: 20px;
-            border: 1px solid #f5c6cb;
-            border-radius: 5px;
-            margin: 20px 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        ">
-            <h3 style="margin: 0 0 10px 0; color: #721c24;">API Error <?php echo $httpCode; ?></h3>
-            <p style="margin: 0 0 15px 0;"><?php echo htmlspecialchars($errorMessage); ?></p>
-            
-            <?php if ($retryAfter): ?>
-            <div style="background: #fff3cd; color: #856404; padding: 10px; border-radius: 3px; margin: 10px 0;">
-                <strong>Rate Limited:</strong> Please wait <?php echo $retryAfter; ?> seconds before retrying.
-            </div>
-            <?php endif; ?>
-
-            <div style="margin-top: 15px;">
-                <button onclick="location.reload()" style="
-                    background: #dc3545;
-                    color: white;
-                    border: none;
-                    padding: 8px 16px;
-                    border-radius: 3px;
-                    cursor: pointer;
-                    margin-right: 10px;
-                ">Try Again</button>
-                
-                <?php if ($returnUrl): ?>
-                <a href="<?php echo htmlspecialchars($returnUrl); ?>" style="
-                    background: #6c757d;
-                    color: white;
-                    text-decoration: none;
-                    padding: 8px 16px;
-                    border-radius: 3px;
-                    display: inline-block;
-                ">Return to Home</a>
-                <?php endif; ?>
-            </div>
-            
-            <details style="margin-top: 15px;">
-                <summary style="cursor: pointer; color: #495057;">Error Details</summary>
-                <div style="margin-top: 10px; font-family: monospace; font-size: 0.9rem; background: #f8f9fa; padding: 10px; border-radius: 3px;">
-                    <strong>HTTP Code:</strong> <?php echo $httpCode; ?><br>
-                    <strong>Timestamp:</strong> <?php echo date('Y-m-d H:i:s'); ?><br>
-                    <?php if ($retryAfter): ?>
-                    <strong>Retry After:</strong> <?php echo $retryAfter; ?> seconds<br>
-                    <?php endif; ?>
-                    <strong>Raw Response:</strong><br>
-                    <pre style="margin: 5px 0; white-space: pre-wrap;"><?php echo htmlspecialchars(json_encode($errorData['raw_response'], JSON_PRETTY_PRINT)); ?></pre>
-                </div>
-            </details>
+            <h1 class="text-8xl font-bold text-white m-0 text-shadow lg:text-9xl md:text-7xl sm:text-5xl">
+                <?php echo $errorCode; ?>
+            </h1>
         </div>
-        <?php
-    }
-
-    public static function checkAndHandleError($response, $httpCode = 200, $returnUrl = null, $embedded = false) {
-        $result = self::handleResponse($response, $httpCode);
         
-        if (!$result['success']) {
-            self::displayErrorPage($result, $returnUrl, $embedded);
-            if (!$embedded) {
-                exit;
+        <p class="text-2xl my-5 text-white ml-12 text-shadow-sm leading-relaxed lg:text-2xl md:text-xl sm:text-lg sm:ml-5">
+            <?php echo $displayMessage; ?>
+        </p>
+        
+        <?php if (is_numeric($errorCode)): ?>
+        <div class="bg-gray-800 p-4 rounded-xl ml-12 mt-5 border border-gray-700 shadow-lg sm:ml-5">
+            <p class="my-1 text-gray-300 text-base">
+                <strong class="text-white">What happened:</strong>
+            </p>
+            <?php if ($errorCode == '400'): ?>
+                <p class="my-1 text-gray-300 text-base">• Check your question title, text, or search parameters</p>
+                <p class="my-1 text-gray-300 text-base">• Ensure all required fields are filled out correctly</p>
+            <?php elseif ($errorCode == '401'): ?>
+                <p class="my-1 text-gray-300 text-base">• Please log in to your qOverflow account</p>
+                <p class="my-1 text-gray-300 text-base">• Your session may have expired</p>
+            <?php elseif ($errorCode == '403'): ?>
+                <p class="my-1 text-gray-300 text-base">• You may need higher privileges to perform this action</p>
+                <p class="my-1 text-gray-300 text-base">• Check if you're trying to modify someone else's content</p>
+            <?php elseif ($errorCode == '404'): ?>
+                <p class="my-1 text-gray-300 text-base">• The question, answer, or user you're looking for doesn't exist</p>
+                <p class="my-1 text-gray-300 text-base">• The content may have been deleted</p>
+            <?php elseif ($errorCode == '409'): ?>
+                <p class="my-1 text-gray-300 text-base">• A user with that username already exists</p>
+                <p class="my-1 text-gray-300 text-base">• You may be trying to create duplicate content</p>
+            <?php elseif ($errorCode == '422'): ?>
+                <p class="my-1 text-gray-300 text-base">• Check your input format and requirements</p>
+                <p class="my-1 text-gray-300 text-base">• Ensure passwords meet security requirements</p>
+            <?php elseif ($errorCode >= 500): ?>
+                <p class="my-1 text-gray-300 text-base">• This is a temporary server issue</p>
+                <p class="my-1 text-gray-300 text-base">• Your data is safe, please try again in a few moments</p>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+        
+        <p class="text-2xl my-5 text-white ml-12 text-shadow-sm leading-relaxed lg:text-2xl md:text-xl sm:text-lg sm:ml-5">
+            Try refreshing the page or go back to the 
+            <a href="/" class="text-blue-400 underline text-2xl mt-5 inline-block transition-colors duration-300 hover:text-blue-300 text-shadow-sm lg:text-2xl md:text-xl sm:text-lg">qOverflow home page</a>.
+        </p>
+    </div>
+
+    <!-- Responsive stuff -->
+    <style>
+        @media (max-width: 500px) {
+            .flex-row {
+                flex-direction: column !important;
+                text-align: center !important;
+                margin-left: 0 !important;
+            }
+            .mr-5 {
+                margin-right: 0 !important;
+                margin-bottom: 0.625rem !important;
+            }
+            .ml-12, .sm\\:ml-5 {
+                margin-left: 0 !important;
+                text-align: center !important;
             }
         }
-        
-        return $result['data'];
-    }
-
-    public static function makeRequestWithErrorHandling($apiInstance, $method, $endpoint, $data = null, $query = [], $autoHandle = true, $returnUrl = null, $embedded = false) {
-        $url = $apiInstance->baseUrl . $endpoint;
-
-        if (!empty($query)) {
-            $url .= '?' . http_build_query($query);
-        }
-
-        $headers = [
-            "Content-Type: application/json",
-            "Authorization: Bearer {$apiInstance->apiKey}"
-        ];
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-
-        if ($data) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        }
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $decodedResponse = json_decode($response, true);
-
-        if ($autoHandle) {
-            return self::checkAndHandleError($decodedResponse, $httpCode, $returnUrl, $embedded);
-        } else {
-            return self::handleResponse($decodedResponse, $httpCode);
-        }
-    }
-}
-
-// Helper functions for backward compatibility
-function handleApiError($response, $httpCode = 200, $returnUrl = null, $embedded = false) {
-    return APIErrorHandler::checkAndHandleError($response, $httpCode, $returnUrl, $embedded);
-}
-
-function showErrorPage($httpCode, $message, $retryAfter = null, $returnUrl = null, $embedded = false) {
-    $errorData = [
-        'success' => false,
-        'error' => $message,
-        'http_code' => $httpCode,
-        'retry_after' => $retryAfter,
-        'raw_response' => ['error' => $message]
-    ];
-    
-    APIErrorHandler::displayErrorPage($errorData, $returnUrl, $embedded);
-    if (!$embedded) {
-        exit;
-    }
-}
-
-?>
+    </style>
+</body>
+</html>

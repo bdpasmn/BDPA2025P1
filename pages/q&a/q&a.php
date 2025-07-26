@@ -1,7 +1,7 @@
 <?php
 
 session_start();
-require_once '../../api/error.php';
+
 require_once '../../api/key.php';
 require_once '../../api/api.php';
   require_once '../../db.php';
@@ -25,8 +25,8 @@ function getGravatarUrl($email, $size = 40, $default = 'identicon') {
 // Function to get user email for gravatar
 function getUserEmail($pdo, $username) {
     try {
-        // First try to get email from Users table
-        $stmt = $pdo->prepare("SELECT email FROM Users WHERE username = ?");
+        // Get email from users table
+        $stmt = $pdo->prepare("SELECT email FROM users WHERE username = ?");
         $stmt->execute([$username]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -50,27 +50,15 @@ $userLevel = 0;
 $userPoints = 0;
 
 if (!$isGuest) {
-    // Get user points and level from database
+    // Get user points and level from users table
     try {
-        // First get user points from the Level table
-        $stmt = $pdo->prepare("SELECT Points FROM Level WHERE username = ?");
+        $stmt = $pdo->prepare("SELECT level, points FROM users WHERE username = ?");
         $stmt->execute([$CURRENT_USER]);
-        $pointsResult = $stmt->fetch(PDO::FETCH_ASSOC);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($pointsResult) {
-            $userPoints = $pointsResult['Points'];
-            
-            // Now get the user level from the Levels table based on points
-            $stmt = $pdo->prepare("SELECT Level FROM Levels WHERE username = ?");
-            $stmt->execute([$CURRENT_USER]);
-            $levelResult = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($levelResult) {
-                $userLevel = $levelResult['Level'];
-            } else {
-                // If no level found, calculate based on points using the original logic as fallback
-                $userLevel = getUserLevelFromPoints($userPoints);
-            }
+        if ($result) {
+            $userPoints = $result['points'] ?? 0;
+            $userLevel = $result['level'] ?? 0;
         }
     } catch (PDOException $e) {
         debugLog("Error getting user level/points from database", ['error' => $e->getMessage()]);
@@ -106,21 +94,16 @@ function getUserLevelFromPoints($points) {
 // Helper function to get user level and points from database
 function getUserLevelAndPoints($pdo, $username) {
     try {
-        // Get points from Level table
-        $stmt = $pdo->prepare("SELECT Points FROM Level WHERE username = ?");
+        // Get level and points from users table
+        $stmt = $pdo->prepare("SELECT level, points FROM users WHERE username = ?");
         $stmt->execute([$username]);
-        $pointsResult = $stmt->fetch(PDO::FETCH_ASSOC);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        $points = $pointsResult ? $pointsResult['Points'] : 0;
+        if ($result) {
+            return ['level' => $result['level'] ?? 0, 'points' => $result['points'] ?? 0];
+        }
         
-        // Get level from Levels table
-        $stmt = $pdo->prepare("SELECT Level FROM Levels WHERE username = ?");
-        $stmt->execute([$username]);
-        $levelResult = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $level = $levelResult ? $levelResult['Level'] : getUserLevelFromPoints($points);
-        
-        return ['level' => $level, 'points' => $points];
+        return ['level' => 0, 'points' => 0];
     } catch (PDOException $e) {
         debugLog("Error getting user data", ['username' => $username, 'error' => $e->getMessage()]);
         return ['level' => 0, 'points' => 0];
@@ -263,6 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $isOwnQuestion = !isset($questionResult['error']) && 
                                     ($questionResult['creator'] ?? '') === $CURRENT_USER;
                     
+                    // Allow commenting on own question at any level
                     if (!$isOwnQuestion && !canPerformAction('comment_any', $userLevel, $userPoints, $isGuest)) {
                         throw new Exception('You need level 3 to comment on others\' questions');
                     }
@@ -290,6 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $answersResult = $api->getAnswers($actualQuestionId);
                     
                     $canComment = false;
+                    // Allow commenting on own question's answers at any level
                     if (!isset($questionResult['error']) && ($questionResult['creator'] ?? '') === $CURRENT_USER) {
                         $canComment = true; // Own question
                     } elseif (!isset($answersResult['error'])) {
@@ -546,10 +531,10 @@ if (!$question) {
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-button {
-            @apply px-4 py-2 bg-gray-700 text-gray-300 border-b-2 border-transparent hover:bg-gray-600 transition-colors;
+            @apply px-4 py-2 bg-gray-900 text-gray-300 border-b-2 border-transparent hover:bg-gray-800 transition-colors;
         }
         .tab-button.active {
-            @apply bg-gray-600 border-blue-500 text-white;
+            @apply bg-gray-800 border-gray-600 text-white;
         }
         .tab-content {
             @apply hidden;
@@ -576,12 +561,21 @@ if (!$question) {
         .user-info {
             @apply flex items-center space-x-2;
         }
+        .tab-container {
+            @apply bg-gray-900 border border-gray-700 rounded-lg;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-300 font-sans">
     <?php include '../../components/navBarLogIn.php'; ?>
 
-    <div class="max-w-4xl mx-auto p-6">
+    <!-- Spinner -->
+    <div id="spinner" class="flex justify-center items-center py-20">
+        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content" class="max-w-4xl mx-auto p-6 hidden">
         <?php if ($message): ?>
             <div class="fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 <?php echo $messageType === 'success' ? 'bg-green-600' : 'bg-red-600'; ?> text-white" id="status-message">
                 <?php echo htmlspecialchars($message); ?>
@@ -640,16 +634,15 @@ if (!$question) {
                     <?php endif; ?>
                 </div>
                 <div class="user-info">
-                                            <?php 
-                            $creatorData = getUserLevelAndPoints($pdo, $question['creator'] ?? '');
-                            $creatorLevel = $creatorData['level'];
-                            $creatorEmail = getUserEmail($pdo, $question['creator'] ?? '');
-                            ?>
-                            <img src="<?php echo getGravatarUrl($creatorEmail, 32); ?>" 
-                                alt="<?php echo htmlspecialchars($question['creator'] ?? 'Unknown'); ?>" 
-                                class="gravatar w-8 h-8 rounded-full">
-                            <div>
-
+                    <?php 
+                    $creatorData = getUserLevelAndPoints($pdo, $question['creator'] ?? '');
+                    $creatorLevel = $creatorData['level'];
+                    $creatorEmail = getUserEmail($pdo, $question['creator'] ?? '');
+                    ?>
+                    <img src="<?php echo getGravatarUrl($creatorEmail, 32); ?>" 
+                        alt="<?php echo htmlspecialchars($question['creator'] ?? 'Unknown'); ?>" 
+                        class="gravatar w-8 h-8 rounded-full">
+                    <div>
                         <strong><?php echo htmlspecialchars($question['creator'] ?? 'Unknown'); ?></strong>
                         <span class="level-badge level-<?php echo $creatorLevel; ?>">Level <?php echo $creatorLevel; ?></span>
                     </div>
@@ -680,14 +673,14 @@ if (!$question) {
                         <form method="POST" class="inline">
                             <input type="hidden" name="action" value="vote_question">
                             <input type="hidden" name="operation" value="downvote">
-                            <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
+<input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
                             <button type="submit" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white font-semibold transition-colors">
                                 ▼ Downvote
                             </button>
                         </form>
                     <?php endif; ?>
 
-                    <!-- Question Actions for Higher Level Users -->
+                    <!-- Question Actions for High-Level Users -->
                     <?php if (canPerformAction('protect_vote', $userLevel, $userPoints, $isGuest)): ?>
                         <form method="POST" class="inline">
                             <input type="hidden" name="action" value="protect_question">
@@ -702,7 +695,7 @@ if (!$question) {
                         <form method="POST" class="inline">
                             <input type="hidden" name="action" value="close_question">
                             <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                            <button type="submit" class="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded text-white font-semibold transition-colors">
+                            <button type="submit" class="bg-red-700 hover:bg-red-800 px-4 py-2 rounded text-white font-semibold transition-colors">
                                 Close
                             </button>
                         </form>
@@ -711,98 +704,105 @@ if (!$question) {
             <?php endif; ?>
 
             <!-- Question Comments -->
-            <div class="bg-gray-700 p-4 rounded-lg">
-                <h3 class="text-lg font-semibold mb-4 text-white">Comments</h3>
-                
-                <?php if (!empty($questionComments)): ?>
-                    <div class="space-y-3 mb-4">
-                        <?php foreach ($questionComments as $comment): ?>
-                            <div class="bg-gray-600 p-3 rounded flex items-start space-x-3">
-                                <?php 
-                                $commenterData = getUserLevelAndPoints($pdo, $comment['creator'] ?? '');
-                                $commenterLevel = $commenterData['level'];
-                                $commenterEmail = getUserEmail($pdo, $comment['creator'] ?? '');
-                                ?>
-                                <img src="<?php echo getGravatarUrl($commenterEmail, 24); ?>" 
-                                     alt="<?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?>" 
-                                     class="gravatar w-6 h-6">
-                                <div class="flex-1">
-                                    <div class="flex items-center space-x-2 mb-1">
-                                        <strong class="text-white"><?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?></strong>
-                                        <span class="level-badge level-<?php echo $commenterLevel; ?>">Level <?php echo $commenterLevel; ?></span>
-                                        <time class="text-xs text-gray-400"><?php echo formatDate($comment['createdAt'] ?? time()); ?></time>
+            <?php if (!empty($questionComments)): ?>
+                <div class="border-t border-gray-600 pt-4 mb-6">
+                    <h3 class="text-lg font-semibold mb-3 text-white">Comments</h3>
+                    <?php foreach ($questionComments as $comment): ?>
+                        <div class="bg-gray-700 p-3 rounded mb-2 flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="text-gray-300 mb-1"><?php echo renderMarkdown($comment['comment'] ?? $comment['text'] ?? ''); ?></div>
+                                <div class="text-sm text-gray-400">
+                                    <?php 
+                                    $commenterData = getUserLevelAndPoints($pdo, $comment['creator'] ?? '');
+                                    $commenterLevel = $commenterData['level'];
+                                    $commenterEmail = getUserEmail($pdo, $comment['creator'] ?? '');
+                                    ?>
+                                    <div class="user-info">
+                                        <img src="<?php echo getGravatarUrl($commenterEmail, 20); ?>" 
+                                             alt="<?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?>" 
+                                             class="gravatar w-5 h-5 rounded-full">
+                                        <span><?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?></span>
+                                        <span class="level-badge level-<?php echo $commenterLevel; ?>">L<?php echo $commenterLevel; ?></span>
+                                        <span><?php echo formatDate($comment['createdAt'] ?? time()); ?></span>
                                     </div>
-                                    <p class="text-gray-300"><?php echo renderMarkdown($comment['text'] ?? ''); ?></p>
-                                    
-                                    <!-- Comment Voting -->
-                                    <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
-                                        <div class="flex items-center space-x-2 mt-2">
-                                            <span class="text-sm text-gray-400">Points: <?php echo ($comment['upvotes'] ?? 0) - ($comment['downvotes'] ?? 0); ?></span>
-                                            
-                                            <?php if (canPerformAction('upvote', $userLevel, $userPoints, $isGuest)): ?>
-                                                <form method="POST" class="inline">
-                                                    <input type="hidden" name="action" value="vote_question_comment">
-                                                    <input type="hidden" name="operation" value="upvote">
-                                                    <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                                                    <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($comment['comment_id'] ?? ''); ?>">
-                                                    <button type="submit" class="text-green-400 hover:text-green-300 text-sm">▲</button>
-                                                </form>
-                                            <?php endif; ?>
-
-                                            <?php if (canPerformAction('downvote', $userLevel, $userPoints, $isGuest)): ?>
-                                                <form method="POST" class="inline">
-                                                    <input type="hidden" name="action" value="vote_question_comment">
-                                                    <input type="hidden" name="operation" value="downvote">
-                                                    <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                                                    <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($comment['comment_id'] ?? ''); ?>">
-                                                    <button type="submit" class="text-red-400 hover:text-red-300 text-sm">▼</button>
-                                                </form>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endif; ?>
                                 </div>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+                            
+                            <!-- Comment Voting -->
+                            <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
+                                <div class="flex items-center space-x-2 ml-4">
+                                    <span class="text-sm text-gray-400"><?php echo ($comment['upvotes'] ?? 0) - ($comment['downvotes'] ?? 0); ?></span>
+                                    
+                                    <?php if (canPerformAction('upvote', $userLevel, $userPoints, $isGuest)): ?>
+                                        <form method="POST" class="inline">
+                                            <input type="hidden" name="action" value="vote_question_comment">
+                                            <input type="hidden" name="operation" value="upvote">
+                                            <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
+                                            <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($comment['comment_id'] ?? ''); ?>">
+                                            <button type="submit" class="text-green-400 hover:text-green-300 text-sm">▲</button>
+                                        </form>
+                                    <?php endif; ?>
 
-                <!-- Add Comment Form for Question -->
-                <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
-                    <?php 
-                    $isOwnQuestion = ($question['creator'] ?? '') === $CURRENT_USER;
-                    $canComment = $isOwnQuestion || canPerformAction('comment_any', $userLevel, $userPoints, $isGuest);
-                    ?>
-                    
-                    <?php if ($canComment): ?>
-                        <form method="POST" class="space-y-3">
+                                    <?php if (canPerformAction('downvote', $userLevel, $userPoints, $isGuest)): ?>
+                                        <form method="POST" class="inline">
+                                            <input type="hidden" name="action" value="vote_question_comment">
+                                            <input type="hidden" name="operation" value="downvote">
+                                            <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
+                                            <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($comment['comment_id'] ?? ''); ?>">
+                                            <button type="submit" class="text-red-400 hover:text-red-300 text-sm">▼</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Add Question Comment Form -->
+            <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
+                <?php 
+                $questionResult = $api->getQuestion($actualQuestionId);
+                $isOwnQuestion = !isset($questionResult['error']) && 
+                                ($questionResult['creator'] ?? '') === $CURRENT_USER;
+                $canCommentOnQuestion = $isOwnQuestion || canPerformAction('comment_any', $userLevel, $userPoints, $isGuest);
+                ?>
+                
+                <?php if ($canCommentOnQuestion): ?>
+                    <div class="border-t border-gray-600 pt-4">
+                        <form method="POST" class="space-y-4">
                             <input type="hidden" name="action" value="add_question_comment">
                             <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                            <textarea name="comment_text" 
-                                      placeholder="Add a comment... (max 150 characters)" 
-                                      maxlength="150"
-                                      class="w-full p-3 bg-gray-600 text-white rounded border border-gray-500 focus:border-blue-500 focus:outline-none resize-none"
-                                      rows="2"></textarea>
+                            
+                            <div>
+                                <label for="comment_text" class="block text-sm font-medium text-gray-300 mb-2">Add a comment:</label>
+                                <textarea name="comment_text" id="comment_text" rows="2" maxlength="150" 
+                                          class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" 
+                                          placeholder="Enter your comment (max 150 characters)"></textarea>
+                                <div class="text-xs text-gray-400 mt-1">
+                                    <span id="comment-char-count">0</span>/150 characters
+                                </div>
+                            </div>
+                            
                             <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white font-semibold transition-colors">
                                 Add Comment
                             </button>
                         </form>
-                    <?php else: ?>
-                        <p class="text-gray-400 text-sm">You need level 3 to comment on others' questions.</p>
-                    <?php endif; ?>
+                    </div>
                 <?php endif; ?>
-            </div>
+            <?php endif; ?>
         </section>
 
         <!-- Answers Section -->
         <section class="mb-10">
             <h2 class="text-2xl font-bold text-white mb-6">
-                <?php echo count($answers); ?> Answer<?php echo count($answers) !== 1 ? 's' : ''; ?>
+                Answers (<?php echo count($answers); ?>)
             </h2>
 
             <?php foreach ($answers as $answer): ?>
-                <div class="bg-gray-800 rounded-lg p-6 mb-6 shadow-lg <?php echo ($answer['accepted'] ?? false) ? 'border-l-4 border-green-500' : ''; ?>">
+                <article class="bg-gray-800 rounded-lg p-6 mb-6 shadow-lg <?php echo ($answer['accepted'] ?? false) ? 'border-l-4 border-green-500' : ''; ?>">
                     <?php if ($answer['accepted'] ?? false): ?>
-                        <div class="bg-green-600 text-white px-3 py-1 rounded text-sm font-semibold mb-4 inline-block">
+                        <div class="bg-green-600 text-white px-3 py-1 rounded mb-4 inline-block font-semibold">
                             ✓ ACCEPTED ANSWER
                         </div>
                     <?php endif; ?>
@@ -810,7 +810,7 @@ if (!$question) {
                     <div class="flex justify-between items-center mb-4">
                         <div class="space-x-4 text-sm text-gray-400">
                             <span>Answered: <time><?php echo formatDate($answer['createdAt'] ?? time()); ?></time></span>
-                            <span>Points: <strong><?php echo ($answer['upvotes'] ?? 0) - ($answer['downvotes'] ?? 0); ?></strong></span>
+                            <span>Points: <strong><?php echo ($answer['upvotes'] ?? $answer['points'] ?? 0) - ($answer['downvotes'] ?? 0); ?></strong></span>
                             <?php if (canPerformAction('view_vote_breakdown', $userLevel, $userPoints, $isGuest)): ?>
                                 <span class="text-green-400">▲<?php echo ($answer['upvotes'] ?? 0); ?></span>
                                 <span class="text-red-400">▼<?php echo ($answer['downvotes'] ?? 0); ?></span>
@@ -824,7 +824,7 @@ if (!$question) {
                             ?>
                             <img src="<?php echo getGravatarUrl($answererEmail, 32); ?>" 
                                  alt="<?php echo htmlspecialchars($answer['creator'] ?? 'Unknown'); ?>" 
-                                 class="gravatar w-8 h-8">
+                                 class="gravatar w-8 h-8 rounded-full">
                             <div>
                                 <strong><?php echo htmlspecialchars($answer['creator'] ?? 'Unknown'); ?></strong>
                                 <span class="level-badge level-<?php echo $answererLevel; ?>">Level <?php echo $answererLevel; ?></span>
@@ -832,9 +832,9 @@ if (!$question) {
                         </div>
                     </div>
 
-                    <article class="prose prose-invert bg-gray-700 p-6 rounded-lg mb-6 leading-relaxed text-gray-300 shadow-inner">
+                    <div class="prose prose-invert bg-gray-700 p-6 rounded-lg mb-6 leading-relaxed text-gray-300 shadow-inner">
                         <?php echo renderMarkdown($answer['body'] ?? $answer['text'] ?? 'No content available'); ?>
-                    </article>
+                    </div>
 
                     <!-- Answer Actions -->
                     <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
@@ -845,7 +845,7 @@ if (!$question) {
                                     <input type="hidden" name="operation" value="upvote">
                                     <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
                                     <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id'] ?? ''); ?>">
-                                    <button type="submit" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-white text-sm font-semibold transition-colors">
+                                    <button type="submit" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white font-semibold transition-colors">
                                         ▲ Upvote
                                     </button>
                                 </form>
@@ -857,20 +857,20 @@ if (!$question) {
                                     <input type="hidden" name="operation" value="downvote">
                                     <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
                                     <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id'] ?? ''); ?>">
-                                    <button type="submit" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-white text-sm font-semibold transition-colors">
+                                    <button type="submit" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white font-semibold transition-colors">
                                         ▼ Downvote
                                     </button>
                                 </form>
                             <?php endif; ?>
 
-                            <!-- Accept Answer (only for question creator) -->
+                            <!-- Accept Answer Button (only for question creator) -->
                             <?php if (($question['creator'] ?? '') === $CURRENT_USER && !($answer['accepted'] ?? false)): ?>
                                 <form method="POST" class="inline">
                                     <input type="hidden" name="action" value="accept_answer">
                                     <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
                                     <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id'] ?? ''); ?>">
-                                    <button type="submit" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-white text-sm font-semibold transition-colors">
-                                        ✓ Accept
+                                    <button type="submit" class="bg-green-700 hover:bg-green-800 px-4 py-2 rounded text-white font-semibold transition-colors">
+                                        ✓ Accept Answer
                                     </button>
                                 </form>
                             <?php endif; ?>
@@ -878,183 +878,260 @@ if (!$question) {
                     <?php endif; ?>
 
                     <!-- Answer Comments -->
-                    <div class="bg-gray-700 p-4 rounded-lg">
-                        <h4 class="text-md font-semibold mb-3 text-white">Comments</h4>
-                        
-                        <?php if (!empty($answer['comments'])): ?>
-                            <div class="space-y-3 mb-4">
-                                <?php foreach ($answer['comments'] as $comment): ?>
-                                    <div class="bg-gray-600 p-3 rounded flex items-start space-x-3">
-                                        <?php 
-                                        $commenterData = getUserLevelAndPoints($pdo, $comment['creator'] ?? '');
-                                        $commenterLevel = $commenterData['level'];
-                                        $commenterEmail = getUserEmail($pdo, $comment['creator'] ?? '');
-                                        ?>
-                                        <img src="<?php echo getGravatarUrl($commenterEmail, 24); ?>" 
-                                             alt="<?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?>" 
-                                             class="gravatar w-6 h-6">
-                                        <div class="flex-1">
-                                            <div class="flex items-center space-x-2 mb-1">
-                                                <strong class="text-white"><?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?></strong>
-                                                <span class="level-badge level-<?php echo $commenterLevel; ?>">Level <?php echo $commenterLevel; ?></span>
-                                                <time class="text-xs text-gray-400"><?php echo formatDate($comment['createdAt'] ?? time()); ?></time>
+                    <?php if (!empty($answer['comments'])): ?>
+                        <div class="border-t border-gray-600 pt-4 mb-4">
+                            <h4 class="text-md font-semibold mb-3 text-white">Comments</h4>
+                            <?php foreach ($answer['comments'] as $comment): ?>
+                                <div class="bg-gray-700 p-3 rounded mb-2 flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <div class="text-gray-300 mb-1"><?php echo renderMarkdown($comment['comment'] ?? $comment['text'] ?? ''); ?></div>
+                                        <div class="text-sm text-gray-400">
+                                            <?php 
+                                            $commenterData = getUserLevelAndPoints($pdo, $comment['creator'] ?? '');
+                                            $commenterLevel = $commenterData['level'];
+                                            $commenterEmail = getUserEmail($pdo, $comment['creator'] ?? '');
+                                            ?>
+                                            <div class="user-info">
+                                                <img src="<?php echo getGravatarUrl($commenterEmail, 20); ?>" 
+                                                     alt="<?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?>" 
+                                                     class="gravatar w-5 h-5 rounded-full">
+                                                <span><?php echo htmlspecialchars($comment['creator'] ?? 'Unknown'); ?></span>
+                                                <span class="level-badge level-<?php echo $commenterLevel; ?>">L<?php echo $commenterLevel; ?></span>
+                                                <span><?php echo formatDate($comment['createdAt'] ?? time()); ?></span>
                                             </div>
-                                            <p class="text-gray-300"><?php echo renderMarkdown($comment['text'] ?? ''); ?></p>
-                                            
-                                            <!-- Answer Comment Voting -->
-                                            <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
-                                                <div class="flex items-center space-x-2 mt-2">
-                                                    <span class="text-sm text-gray-400">Points: <?php echo ($comment['upvotes'] ?? 0) - ($comment['downvotes'] ?? 0); ?></span>
-                                                    
-                                                    <?php if (canPerformAction('upvote', $userLevel, $userPoints, $isGuest)): ?>
-                                                        <form method="POST" class="inline">
-                                                            <input type="hidden" name="action" value="vote_answer_comment">
-                                                            <input type="hidden" name="operation" value="upvote">
-                                                            <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                                                            <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id'] ?? ''); ?>">
-                                                            <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($comment['comment_id'] ?? ''); ?>">
-                                                            <button type="submit" class="text-green-400 hover:text-green-300 text-sm">▲</button>
-                                                        </form>
-                                                    <?php endif; ?>
-
-                                                    <?php if (canPerformAction('downvote', $userLevel, $userPoints, $isGuest)): ?>
-                                                        <form method="POST" class="inline">
-                                                            <input type="hidden" name="action" value="vote_answer_comment">
-                                                            <input type="hidden" name="operation" value="downvote">
-                                                            <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                                                            <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id'] ?? ''); ?>">
-                                                            <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($comment['comment_id'] ?? ''); ?>">
-                                                            <button type="submit" class="text-red-400 hover:text-red-300 text-sm">▼</button>
-                                                        </form>
-                                                    <?php endif; ?>
-                                                </div>
-                                            <?php endif; ?>
                                         </div>
                                     </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
 
-                        <!-- Add Comment Form for Answer -->
-                        <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
-                            <?php 
-                            $isOwnAnswer = ($answer['creator'] ?? '') === $CURRENT_USER;
-                            $isOwnQuestion = ($question['creator'] ?? '') === $CURRENT_USER;
-                            $canComment = $isOwnAnswer || $isOwnQuestion || canPerformAction('comment_any', $userLevel, $userPoints, $isGuest);
-                            ?>
-                            
-                            <?php if ($canComment): ?>
-                                <form method="POST" class="space-y-3">
+                                    <!-- Comment Voting -->
+                                    <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
+                                        <div class="flex items-center space-x-2 ml-4">
+                                            <span class="text-sm text-gray-400"><?php echo ($comment['upvotes'] ?? 0) - ($comment['downvotes'] ?? 0); ?></span>
+                                            
+                                            <?php if (canPerformAction('upvote', $userLevel, $userPoints, $isGuest)): ?>
+                                                <form method="POST" class="inline">
+                                                    <input type="hidden" name="action" value="vote_answer_comment">
+                                                    <input type="hidden" name="operation" value="upvote">
+                                                    <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
+                                                    <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id'] ?? ''); ?>">
+                                                    <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($comment['comment_id'] ?? ''); ?>">
+                                                    <button type="submit" class="text-green-400 hover:text-green-300 text-sm">▲</button>
+                                                </form>
+                                            <?php endif; ?>
+
+                                            <?php if (canPerformAction('downvote', $userLevel, $userPoints, $isGuest)): ?>
+                                                <form method="POST" class="inline">
+                                                    <input type="hidden" name="action" value="vote_answer_comment">
+                                                    <input type="hidden" name="operation" value="downvote">
+                                                    <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
+                                                    <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id'] ?? ''); ?>">
+                                                    <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($comment['comment_id'] ?? ''); ?>">
+                                                    <button type="submit" class="text-red-400 hover:text-red-300 text-sm">▼</button>
+                                                </form>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Add Answer Comment Form -->
+                    <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
+                        <?php 
+                        $isOwnAnswer = ($answer['creator'] ?? '') === $CURRENT_USER;
+                        $canCommentOnAnswer = $isOwnQuestion || $isOwnAnswer || canPerformAction('comment_any', $userLevel, $userPoints, $isGuest);
+                        ?>
+                        
+                        <?php if ($canCommentOnAnswer): ?>
+                            <div class="border-t border-gray-600 pt-4">
+                                <form method="POST" class="space-y-4">
                                     <input type="hidden" name="action" value="add_answer_comment">
                                     <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
                                     <input type="hidden" name="answer_id" value="<?php echo htmlspecialchars($answer['answer_id'] ?? ''); ?>">
-                                    <textarea name="comment_text" 
-                                              placeholder="Add a comment... (max 150 characters)" 
-                                              maxlength="150"
-                                              class="w-full p-3 bg-gray-600 text-white rounded border border-gray-500 focus:border-blue-500 focus:outline-none resize-none"
-                                              rows="2"></textarea>
+                                    
+                                    <div>
+                                        <label for="answer_comment_text_<?php echo htmlspecialchars($answer['answer_id'] ?? ''); ?>" class="block text-sm font-medium text-gray-300 mb-2">Add a comment:</label>
+                                        <textarea name="comment_text" id="answer_comment_text_<?php echo htmlspecialchars($answer['answer_id'] ?? ''); ?>" rows="2" maxlength="150" 
+                                                  class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none answer-comment-textarea" 
+                                                  placeholder="Enter your comment (max 150 characters)"></textarea>
+                                        <div class="text-xs text-gray-400 mt-1">
+                                            <span class="answer-comment-char-count">0</span>/150 characters
+                                        </div>
+                                    </div>
+                                    
                                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white font-semibold transition-colors">
                                         Add Comment
                                     </button>
                                 </form>
-                            <?php else: ?>
-                                <p class="text-gray-400 text-sm">You need level 3 to comment on others' content.</p>
-                            <?php endif; ?>
+                            </div>
                         <?php endif; ?>
-                    </div>
-                </div>
+                    <?php endif; ?>
+                </article>
             <?php endforeach; ?>
         </section>
 
-        <!-- Add Answer Form -->
-        <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
-            <?php if (canPerformAction('create_answer', $userLevel, $userPoints, $isGuest)): ?>
-                <section class="bg-gray-800 rounded-lg p-6 shadow-lg">
-                    <h2 class="text-2xl font-bold text-white mb-6">Your Answer</h2>
-                    
-                    <div class="tabs mb-4">
-                        <button type="button" onclick="switchTab('write')" class="tab-button active" id="write-tab">Write</button>
-                        <button type="button" onclick="switchTab('preview')" class="tab-button" id="preview-tab">Preview</button>
+        <!-- Add Answer Section -->
+        <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel) && canPerformAction('create_answer', $userLevel, $userPoints, $isGuest)): ?>
+            <section class="bg-gray-800 rounded-lg p-6 shadow-lg">
+                <h2 class="text-2xl font-bold text-white mb-6">Your Answer</h2>
+
+                <div class="tab-container">
+                    <div class="flex border-b border-gray-700">
+                        <button class="tab-button active" onclick="switchTab('write')">Write</button>
+                        <button class="tab-button" onclick="switchTab('preview')">Preview</button>
                     </div>
 
-                    <form method="POST" class="space-y-6">
+                    <form method="POST" class="p-6">
                         <input type="hidden" name="action" value="add_answer">
                         <input type="hidden" name="question_id" value="<?php echo htmlspecialchars($actualQuestionId); ?>">
-                        
-                        <div id="write-content" class="tab-content active">
-                            <textarea name="answer_text" 
-                                      id="answer-textarea"
-                                      placeholder="Write your answer here... (max 3000 characters)" 
-                                      maxlength="3000"
-                                      class="w-full p-4 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none resize-vertical"
-                                      rows="12"
-                                      oninput="updatePreview()"></textarea>
-                            <div class="text-sm text-gray-400 mt-2">
-                                Supports Markdown: **bold**, *italic*, `code`, ```code blocks```
-                            </div>
-                        </div>
-                        
-                        <div id="preview-content" class="tab-content">
-                            <div id="preview-area" class="markdown-preview">
-                                <em class="text-gray-500">Nothing to preview yet...</em>
+
+                        <div id="write-tab" class="tab-content active space-y-4">
+                            <div>
+                                <label for="answer_text" class="block text-sm font-medium text-gray-300 mb-2">Answer:</label>
+                                <textarea name="answer_text" id="answer_text" rows="12" maxlength="3000" 
+                                          class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y font-mono" 
+                                          placeholder="Write your answer here... You can use **bold**, *italic*, `code`, and ```code blocks```"></textarea>
+                                <div class="text-xs text-gray-400 mt-1 flex justify-between">
+                                    <span>Markdown supported: **bold**, *italic*, `code`, ```blocks```</span>
+                                    <span><span id="answer-char-count">0</span>/3000 characters</span>
+                                </div>
                             </div>
                         </div>
 
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded text-white font-semibold transition-colors">
-                            Post Your Answer
-                        </button>
+                        <div id="preview-tab" class="tab-content">
+                            <div class="markdown-preview" id="answer-preview">
+                                <em class="text-gray-400">Start typing to see preview...</em>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 pt-4 border-t border-gray-700">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg text-white font-semibold transition-colors">
+                                Submit Answer
+                            </button>
+                        </div>
                     </form>
-                </section>
-            <?php else: ?>
-                <div class="bg-gray-800 rounded-lg p-6 text-center">
-                    <p class="text-gray-400">You need level 1 (1 point) to post answers.</p>
                 </div>
-            <?php endif; ?>
+            </section>
         <?php elseif ($isGuest): ?>
-            <div class="bg-gray-800 rounded-lg p-6 text-center">
-                <p class="text-gray-400 mb-4">Please <a href="../../pages/forms/login.php" class="text-blue-400 hover:text-blue-300">log in</a> to post an answer.</p>
-            </div>
+            <section class="bg-gray-800 rounded-lg p-6 shadow-lg text-center">
+                <h2 class="text-xl font-bold text-white mb-4">Want to Answer?</h2>
+                <p class="text-gray-300 mb-4">You need to be logged in to submit answers.</p>
+                <a href="/login" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg text-white font-semibold transition-colors inline-block">
+                    Log In
+                </a>
+            </section>
+        <?php elseif (!canPerformAction('create_answer', $userLevel, $userPoints, $isGuest)): ?>
+            <section class="bg-gray-800 rounded-lg p-6 shadow-lg text-center">
+                <h2 class="text-xl font-bold text-white mb-4">Level Required</h2>
+                <p class="text-gray-300 mb-4">You need level 1 (1 point) to submit answers. Keep participating to earn points!</p>
+            </section>
         <?php endif; ?>
     </div>
 
     <script>
-        function switchTab(tab) {
-            // Remove active class from all tabs and content
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        // Hide spinner and show content after page loads
+        window.addEventListener('load', function() {
+            document.getElementById('spinner').style.display = 'none';
+            document.getElementById('main-content').classList.remove('hidden');
+        });
+
+        // Tab switching functionality
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
             
-            // Add active class to selected tab and content
-            document.getElementById(tab + '-tab').classList.add('active');
-            document.getElementById(tab + '-content').classList.add('active');
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
             
-            if (tab === 'preview') {
+            // Show selected tab content
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+            
+            // Update preview if switching to preview tab
+            if (tabName === 'preview') {
                 updatePreview();
             }
         }
+
+        // Character counting for answer textarea
+        const answerTextarea = document.getElementById('answer_text');
+        const answerCharCount = document.getElementById('answer-char-count');
         
-        function updatePreview() {
-            const textarea = document.getElementById('answer-textarea');
-            const preview = document.getElementById('preview-area');
-            const text = textarea.value.trim();
-            
-            if (text === '') {
-                preview.innerHTML = '<em class="text-gray-500">Nothing to preview yet...</em>';
-                return;
-            }
-            
-            // Simple markdown rendering (same as PHP function)
-            let html = text
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/`(.*?)`/g, '<code class="bg-gray-600 px-1 rounded">$1</code>')
-                .replace(/```(.*?)```/gs, '<pre class="bg-gray-600 p-2 rounded mt-2 mb-2 overflow-x-auto"><code>$1</code></pre>')
-                .replace(/\n/g, '<br>');
-            
-            preview.innerHTML = html;
+        if (answerTextarea && answerCharCount) {
+            answerTextarea.addEventListener('input', function() {
+                answerCharCount.textContent = this.value.length;
+            });
         }
+
+        // Character counting for comment textareas
+        const commentTextarea = document.getElementById('comment_text');
+        const commentCharCount = document.getElementById('comment-char-count');
+        
+        if (commentTextarea && commentCharCount) {
+            commentTextarea.addEventListener('input', function() {
+                commentCharCount.textContent = this.value.length;
+            });
+        }
+
+        // Character counting for answer comment textareas
+        document.querySelectorAll('.answer-comment-textarea').forEach(textarea => {
+            textarea.addEventListener('input', function() {
+                const charCount = this.parentElement.querySelector('.answer-comment-char-count');
+                if (charCount) {
+                    charCount.textContent = this.value.length;
+                }
+            });
+        });
+
+        // Markdown preview functionality
+        function renderMarkdown(text) {
+            // Simple markdown rendering (matches PHP version)
+            text = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            text = text.replace(/`(.*?)`/g, '<code class="bg-gray-600 px-1 rounded">$1</code>');
+            text = text.replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-600 p-2 rounded mt-2 mb-2 overflow-x-auto"><code>$1</code></pre>');
+            text = text.replace(/\n/g, '<br>');
+            return text;
+        }
+
+        function updatePreview() {
+            const textarea = document.getElementById('answer_text');
+            const preview = document.getElementById('answer-preview');
+            
+            if (textarea && preview) {
+                const text = textarea.value.trim();
+                if (text === '') {
+                    preview.innerHTML = '<em class="text-gray-400">Start typing to see preview...</em>';
+                } else {
+                    preview.innerHTML = renderMarkdown(text);
+                }
+            }
+        }
+
+        // Update preview on textarea input
+        if (answerTextarea) {
+            answerTextarea.addEventListener('input', updatePreview);
+        }
+
+        // Auto-resize textareas
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+
+        // Apply auto-resize to all textareas
+        document.querySelectorAll('textarea').forEach(textarea => {
+            textarea.addEventListener('input', function() {
+                autoResize(this);
+            });
+        });
     </script>
 </body>
 </html>
