@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
       $api->createQuestion($username, $title, $text);
 
-      // After posting, add 1 point to the user and possibly update their level
+      // After posting, add 1 point to the user
       try {
           require_once '../../db.php';
 
@@ -63,44 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
           $stmt = $pdo_post->prepare("UPDATE users SET points = COALESCE(points, 0) + 1 WHERE username = :username");
           $stmt->execute(['username' => $username]);
-
-          $stmt = $pdo_post->prepare("SELECT points, level FROM users WHERE username = :username");
-          $stmt->execute(['username' => $username]);
-          $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-          if ($user) {
-              $points = (int)$user['points'];
-              $currentLevel = (int)$user['level'];
-
-              // Determine level based on points
-              $newLevel = 1;
-              if ($points >= 10000) {
-                  $newLevel = 7;
-              } elseif ($points >= 3000) {
-                  $newLevel = 6;
-              } elseif ($points >= 1000) {
-                  $newLevel = 5;
-              } elseif ($points >= 125) {
-                  $newLevel = 4;
-              } elseif ($points >= 50) {
-                  $newLevel = 3;
-              } elseif ($points >= 15) {
-                  $newLevel = 2;
-              } elseif ($points >= 1) {
-                  $newLevel = 1;
-              }
-
-              // Check if lebel needs to be updated
-              if ($newLevel !== $currentLevel) {
-                  $stmt = $pdo_post->prepare("UPDATE users SET level = :level WHERE username = :username");
-                  $stmt->execute([
-                      'level' => $newLevel,
-                      'username' => $username
-                  ]);
-              }
-          }
       } catch (PDOException $e) {
-          error_log("Error updating user points or level: " . $e->getMessage());
+          error_log("Error updating user points: " . $e->getMessage());
       }
 
       header("Location: buffet.php?sort=$sort&page=$currentPage");
@@ -192,8 +156,7 @@ function format_relative_time($timestamp_ms) {
   <div class="md:hidden px-4 py-5 bg-gray-800 border border-gray-700 rounded-xl mx-4 my-4 shadow-md">
     <div class="flex justify-between items-center">
       <div class="text-3xl text-white font-semibold">
-        <?php $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest'; ?>
-        Welcome <span class="text-blue-400 max-w-full truncate block" style="max-width: 100%;"><?= htmlspecialchars($username) ?></span>
+        Welcome <span class="text-blue-400 text-5xl max-w-full truncate block" style="max-width: 100%;"><?= htmlspecialchars($username) ?></span>
       </div>
       <div class="flex gap-2">
         <?php if (isset($_SESSION['username'])): ?>
@@ -247,9 +210,13 @@ function format_relative_time($timestamp_ms) {
           <?php endforeach; ?>
         </ul>
       </form>
+      
+      <div id="spinner" class="flex justify-center items-center py-20">
+        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
 
       <!-- Question boxs -->
-      <div class="space-y-6">
+      <div id="question-list" class="space-y-6 hidden">
         <?php foreach ($questions as $q):
           $rawMarkdown = $q['text'] ?? '';
           $creator = htmlspecialchars($q['creator']);
@@ -270,31 +237,22 @@ function format_relative_time($timestamp_ms) {
           <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
             <?php
               $email = '';
-              $level = null;
 
               if ($pdo) {
-                  $stmt = $pdo->prepare("SELECT email, level FROM users WHERE username = :username LIMIT 1");
+                  $stmt = $pdo->prepare("SELECT email FROM users WHERE username = :username LIMIT 1");
                   $stmt->execute(['username' => $creator]);
                   $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                  if ($row) {
-                      if (!empty($row['email'])) {
-                          $email = trim(strtolower($row['email']));
-                      }
-                      if (isset($row['level'])) {
-                          $level = intval($row['level']);
-                      }
+                  if ($row && !empty($row['email'])) {
+                      $email = trim(strtolower($row['email']));
                   }
               }
 
               $gravatarHash = md5($email);
               $gravatarUrl = "https://www.gravatar.com/avatar/$gravatarHash?d=identicon";
             ?>
-            <span class="flex items-center gap-1">
+            <span class="flex items-center gap-2">
               <img src="<?= htmlspecialchars($gravatarUrl) ?>" alt="Avatar" class="w-6 h-6 rounded-full border border-gray-600">
               <?= htmlspecialchars($creator) ?>
-              <?php if (!is_null($level)): ?>
-                <span class="text-xs text-gray-400 bg-gray-700 px-1 py-0.5 rounded-md border border-gray-600 ml-1">Level <?= $level ?></span>
-              <?php endif; ?>
             </span>
             <span><?= $relative ?> <span class="text-gray-500">•</span> <?= $exact ?></span>
           </div>
@@ -407,6 +365,12 @@ function format_relative_time($timestamp_ms) {
       document.getElementById('previewContent').innerHTML = sanitized;
       document.getElementById('previewModal').classList.remove('hidden');
     }
+
+    //Trigger spinner
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('spinner').classList.add('hidden');
+      document.getElementById('question-list').classList.remove('hidden');
+    });
   </script>
 </body>
 </html>
