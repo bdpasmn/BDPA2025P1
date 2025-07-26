@@ -17,8 +17,8 @@ $captchaerror = '';
 $strengthMessage = '';
 $error = '';
 
-//$level = 1;
-//$points = 1;
+$level = 1;
+$points = 1;
 
 // CAPTCHA generation
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
@@ -40,15 +40,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $captcha = trim($_POST['captcha']);
 
     // Create PDO
-    $pdo = getPDO();
+    //$pdo = getPDO();
 
-    /*try {
+    try {
         $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     } catch (PDOException $e) {
         $error = "Database connection failed: " . $e->getMessage();
         $haserror = true;
     }
-        */
+        
 
     /* Password strength message
     $passwordLength = strlen($rawPassword);
@@ -106,8 +106,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO users (username, email) VALUES (?, ?)");
-            $stmt->execute([$username, $email]);
+            $stmt = $pdo->prepare("INSERT INTO users (username, email, level, points) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$username, $email, $level, $points]);
 
             $result = $api->createUser($username, $email, $salt, $passwordHash);
             if ($result['error']) {
