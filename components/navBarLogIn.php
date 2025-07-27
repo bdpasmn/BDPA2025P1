@@ -1,6 +1,7 @@
 <?php
 //require_once '../../db.php';
 require_once(__DIR__ . '/../db.php'); // ✅ This is reliable
+require_once(__DIR__ . '/../levels/getUserLevel.php'); // ✅ This is reliable
 
 // Get points and level from session if available, default to 1 if not set
 /*
@@ -74,6 +75,8 @@ if (isset($_SESSION['username'])) {
   
 $hashedEmail = md5($email);
 $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
+
+ $levelInfo = getUserLevel($_SESSION['username']);
 ?>
 
 
@@ -180,8 +183,8 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
 <div class="flex items-center gap-4">
   <!-- Points and Level -->
   <div class="flex flex-col text-blue-400 text-sm font-semibold sm:items-start">
-    <span>Points: <span class="text-blue-400"><?php echo htmlspecialchars($points); ?></span></span>
-    <span>Level: <span class="text-blue-400"><?php echo htmlspecialchars($level); ?></span></span>
+    <span>Points: <span class="text-blue-400"><?php echo htmlspecialchars($_SESSION['points']); ?></span></span>
+    <span>Level: <span class="text-blue-400"><?php echo htmlspecialchars($levelInfo['level']); ?></span></span>
   </div>
 
  <!-- Profile image -->

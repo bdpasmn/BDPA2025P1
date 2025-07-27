@@ -1,7 +1,7 @@
 <?php
 function getUserLevel($username) {
-    require_once '../../api/key.php';
-    require_once '../../api/api.php';
+    //require_once '../../api/key.php';
+    //require_once '../../api/api.php';
 
     $api = new qOverflowAPI(API_KEY);
 
