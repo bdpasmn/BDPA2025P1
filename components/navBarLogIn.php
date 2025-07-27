@@ -126,7 +126,7 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
       <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-6">
         <div class="flex items-center space-x-3">
           <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo" class="h-9 w-auto">
-          <a href="/" >
+          <a href="/pages/buffet/buffet.php" >
           <span class="text-2xl font-bold text-white">qOverflow</span>
           </a>
         </div>
