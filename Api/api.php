@@ -40,11 +40,7 @@ class qOverflowAPI {
             $curlError = curl_error($ch);
             curl_close($ch);
 
-            // DEBUG: Log all responses
-            error_log("qOverflow API Debug - URL: $url");
-            error_log("qOverflow API Debug - HTTP Code: $httpCode");
-            error_log("qOverflow API Debug - Response: " . substr($response, 0, 200));
-
+          
             // Handle cURL errors
             if ($curlError) {
                 error_log("qOverflow API - cURL Error: " . $curlError);
@@ -60,21 +56,22 @@ class qOverflowAPI {
                     sleep(1);
                 } else {
                     error_log("qOverflow API - All retry attempts exhausted for server error");
+                    
                     $this->redirectToError(503);
                     return false;
                 }
             } else {
                 // Handle successful responses (2xx)
-                if ($httpCode >= 200 && $httpCode < 300) {
+                if ($httpCode >= 200 && $httpCode < 405) {
                     return json_decode($response, true);
-                } else if ($httpCode >= 400 && $httpCode < 500) {
-                    // DEBUG: Add more detailed logging for client errors
-                    error_log("qOverflow API Client Error - Code: " . $httpCode . " - Response: " . $response);
-                    error_log("qOverflow API Debug - About to check redirect conditions for code: " . $httpCode);
-                    
+                } else if ($httpCode >= 405 && $httpCode < 500) {
+                    // DEBUG: Log all responses
+                        error_log("qOverflow API Debug - URL: $url");
+                        error_log("qOverflow API Debug - HTTP Code: $httpCode");
+                        error_log("qOverflow API Debug - Response: " . substr($response, 0, 200));
+
                     // Redirect for critical client errors that should show error page
                     if (in_array($httpCode, [401, 403, 404])) {
-                        error_log("qOverflow API Debug - Redirecting to error page for code: " . $httpCode);
                         $this->redirectToError($httpCode);
                         return false;
                     }
@@ -151,19 +148,6 @@ class qOverflowAPI {
     public function listUsers($after = null) {
         $query = $after ? ['after' => $after] : [];
         return $this->request('GET', "/users", null, $query);
-    }
-
-    public function updateUserPoints($username, $operation, $amount) {
-        if (!in_array($operation, ['add', 'subtract', 'set'])) {
-            throw new InvalidArgumentException('Operation must be add, subtract, or set');
-        }
-        if (!is_numeric($amount) || $amount < 0) {
-            throw new InvalidArgumentException('Amount must be a non-negative number');
-        }
-        return $this->request('PATCH', "/users/" . urlencode($username) . "/points", [
-            'operation' => $operation,
-            'amount' => $amount
-        ]);
     }
 
     public function getUserQuestions($username, $after = null) {

@@ -1,5 +1,6 @@
 <?php
-require_once '../../db.php';
+//require_once '../../db.php';
+require_once(__DIR__ . '/../db.php'); // ✅ This is reliable
 
 // Get points and level from session if available, default to 1 if not set
 /*
@@ -125,7 +126,7 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
       <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-6">
         <div class="flex items-center space-x-3">
           <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo" class="h-9 w-auto">
-          <a href="/" >
+          <a href="/pages/buffet/buffet.php" >
           <span class="text-2xl font-bold text-white">qOverflow</span>
           </a>
         </div>
@@ -134,13 +135,13 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
 
 
         <div class="flex flex-wrap gap-2 mt-2 sm:mt-0 sm:text-xs sm-font-small hidden sm:flex">       
-        <a href="../buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
+        <a href="/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
             Buffet
           </a> 
-        <a href="../dashboard/dashboard.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/dashboard/dashboard.php') !== false ? ' active' : ''; ?>">
+        <a href="/pages/dashboard/dashboard.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/dashboard/dashboard.php') !== false ? ' active' : ''; ?>">
             Dashboard
           </a>
-          <a href="../mail/mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/mail/mail.php') !== false ? ' active' : ''; ?>">
+          <a href="/pages/mail/mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/mail/mail.php') !== false ? ' active' : ''; ?>">
             Mail
           </a>    
           <a href="/pages/auth/logout.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/auth/logout.php') !== false ? ' active' : ''; ?>">
@@ -157,13 +158,13 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
       </div>
 
       <div id="MenuDrop" class=" gap-2 mt-2 hidden sm:hidden flex flex-wrap gap-2 mt-2 sm:mt-0 sm:text-xs sm-font-small">       
-        <a href="../buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
+        <a href="/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
             Buffet
           </a> 
-        <a href="../dashboard/dashboard.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/dashboard/dashboard.php') !== false ? ' active' : ''; ?>">
+        <a href="/pages/dashboard/dashboard.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/dashboard/dashboard.php') !== false ? ' active' : ''; ?>">
             Dashboard
           </a>
-          <a href="../mail/mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/mail/mail.php') !== false ? ' active' : ''; ?>">
+          <a href="/pages/mail/mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/mail/mail.php') !== false ? ' active' : ''; ?>">
             Mail
           </a>    
           <a href="/pages/auth/logout.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/auth/logout.php') !== false ? ' active' : ''; ?>">
@@ -199,7 +200,7 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
 
 
   <!-- Search form -->
-  <form class="w-full sm:w-auto" method="get" action="/BDPA2025P1/components/navBarSearch.php">
+  <form class="w-full sm:w-auto" method="get" action="/components/navBarSearch.php">
   <div class="relative">
     <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-sm">🔍</span>
 

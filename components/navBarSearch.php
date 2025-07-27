@@ -4,6 +4,7 @@ session_start();
   require_once '../Api/api.php';
   require_once '../Api/key.php';
 
+
 $api = new qOverflowAPI(API_KEY);
 
 // Get input
