@@ -114,7 +114,6 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
   </style>
 </head>
 <body class="text-white">
-
 <nav class="sticky top-0 z-50 bg-gray-900 shadow-lg">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between py-4 gap-4 flex-wrap">
@@ -126,11 +125,15 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
       <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-6">
         <div class="flex items-center space-x-3">
           <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo" class="h-9 w-auto">
-          <a href="/pages/buffet/buffet.php" >
+          <a href="/" >
           <span class="text-2xl font-bold text-white">qOverflow</span>
           </a>
         </div>
-        <div class="flex flex-wrap gap-2 mt-2 sm:mt-0">       
+
+
+
+
+        <div class="flex flex-wrap gap-2 mt-2 sm:mt-0 sm:text-xs sm-font-small hidden sm:flex">       
         <a href="../buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
             Buffet
           </a> 
@@ -147,14 +150,53 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
         </div>
       </div>
 
+      <div  class="sm:hidden flex justify-start">
+        <button id="MenuButton" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium">
+          Menu
+        </button>
+      </div>
+
+      <div id="MenuDrop" class=" gap-2 mt-2 hidden sm:hidden flex flex-wrap gap-2 mt-2 sm:mt-0 sm:text-xs sm-font-small">       
+        <a href="../buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
+            Buffet
+          </a> 
+        <a href="../dashboard/dashboard.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/dashboard/dashboard.php') !== false ? ' active' : ''; ?>">
+            Dashboard
+          </a>
+          <a href="../mail/mail.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/mail/mail.php') !== false ? ' active' : ''; ?>">
+            Mail
+          </a>    
+          <a href="/pages/auth/logout.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/auth/logout.php') !== false ? ' active' : ''; ?>">
+            LogOut
+          </a>
+          </form>
+        </div>
+      
+
       <!-- Right Side: Points/Level + Search + Avatar -->
 <div class="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
-
+  
+<div class="flex items-center gap-4">
   <!-- Points and Level -->
   <div class="flex flex-col text-blue-400 text-sm font-semibold sm:items-start">
     <span>Points: <span class="text-blue-400"><?php echo htmlspecialchars($points); ?></span></span>
     <span>Level: <span class="text-blue-400"><?php echo htmlspecialchars($level); ?></span></span>
   </div>
+
+ <!-- Profile image -->
+  <a href="/pages/dashboard/dashboard.php" class="sm:hidden">
+    <img
+      src="<?= $gravatarUrl ?>"
+      alt="Profile"
+      class="h-10 w-10 rounded-full border-2 border-blue-600"
+    />
+  </a>
+
+</div>
+
+
+    <div class="flex items-center gap-2 w-full sm:w-auto">
+
 
   <!-- Search form -->
   <form class="w-full sm:w-auto" method="get" action="/BDPA2025P1/components/navBarSearch.php">
@@ -165,22 +207,32 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
       type="text"
       name="query"
       placeholder="Search titles, creators, dates.."
-      class="bg-gray-700 border border-gray-600 pl-10 pr-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-64"
+      class="bg-gray-700 border border-gray-600 pl-10 pr-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64 max-xl:w-40 max-sm:w-full"
     />
+    <!-- max-xl:w-40 max-sm:w-full-->
   </div>
 </form>
 
+
   <!-- Profile image -->
-  <div class="flex justify-center">
+  <a href="/pages/dashboard/dashboard.php" class="flex justify-center hidden sm:flex">
     <img
       src="<?= $gravatarUrl ?>"
       alt="Profile"
       class="h-10 w-10 rounded-full border-2 border-blue-600"
     />
-  </div>
+  </a>
 </div>
+    </div>
     </div>
   </div>
 </nav>
+  </div>
+  <script>
+    document.getElementById('MenuButton').addEventListener('click', function() {
+      const menuDrop = document.getElementById('MenuDrop');
+      menuDrop.classList.toggle('hidden');
+    });
+  </script>
 </body>
 </html>
