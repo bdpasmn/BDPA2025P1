@@ -112,9 +112,14 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
             <label class="text-sm font-medium">Live Preview:</label>
             <div id="preview-card" class="mt-2"></div>
           </div>
-          <div class="flex justify-end">
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-7 py-2 rounded-lg text-base font-semibold shadow transition">Send</button>
-          </div>
+                      <div class="flex justify-end">
+              <button type="submit" id="send-button" class="bg-blue-600 hover:bg-blue-700 text-white px-7 py-2 rounded-lg text-base font-semibold shadow transition">
+                <span id="send-text">Send</span>
+                <span id="send-spinner" class="hidden">
+                  <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block"></div>
+                </span>
+              </button>
+            </div>
         </form>
       <?php else: ?>
         <div class="mb-2">
@@ -246,6 +251,22 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
 
   // Initial render
   if (inboxList) renderInbox();
+  
+  // Form submission spinner
+  const composeForm = document.querySelector('form[method="POST"]');
+  if (composeForm) {
+    composeForm.addEventListener('submit', function(e) {
+      const sendText = document.getElementById('send-text');
+      const sendSpinner = document.getElementById('send-spinner');
+      const sendButton = document.getElementById('send-button');
+      
+      if (sendText && sendSpinner && sendButton) {
+        sendText.classList.add('hidden');
+        sendSpinner.classList.remove('hidden');
+        sendButton.disabled = true;
+      }
+    });
+  }
 
   // Live preview for Compose (only if present)
   const textarea = document.getElementById('body');
