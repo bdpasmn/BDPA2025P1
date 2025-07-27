@@ -79,6 +79,9 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
     .message-body em {
       font-style: italic;
     }
+    #inbox-list .message-body {
+      white-space: pre-line;
+    }
   </style>
 </head>
 <body class="text-white min-h-screen flex flex-col">
