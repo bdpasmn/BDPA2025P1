@@ -14,6 +14,6 @@ function updateUserPoints($username, $pointChange) {
 
     if (isset($_SESSION['username']) && $_SESSION['username'] == $username) {
         $_SESSION['points'] = $newPoints;
-    }    
+    }
 }
 ?>
