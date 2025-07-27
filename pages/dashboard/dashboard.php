@@ -136,7 +136,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
 <div id="dashboard" class="hidden">
 
-  <div class="bg-gray-800 rounded-lg mx-10 mt-10 p-6 flex items-center shadow-md">
+  <div class="bg-gray-800 rounded-lg mx-10 mt-10 p-6 flex items-center shadow-md flex-wrap">
   <img src="<?= $gravatarUrl ?>" alt="Profile Picture" class="w-32 h-32 rounded-lg mr-6"/> <!-- genreate gravatar URL with identicon fallback -->
   <div>
       <h4 class="text-3xl font-bold mb-2"> Welcome <?= htmlspecialchars($username ?? '') ?></h4>
