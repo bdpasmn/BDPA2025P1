@@ -65,6 +65,20 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
       margin-left: 1.5em;
       padding-left: 0;
     }
+    .message-body hr {
+      border: none;
+      border-top: 1px solid #4b5563;
+      margin: 1em 0;
+    }
+    .message-body p {
+      margin: 0.5em 0;
+    }
+    .message-body strong {
+      font-weight: bold;
+    }
+    .message-body em {
+      font-style: italic;
+    }
   </style>
 </head>
 <body class="text-white min-h-screen flex flex-col">
@@ -196,12 +210,8 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
         document.querySelectorAll('[id$="-full"]').forEach(el => { el.classList.add('hidden'); });
         document.querySelectorAll('[id$="-toggle"]').forEach(el => { el.textContent = 'View Full Message'; });
         if (!expanded) {
-          // Render full message (preserve whitespace)
-          if (/\n\s*\n/.test(msg.text || '')) {
-            fullDiv.innerHTML = `<pre class='whitespace-pre-wrap font-mono text-sm text-gray-200'>${escapeHtml(msg.text || '')}</pre>`;
-          } else {
-            fullDiv.innerHTML = `<span class='text-sm message-body text-gray-200 whitespace-pre-line'>${convertMarkdown(msg.text || '')}</span>`;
-          }
+          // Render full message with markdown support
+          fullDiv.innerHTML = `<div class='text-sm message-body text-gray-200'>${convertMarkdown(msg.text || '')}</div>`;
           fullDiv.classList.remove('hidden');
           toggleBtn.textContent = 'Hide Full Message';
           expanded = true;
