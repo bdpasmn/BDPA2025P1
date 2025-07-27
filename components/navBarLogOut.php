@@ -65,7 +65,7 @@
         </div>
 
   <!-- Search form -->
-  <form class="w-full sm:w-auto" method="get" action="/BDPA2025P1/components/navBarSearch.php">
+  <form class="w-full sm:w-auto" method="get" action="/components/navBarSearch.php">
   <div class="relative">
     <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-sm">🔍</span>
 

@@ -130,13 +130,14 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
 
 <?php  include '../../../BDPA2025P1/components/navBarLogIn.php';  ?>
+
  <div id="spinner" class="flex justify-center items-center py-20">
     <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
   </div>
 
 <div id="dashboard" class="hidden">
 
-  <div class="bg-gray-800 rounded-lg mx-10 mt-10 p-6 flex items-center shadow-md flex-wrap">
+  <div class="bg-gray-800 rounded-lg mx-10 mt-10 p-6 flex items-center shadow-md flex-wrap border border-gray-700">
   <img src="<?= $gravatarUrl ?>" alt="Profile Picture" class="w-32 h-32 rounded-lg mr-6"/> <!-- genreate gravatar URL with identicon fallback -->
   <div>
       <h4 class="text-3xl font-bold mb-2"> Welcome <?= htmlspecialchars($username ?? '') ?></h4>
@@ -173,9 +174,9 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
       <?php /*foreach ($JustUserQuestions as $UserQuestion): */?> <!-- Loop through each user question -->
       <?php foreach ($paginatedQuestions as $UserQuestion): ?> <!-- Loop through each paginated user question for that page-->
         <a href="../q&a/q&a.php?questionName=<?= urlencode($UserQuestion['title']) ?>">
-        <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md "> <!-- got rid of w-[300px] in the div class -->
+        <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700 "> <!-- got rid of w-[300px] in the div class -->
         <p class="text-l font-semibold text-blue-400">QUESTION TITLE:</p>
-          <p class="mt-2 text-sm font-semibold"><?php echo htmlspecialchars($UserQuestion['title']); ?></p> <!-- Display question title -->
+          <p class="mt-2 text-sm font-semibold hover:underline block break-words"><?php echo htmlspecialchars($UserQuestion['title']); ?></p> <!-- Display question title -->
           <p class="mt-4 text-sm">VOTES: <?php echo $UserQuestion['upvotes'] ?? 'not found'; ?></p> <!-- Display question votes -->
         </div>
         </a>
@@ -186,7 +187,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
   </div>
 
   <?php if ($totalPages > 1): ?> <!-- Check if there are multiple pages -->
-  <div id="questionPagination" class="mt-6 flex justify-center space-x-2 text-sm">
+  <div id="questionPagination" class="mt-4 flex justify-center space-x-2 text-sm  mb-4 ">
     <?php for ($i = 1; $i <= $totalPages; $i++): ?> <!-- Loop through each page number -->
       <a href="?page=<?= $i ?>" class="px-3 py-1 rounded <?= $i === $currentPage ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' ?>"> <!-- Highlight current page -->
         <?= $i ?> <!-- Display page number -->
@@ -205,7 +206,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
       <?php /*foreach ($JustUserAnswer as $UserAnswer): */?> <!-- Loop through each user answer -->
         <?php foreach ($paginatedAnswers as $UserAnswer): ?>
         <a href="/pages/q&a/q&a.php?questionName=<?= urlencode($UserAnswer['question_id']) ?>">
-        <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md"> <!-- got rid of w-[300px] in the div class -->
+        <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700"> <!-- got rid of w-[300px] in the div class -->
           <p class="text-l font-semibold text-blue-400">ANSWER TITLE:</p>
           <p class="mt-2 text-sm font-semibold"><?php echo htmlspecialchars($UserAnswer['text']); ?></p> <!-- Display question title -->
           <p class="mt-4 text-sm">VOTES: <?php echo $UserAnswer['upvotes'] ?? 'not found'; ?></p><!-- Display answer votes -->
