@@ -257,6 +257,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   </script>
 
 </body>
+<<<<<<< Updated upstream
 </html>
 
  <div id="spinner" class="flex justify-center items-center py-20">
@@ -264,3 +265,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </div>
 
 
+=======
+</html>
+>>>>>>> Stashed changes
