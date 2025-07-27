@@ -222,9 +222,9 @@ function format_relative_time($timestamp_ms) {
           </a>
           <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed text-sm sm:text-base break-words" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
           <div class="text-sm text-gray-400 flex flex-wrap gap-4 mt-2">
-            <span class="js-votes"><?= intval($q['upvotes'] ?? 0) ?> vote<?= (intval($q['upvotes'] ?? 0) == 1 ? '' : 's') ?></span>
-            <span class="js-answers"><?= intval($q['answers'] ?? 0) ?> answer<?= (intval($q['answers'] ?? 0) == 1 ? '' : 's') ?></span>
-            <span class="js-views"><?= intval($q['views'] ?? 0) ?> view<?= (intval($q['views'] ?? 0) == 1 ? '' : 's') ?></span>
+            <span class="vote-count"><?= intval($q['upvotes'] ?? 0) ?> vote<?= (intval($q['upvotes'] ?? 0) == 1 ? '' : 's') ?></span>
+            <span class="answer-count"><?= intval($q['answers'] ?? 0) ?> answer<?= (intval($q['answers'] ?? 0) == 1 ? '' : 's') ?></span>
+            <span class="view-count"><?= intval($q['views'] ?? 0) ?> view<?= (intval($q['views'] ?? 0) == 1 ? '' : 's') ?></span>
           </div>
           <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
             <?php
@@ -329,28 +329,6 @@ function format_relative_time($timestamp_ms) {
         const html = marked.parse(rawMarkdown);
         el.innerHTML = DOMPurify.sanitize(html);
       });
-      
-      // Auto refresh data
-      function refreshCounts() {
-        const cards = document.querySelectorAll('[data-id]');
-        const ids = Array.from(cards).map(c => c.getAttribute('data-id')).join(',');
-        if (!ids) return;
-
-        fetch(`/api/questions/summary?ids=${ids}`)
-          .then(res => res.json())
-          .then(data => {
-            (data.questions || []).forEach(q => {
-              const card = document.querySelector(`[data-id="${q.id}"]`);
-              if (!card) return;
-              card.querySelector('.js-votes').textContent = `${q.upvotes} vote${q.upvotes === 1 ? '' : 's'}`;
-              card.querySelector('.js-answers').textContent = `${q.answers} answer${q.answers === 1 ? '' : 's'}`;
-              card.querySelector('.js-views').textContent = `${q.views} view${q.views === 1 ? '' : 's'}`;
-            });
-          });
-      }
-
-      refreshCounts();
-      setInterval(refreshCounts, 15000);
     });
 
     // Preview markdown function
