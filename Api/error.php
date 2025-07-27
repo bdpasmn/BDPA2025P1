@@ -10,7 +10,7 @@ $errorMessage = 'Something went wrong with qOverflow. Please try again later';
 
 //  error codes to user-friendly messages 
 $errorMessages = array(
-    '400' => 'Your qOverflow request has a problem. Please check your input and try again.',
+  //  '400' => 'Your qOverflow request has a problem. Please check your input and try again.',
     '401' => 'You need to authenticate to access qOverflow resources.',
     '403' => 'You don\'t have permission to perform this qOverflow action.',
     '404' => 'The qOverflow resource you\'re looking for isn\'t available.',
@@ -22,6 +22,7 @@ $errorMessages = array(
     '502' => 'qOverflow service is temporarily unavailable.',
     '503' => 'qOverflow service is temporarily down for maintenance.',
     '504' => 'qOverflow request timed out. Please try again.',
+    '999' =>  'Something is wrong with our page come back later',
     'Uh oh...' => 'Something went wrong with qOverflow. Please try again later.',
 );
 

@@ -1,18 +1,4 @@
 <?php
-/*
-class qOverflowAPIException extends Exception {
-    private $httpCode;
-    
-    public function __construct($message, $httpCode = 0) {
-        parent::__construct($message);
-        $this->httpCode = $httpCode;
-    }
-
-    public function getHttpCode() {
-        return $this->httpCode;
-    }
-}
-*/
 class qOverflowAPI {
     private $baseUrl;
     private $apiKey;
@@ -54,6 +40,11 @@ class qOverflowAPI {
             $curlError = curl_error($ch);
             curl_close($ch);
 
+            // DEBUG: Log all responses
+            error_log("qOverflow API Debug - URL: $url");
+            error_log("qOverflow API Debug - HTTP Code: $httpCode");
+            error_log("qOverflow API Debug - Response: " . substr($response, 0, 200));
+
             // Handle cURL errors
             if ($curlError) {
                 error_log("qOverflow API - cURL Error: " . $curlError);
@@ -66,30 +57,30 @@ class qOverflowAPI {
                 $retry--;
                 if ($retry > 0) {
                     error_log("qOverflow API - Retrying request. Attempts remaining: " . $retry);
-                    sleep(1); // Wait 1 second before retry
+                    sleep(1);
                 } else {
-                    // If we've exhausted all retries for server errors
                     error_log("qOverflow API - All retry attempts exhausted for server error");
                     $this->redirectToError(503);
                     return false;
                 }
             } else {
-                // Handle successful responses (2xx) and some client errors
+                // Handle successful responses (2xx)
                 if ($httpCode >= 200 && $httpCode < 300) {
                     return json_decode($response, true);
                 } else if ($httpCode >= 400 && $httpCode < 500) {
-                    // For client errors, return the response data instead of redirecting
-                    // This allows the calling code to handle 404s, 401s, etc. appropriately
+                    // DEBUG: Add more detailed logging for client errors
                     error_log("qOverflow API Client Error - Code: " . $httpCode . " - Response: " . $response);
+                    error_log("qOverflow API Debug - About to check redirect conditions for code: " . $httpCode);
                     
-                    // Only redirect for certain critical client errors
-                    if (in_array($httpCode, [401, 403])) {
+                    // Redirect for critical client errors that should show error page
+                    if (in_array($httpCode, [401, 403, 404])) {
+                        error_log("qOverflow API Debug - Redirecting to error page for code: " . $httpCode);
                         $this->redirectToError($httpCode);
                         return false;
                     }
                     
-                    // For other client errors (like 404), return the response data
-                    // so the calling code can handle it
+                    // For other client errors, return the response data
+                    error_log("qOverflow API Debug - Not redirecting, returning response data for code: " . $httpCode);
                     $responseData = json_decode($response, true);
                     if ($responseData === null) {
                         $responseData = ['error' => true, 'message' => 'Client error', 'code' => $httpCode];
@@ -105,17 +96,29 @@ class qOverflowAPI {
             }
         }
 
-        // This should never be reached due to the restructured logic above
         return false;
     }
 
     private function redirectToError($httpCode) {
+        error_log("qOverflow API Debug - redirectToError called with code: " . $httpCode);
+        
+        // Check if headers have already been sent
+        if (headers_sent($file, $line)) {
+            error_log("qOverflow API Debug - Headers already sent at $file:$line - cannot redirect");
+            // If headers are already sent, we can't redirect
+            // You might want to throw an exception or handle this differently
+            echo "<script>window.location.href='/Api/error.php?code=$httpCode';</script>";
+            exit();
+        }
+        
         $errorUrl = '/Api/error.php?code=' . $httpCode;
+        error_log("qOverflow API Debug - Redirecting to: " . $errorUrl);
+        
         header('Location: ' . $errorUrl);
         exit();
     }
 
-    // Mail methods
+    // All your existing methods remain the same
     public function sendMail($sender, $receiver, $subject, $text) {
         return $this->request('POST', '/mail', compact('sender', 'receiver', 'subject', 'text'));
     }
@@ -125,7 +128,6 @@ class qOverflowAPI {
         return $this->request('GET', "/mail/" . urlencode($username), null, $query);
     }
 
-    // User methods
     public function createUser($username, $email, $salt, $key) {
         return $this->request('POST', "/users", compact('username', 'email', 'salt', 'key'));
     }
@@ -174,7 +176,6 @@ class qOverflowAPI {
         return $this->request('GET', "/users/" . urlencode($username) . "/answers", null, $query);
     }
 
-    // Question methods
     public function searchQuestions(array $params = []) {
         return $this->request('GET', '/questions/search', null, $params);
     }    
@@ -207,7 +208,6 @@ class qOverflowAPI {
         return $this->request('DELETE', "/questions/" . urlencode($question_id));
     }
 
-    // Answer methods
     public function getAnswers($question_id, $after = null) {
         if (empty($question_id)) {
             throw new InvalidArgumentException('Question ID is required');
@@ -240,7 +240,6 @@ class qOverflowAPI {
         return $this->request('PATCH', "/questions/$question_id/answers/$answer_id/vote/$username", compact('operation', 'target'));
     }
 
-    // Question comment methods
     public function getQuestionComments($question_id, $after = null) {
         if (empty($question_id)) {
             throw new InvalidArgumentException('Question ID is required');
@@ -273,7 +272,6 @@ class qOverflowAPI {
         return $this->request('PATCH', "/questions/$question_id/comments/$comment_id/vote/$username", compact('operation', 'target'));
     }
 
-    // Answer comment methods
     public function getAnswerComments($question_id, $answer_id, $after = null) {
         if (empty($question_id) || empty($answer_id)) {
             throw new InvalidArgumentException('Question ID and Answer ID are required');
@@ -306,5 +304,4 @@ class qOverflowAPI {
         return $this->request('PATCH', "/questions/$question_id/answers/$answer_id/comments/$comment_id/vote/$username", compact('operation', 'target'));
     }
 }
-
 ?>
