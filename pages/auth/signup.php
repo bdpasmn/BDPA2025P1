@@ -143,6 +143,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <p class="text-red-500 font-semibold mb-4"><?= htmlspecialchars($error) ?></p>
       <?php endif; ?>
 
+      <div id="spinner" class="flex justify-center items-center py-20">
+        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+
+      <div id="question-list" class="hidden">
       <form class="space-y-6" method="POST" action="">
 
         <!-- Username -->
@@ -213,12 +218,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           Sign Up
         </button>
       </form>
+      
 
       <p class="mt-4 text-sm text-gray-300">
         Already have an account?
         <a href="login.php" class="text-blue-400 hover:underline">Log in</a>
       </p>
     </div>
+  </div>
   </section>
 
   <script>
@@ -237,6 +244,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       strength.style.color = level === "Strong" ? "limegreen" :
                              level === "Moderate" ? "orange" : "red";
     }
+
+    window.addEventListener('DOMContentLoaded', () => {
+    const spinner = document.getElementById('spinner');
+    const formContainer = document.getElementById('question-list');
+    if (spinner && formContainer) {
+      spinner.classList.add('hidden');
+      formContainer.classList.remove('hidden');
+    }
+  });
+</script>
   </script>
+
 </body>
 </html>
+
+ <div id="spinner" class="flex justify-center items-center py-20">
+     <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+</div>
+
+

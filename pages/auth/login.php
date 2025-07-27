@@ -14,6 +14,7 @@ define('MAX_ATTEMPTS', 3);
 define('LOCKOUT_TIME', 3600); // 1 hour in seconds
 
 $error = null;
+$userInfo = '';
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $username = isset($_POST['username']) ? trim($_POST['username']) : '';
@@ -53,11 +54,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 // Derive password hash using stored salt and validate with API
                 $salt = $userResponse['user']['salt'];
                 $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
+                
+            
                 $authResponse = $api->authenticateUser($username, $passwordHash);
+
 
                 if (isset($authResponse['success']) && $authResponse['success'] === true) {
                     $_SESSION['username'] = $username;
                     $_SESSION['user_id'] = $authResponse['id'] ?? null;
+
+                    $userInfo = $api->getUser($username);
+                    $_SESSION['points'] = $userInfo['user']['points'];
 
                     // Reset lockout counters
                     $_SESSION['failed_attempts'] = 0;
