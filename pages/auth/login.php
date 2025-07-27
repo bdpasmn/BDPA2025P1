@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <?php
 session_start();
 include __DIR__ . '/../../components/navBarLogOut.php';
@@ -98,12 +97,13 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
 }
 ?>
 
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login Page</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white">
   <section class="min-h-screen flex flex-col items-center justify-center px-6 py-10 mx-auto">
@@ -111,50 +111,64 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
     <div class="w-full bg-gray-800 rounded-2xl shadow-lg border border-gray-700 sm:max-w-lg p-8 sm:p-10">
       <h2 class="text-2xl font-bold mb-6 text-white">Login</h2>
 
-      <?php if (isset($error)): ?>
-        <p class="text-red-500 mb-4"><?php echo htmlspecialchars($error); ?></p>
-      <?php endif; ?>
+      <!-- Spinner -->
+      <div id="spinner" class="flex justify-center items-center py-20">
+        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
 
-      <form class="space-y-6" method="POST" action="">
-        <div>
-          <label class="block mb-2 text-md font-medium text-white">Username</label>
-          <input name="username" type="text"
-                 placeholder="Enter your username"
-                 class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600" required />
-        </div>
+      <!-- Form Container (hidden until DOM is ready) -->
+      <div id="login-form" class="hidden">
+        <?php if (isset($error)): ?>
+          <p class="text-red-500 mb-4"><?php echo htmlspecialchars($error); ?></p>
+        <?php endif; ?>
 
-        <div>
-          <label class="block mb-2 text-md font-medium text-white">Password</label>
-          <input name="password" type="password"
-                 placeholder="Enter your password"
-                 class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600" required />
-        </div>
+        <form class="space-y-6" method="POST" action="">
+          <div>
+            <label class="block mb-2 text-md font-medium text-white">Username</label>
+            <input name="username" type="text"
+                   placeholder="Enter your username"
+                   class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600" required />
+          </div>
 
-        <div>
-          <label class="inline-flex items-center text-white">
-            <input type="checkbox" name="remember_me" class="mr-2">
-            Remember Me
-          </label>
-        </div>
+          <div>
+            <label class="block mb-2 text-md font-medium text-white">Password</label>
+            <input name="password" type="password"
+                   placeholder="Enter your password"
+                   class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600" required />
+          </div>
 
-        <button type="submit"
-                class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3 
-                       focus:outline-none focus:ring-4 focus:ring-blue-800">
-            Login
-        </button>
-      </form>
+          <div>
+            <label class="inline-flex items-center text-white">
+              <input type="checkbox" name="remember_me" class="mr-2">
+              Remember Me
+            </label>
+          </div>
 
-      <p class="mt-4 text-sm text-gray-300">
-        Forgot password?
-        <a href="../../pages/accountRecovery/accountRecovery.php" class="text-blue-400 hover:underline">Reset password</a>
-      </p>
-      
-      <p class="mt-4 text-sm text-gray-300">
-        Don’t have an account?
-        <a href="signup.php" class="text-blue-400 hover:underline">Sign up</a>
-      </p>
+          <button type="submit"
+                  class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3 
+                         focus:outline-none focus:ring-4 focus:ring-blue-800">
+              Login
+          </button>
+        </form>
+
+        <p class="mt-4 text-sm text-gray-300">
+          Forgot password?
+          <a href="../../pages/accountRecovery/accountRecovery.php" class="text-blue-400 hover:underline">Reset password</a>
+        </p>
+
+        <p class="mt-4 text-sm text-gray-300">
+          Don’t have an account?
+          <a href="signup.php" class="text-blue-400 hover:underline">Sign up</a>
+        </p>
+      </div>
     </div>
   </section>
 
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('spinner').classList.add('hidden');
+      document.getElementById('login-form').classList.remove('hidden');
+    });
+  </script>
 </body>
 </html>

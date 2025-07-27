@@ -143,89 +143,88 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <p class="text-red-500 font-semibold mb-4"><?= htmlspecialchars($error) ?></p>
       <?php endif; ?>
 
+      <!-- Spinner -->
       <div id="spinner" class="flex justify-center items-center py-20">
         <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
 
+      <!-- Form container hidden initially -->
       <div id="question-list" class="hidden">
-      <form class="space-y-6" method="POST" action="">
+        <form class="space-y-6" method="POST" action="">
+          <!-- Username -->
+          <div>
+            <label class="block mb-2 text-md font-medium text-white">Username</label>
+            <input name="username" type="text" required
+              value="<?= htmlspecialchars($username ?? '') ?>"
+              placeholder="Enter your username"
+              class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
+                    <?= !empty($usernameerror) ? 'border-red-500' : 'border-gray-600' ?>"
+            />
+            <p class="text-sm mt-1 <?= !empty($usernameerror) ? 'text-red-500' : 'text-white-400' ?>">
+              Username must include both letters and numbers and may include dashes and underscores.
+            </p>
+            <?php if (!empty($usernameerror)): ?>
+              <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($usernameerror) ?></p>
+            <?php endif; ?>
+          </div>
 
-        <!-- Username -->
-        <div>
-          <label class="block mb-2 text-md font-medium text-white">Username</label>
-          <input name="username" type="text" required
-            value="<?= htmlspecialchars($username ?? '') ?>"
-            placeholder="Enter your username"
-            class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
-                  <?= !empty($usernameerror) ? 'border-red-500' : 'border-gray-600' ?>"
-          />
-          <p class="text-sm mt-1 <?= !empty($usernameerror) ? 'text-red-500' : 'text-white-400' ?>">
-            Username must include both letters and numbers and may include dashes and underscores.
-          </p>
-          <?php if (!empty($usernameerror)): ?>
-            <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($usernameerror) ?></p>
-          <?php endif; ?>
-        </div>
+          <!-- Email -->
+          <div>
+            <label class="block mb-2 text-md font-medium text-white">Email</label>
+            <input name="email" type="email" required
+              value="<?= htmlspecialchars($email ?? '') ?>"
+              placeholder="Enter your email"
+              class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
+                    <?= !empty($emailerror) ? 'border-red-500' : 'border-gray-600' ?>"
+            />
+            <?php if (!empty($emailerror)): ?>
+              <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($emailerror) ?></p>
+            <?php endif; ?>
+          </div>
 
-        <!-- Email -->
-        <div>
-          <label class="block mb-2 text-md font-medium text-white">Email</label>
-          <input name="email" type="email" required
-            value="<?= htmlspecialchars($email ?? '') ?>"
-            placeholder="Enter your email"
-            class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
-                  <?= !empty($emailerror) ? 'border-red-500' : 'border-gray-600' ?>"
-          />
-          <?php if (!empty($emailerror)): ?>
-            <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($emailerror) ?></p>
-          <?php endif; ?>
-        </div>
+          <!-- Password -->
+          <div>
+            <label class="block mb-2 text-md font-medium text-white">Password</label>
+            <input name="password" type="password" required
+              oninput="checkStrength(this.value)"
+              placeholder="Enter your password"
+              class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
+                    <?= !empty($passworderror) ? 'border-red-500' : 'border-gray-600' ?>"
+            />
+            <p class="text-sm mt-1 <?= !empty($passworderror) ? 'text-red-500' : 'text-white-400' ?>">
+              Password must be more than 10 characters
+            </p>
+            <?php if (!empty($passworderror)): ?>
+              <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($passworderror) ?></p>
+            <?php endif; ?>
+            <p id="strength" class="mt-1 text-sm text-gray-400"></p>
+          </div>
 
-        <!-- Password -->
-        <div>
-          <label class="block mb-2 text-md font-medium text-white">Password</label>
-          <input name="password" type="password" required
-            oninput="checkStrength(this.value)"
-            placeholder="Enter your password"
-            class="w-full bg-gray-700 placeholder-gray-400 text-white text-md rounded-lg p-3 border 
-                  <?= !empty($passworderror) ? 'border-red-500' : 'border-gray-600' ?>"
-          />
-          <p class="text-sm mt-1 <?= !empty($passworderror) ? 'text-red-500' : 'text-white-400' ?>">
-            Password must be more than 10 characters
-          </p>
-          <?php if (!empty($passworderror)): ?>
-            <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($passworderror) ?></p>
-          <?php endif; ?>
-          <p id="strength" class="mt-1 text-sm text-gray-400">
-          </p>
-        </div>
+          <!-- CAPTCHA -->
+          <div>
+            <label for="captcha" class="block mb-2 text-md font-medium text-white">
+              What is <?= $num1 ?> + <?= $num2 ?>?
+            </label>
+            <input type="text" id="captcha" name="captcha" placeholder="Answer"
+                  class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3">
+            <?php if (!empty($captchaerror)): ?>
+              <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($captchaerror) ?></p>
+            <?php endif; ?>
+          </div>
 
-        <!-- CAPTCHA -->
-        <div>
-          <label for="captcha" class="block mb-2 text-md font-medium text-white">
-            What is <?= $num1 ?> + <?= $num2 ?>?
-          </label>
-          <input type="text" id="captcha" name="captcha" placeholder="Answer"
-                class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3">
-          <?php if (!empty($captchaerror)): ?>
-            <p class="text-red-500 mt-1 font-semibold"><?= htmlspecialchars($captchaerror) ?></p>
-          <?php endif; ?>
-        </div>
+          <!-- Submit -->
+          <button type="submit"
+                  class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3">
+            Sign Up
+          </button>
+        </form>
 
-        <!-- Submit -->
-        <button type="submit"
-                class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3">
-          Sign Up
-        </button>
-      </form>
-      
-
-      <p class="mt-4 text-sm text-gray-300">
-        Already have an account?
-        <a href="login.php" class="text-blue-400 hover:underline">Log in</a>
-      </p>
+        <p class="mt-4 text-sm text-gray-300">
+          Already have an account?
+          <a href="login.php" class="text-blue-400 hover:underline">Log in</a>
+        </p>
+      </div>
     </div>
-  </div>
   </section>
 
   <script>
@@ -246,25 +245,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-    const spinner = document.getElementById('spinner');
-    const formContainer = document.getElementById('question-list');
-    if (spinner && formContainer) {
-      spinner.classList.add('hidden');
-      formContainer.classList.remove('hidden');
-    }
-  });
-</script>
+      const spinner = document.getElementById('spinner');
+      const formContainer = document.getElementById('question-list');
+      if (spinner && formContainer) {
+        spinner.classList.add('hidden');
+        formContainer.classList.remove('hidden');
+      }
+    });
   </script>
-
 </body>
-<<<<<<< Updated upstream
 </html>
 
- <div id="spinner" class="flex justify-center items-center py-20">
-     <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-</div>
-
-
-=======
-</html>
->>>>>>> Stashed changes
