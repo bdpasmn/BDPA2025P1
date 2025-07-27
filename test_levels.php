@@ -21,7 +21,6 @@ class qOverflowLevelTester {
         $action = $_GET['action'] ?? 'main';
         $username = $_GET['user'] ?? '';
         
-        // Set session username if a test user is selected
         if ($username && in_array($username, ['smnuser1', 'smnuser2', 'smnuser3', 'smnuser4', 'smnuser5', 'smnuser6', 'smnuser7'])) {
             session_start();
             $_SESSION['username'] = $username;
