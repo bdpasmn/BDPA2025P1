@@ -82,6 +82,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       strength.textContent = message;
     }
 
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('spinner').classList.add('hidden');
+      document.getElementById('reset-form').classList.remove('hidden');
+    });
   </script>
 </head>
 <body class="bg-gray-900 text-white">
@@ -93,35 +97,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       Reset Your Password
     </h1>
 
-    <?php if ($error): ?>
+    <!-- Spinner -->
+    <div id="spinner" class="flex justify-center items-center py-20">
+      <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Form (initially hidden) -->
+    <div id="reset-form" class="hidden">
+      <?php if ($error): ?>
         <p class="text-gray-300 font-bold"><?= htmlspecialchars($error) ?></p>
-    <?php endif; ?>
+      <?php endif; ?>
 
-    <form method="POST" class="space-y-6" novalidate>
-      <input type="hidden" name="user_id" value="<?= htmlspecialchars($user_id) ?>">
+      <form method="POST" class="space-y-6" novalidate>
+        <input type="hidden" name="user_id" value="<?= htmlspecialchars($user_id) ?>">
 
-      <div>
-        <label for="password" class="block mb-2 text-md font-medium text-white">New Password</label>
-        <input type="password" name="password" id="password" required
-               class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3"
-               placeholder="Enter a new password" autocomplete="new-password" minlength="11"
-               oninput="checkStrength(this.value)">
-        <div id="strength" class="text-white text-sm mt-1"></div>
-      </div>
+        <div>
+          <label for="password" class="block mb-2 text-md font-medium text-white">New Password</label>
+          <input type="password" name="password" id="password" required
+                 class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3"
+                 placeholder="Enter a new password" autocomplete="new-password" minlength="11"
+                 oninput="checkStrength(this.value)">
+          <div id="strength" class="text-white text-sm mt-1"></div>
+        </div>
 
-      <div>
-        <label for="confirm" class="block mb-2 text-md font-medium text-white">Confirm Password</label>
-        <input type="password" name="confirm" id="confirm" required
-               class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3"
-               placeholder="Confirm your password" autocomplete="new-password" minlength="11">
-      </div>
+        <div>
+          <label for="confirm" class="block mb-2 text-md font-medium text-white">Confirm Password</label>
+          <input type="password" name="confirm" id="confirm" required
+                 class="bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg block w-full p-3"
+                 placeholder="Confirm your password" autocomplete="new-password" minlength="11">
+        </div>
 
-      <button type="submit"
-              class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3 
-focus:outline-none focus:ring-4 focus:ring-blue-800">
-        Reset Password
-      </button>
-    </form>
+        <button type="submit"
+                class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3 
+                       focus:outline-none focus:ring-4 focus:ring-blue-800">
+          Reset Password
+        </button>
+      </form>
+    </div>
   </div>
 </section>
 
