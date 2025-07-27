@@ -4,6 +4,35 @@ header('Content-Type: text/html; charset=UTF-8');
 
 // Retrieve error code from URL query string or use default
 $errorCode = isset($_GET['code']) ? htmlspecialchars($_GET['code'], ENT_QUOTES, 'UTF-8') : 'Uh oh...';
+
+// Check if no error code is provided or if it's empty - redirect to index.php
+if (!isset($_GET['code']) || empty($_GET['code']) || $_GET['code'] === '') {
+    header('Location: ../index.php');
+    exit();
+}
+
+// Define valid error codes
+$validErrorCodes = array(
+    '400', '401', '403', '404', '409', '413', '422', '429', 
+    '500', '502', '503', '504', '999', 'Uh oh...'
+);
+
+// Check if the error code is not in our valid list and not a 5xx server error
+if (!in_array($errorCode, $validErrorCodes) && !is_numeric($errorCode)) {
+    header('Location: index.php');
+    exit();
+}
+
+// If it's a numeric code, check if it's a valid HTTP error code range
+if (is_numeric($errorCode)) {
+    $numericCode = intval($errorCode);
+    // Only allow common error codes (4xx client errors and 5xx server errors)
+    if ($numericCode < 400 || ($numericCode > 599)) {
+        header('Location: index.php');
+        exit();
+    }
+}
+
 //echo 'error code is ' . $errorCode;
 // Default error message
 $errorMessage = 'Something went wrong with qOverflow. Please try again later';
