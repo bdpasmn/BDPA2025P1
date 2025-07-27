@@ -140,7 +140,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
           <input type="text" id="inbox-search" placeholder="Search by sender or subject..." class="w-full p-2 rounded bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-blue-500" autocomplete="off">
         </div>
         <div class="mb-2 text-xs text-gray-400">Note: Only the first line of each message is shown here.</div>
-        <div id="inbox-list" class="flex flex-col gap-2"></div>
+        <div id="inbox-list" class="flex flex-col gap-1"></div>
         <div class="flex justify-between items-center mt-4" id="pagination-controls" style="display:none;">
           <button id="prev-page" class="px-3 py-1 rounded bg-gray-700 text-white text-xs hover:bg-gray-600">Previous</button>
           <span id="page-info" class="text-xs text-gray-400"></span>
@@ -186,18 +186,18 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
       // Get only the first line or up to 60 chars
       let firstLine = (msg.text || '').split(/\r?\n/)[0];
       if (firstLine.length > 60) firstLine = firstLine.slice(0, 57) + '...';
-      // Escape HTML for preview
-      const previewLine = escapeHtml(firstLine);
+      // Convert markdown for preview (safe since we're using innerHTML)
+      const previewLine = convertMarkdown(firstLine);
       // Unique id for expand/collapse
       const msgId = `msg-${start + idx}`;
       div.innerHTML = `
         <div class=\"font-semibold text-white text-base mb-1 truncate\">${escapeHtml(msg.subject)}</div>
         <div class=\"flex items-baseline gap-2\">
           <span class=\"font-bold text-blue-300 text-sm whitespace-nowrap\">${escapeHtml(msg.sender)}:</span>
-          <span class=\"text-sm text-gray-200 whitespace-pre-line\" id=\"${msgId}-preview\">${previewLine}</span>
+          <span class=\"text-sm text-gray-200 whitespace-pre-line message-body\" id=\"${msgId}-preview\">${previewLine}</span>
         </div>
-        <button class=\"text-xs text-blue-400 hover:underline focus:outline-none mt-1 mb-6 self-start\" id=\"${msgId}-toggle\">View Full Message</button>
-        <div class=\"hidden mt-1 mb-6\" id=\"${msgId}-full\"></div>
+        <button class=\"text-xs text-blue-400 hover:underline focus:outline-none mt-1 mb-2 self-start\" id=\"${msgId}-toggle\">View Full Message</button>
+        <div class=\"hidden mt-1 mb-2\" id=\"${msgId}-full\"></div>
         <div class=\"absolute bottom-2 right-3 text-xs text-gray-400\">${formatDate(msg.createdAt)}</div>
       `;
       inboxList.appendChild(div);
@@ -293,9 +293,9 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
     previewCard.innerHTML = `
       <div class='bg-gray-700 rounded-lg p-3 border border-gray-600 shadow flex flex-col gap-1 relative min-h-[90px]'>
         <div class='font-semibold text-white text-base mb-1 truncate'>${convertMarkdown(subject)}</div>
-        <div class='text-sm message-body text-gray-200 mb-6' style='display:flex; align-items:flex-start;'>
+        <div class='text-sm message-body text-gray-200 mb-6' style='display:flex; align-items:baseline;'>
           <span class='font-bold text-blue-300 text-sm' style='display:inline-block; white-space:nowrap;'>${convertMarkdown(username).replace(/<\/?(p|div)[^>]*>/g, '')}<span class='text-blue-300'>:</span></span>
-          <div style='flex:1; display:block; padding-left:4px;'>
+          <div style='flex:1; padding-left:4px;'>
             ${convertMarkdown(processedRaw)}
           </div>
         </div>

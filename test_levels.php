@@ -4,44 +4,44 @@ require_once 'Api/api.php';
 
 // Helper functions
 function calculateLevel($points) {
-    if ($points >= 10000) return 7;
-    if ($points >= 3000) return 6;
-    if ($points >= 1000) return 5;
-    if ($points >= 125) return 4;
-    if ($points >= 50) return 3;
-    if ($points >= 15) return 2;
-    if ($points >= 1) return 1;
-    return 0;
-}
-
-function getPrivilegesForLevel($level) {
-    switch ($level) {
-        case 1: return 'Create answers';
-        case 2: return 'Create answers, Upvote';
-        case 3: return 'Create answers, Upvote, Comment anywhere';
-        case 4: return 'Create answers, Upvote, Comment anywhere, Downvote';
-        case 5: return 'Create answers, Upvote, Comment anywhere, Downvote, View detailed votes';
-        case 6: return 'Create answers, Upvote, Comment anywhere, Downvote, View detailed votes, Protection votes';
-        case 7: return 'All privileges including Close/Reopen votes';
-        default: return 'Basic access';
+        if ($points >= 10000) return 7;
+        if ($points >= 3000) return 6;
+        if ($points >= 1000) return 5;
+        if ($points >= 125) return 4;
+        if ($points >= 50) return 3;
+        if ($points >= 15) return 2;
+        if ($points >= 1) return 1;
+        return 0;
     }
-}
-
-function getTestChecklist($level) {
-    $checklist = [
-        1 => ['Create a new answer', 'Verify answer appears correctly', 'Check point gain (+2)'],
-        2 => ['Upvote a question', 'Upvote an answer', 'Verify point distribution'],
-        3 => ['Comment on any question', 'Comment on any answer', 'Verify comment permissions'],
-        4 => ['Downvote a question', 'Downvote an answer', 'Verify point loss'],
-        5 => ['View detailed vote counts', 'Check upvote/downvote breakdown', 'Verify level requirement'],
-        6 => ['Initiate protection vote', 'Participate in protection vote', 'Verify protection status'],
-        7 => ['Initiate close vote', 'Participate in close vote', 'Verify question closure']
-    ];
     
-    if (isset($checklist[$level])) {
+function getPrivilegesForLevel($level) {
+        switch ($level) {
+            case 1: return 'Create answers';
+            case 2: return 'Create answers, Upvote';
+            case 3: return 'Create answers, Upvote, Comment anywhere';
+            case 4: return 'Create answers, Upvote, Comment anywhere, Downvote';
+            case 5: return 'Create answers, Upvote, Comment anywhere, Downvote, View detailed votes';
+            case 6: return 'Create answers, Upvote, Comment anywhere, Downvote, View detailed votes, Protection votes';
+            case 7: return 'All privileges including Close/Reopen votes';
+            default: return 'Basic access';
+        }
+    }
+    
+function getTestChecklist($level) {
+        $checklist = [
+            1 => ['Create a new answer', 'Verify answer appears correctly', 'Check point gain (+2)'],
+            2 => ['Upvote a question', 'Upvote an answer', 'Verify point distribution'],
+            3 => ['Comment on any question', 'Comment on any answer', 'Verify comment permissions'],
+            4 => ['Downvote a question', 'Downvote an answer', 'Verify point loss'],
+            5 => ['View detailed vote counts', 'Check upvote/downvote breakdown', 'Verify level requirement'],
+            6 => ['Initiate protection vote', 'Participate in protection vote', 'Verify protection status'],
+            7 => ['Initiate close vote', 'Participate in close vote', 'Verify question closure']
+        ];
+        
+        if (isset($checklist[$level])) {
         echo "<h3>Test Checklist for Level $level:</h3>";
         echo "<ol>";
-        foreach ($checklist[$level] as $item) {
+            foreach ($checklist[$level] as $item) {
             echo "<li>$item</li>";
         }
         echo "</ol>";
@@ -60,11 +60,11 @@ if ($username && in_array($username, ['smnuser1', 'smnuser2', 'smnuser3', 'smnus
 
 // Handle actions
 if ($action === 'clear_session') {
-    session_start();
-    session_destroy();
-    header('Location: ?');
-    exit;
-}
+        session_start();
+        session_destroy();
+        header('Location: ?');
+        exit;
+    }
 
 // Test users configuration
 $testUsers = [
