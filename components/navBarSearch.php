@@ -19,6 +19,7 @@ $titleMatches = [];
 $textMatches = [];
 $creatorMatches = [];
 
+
 try {
     // Accept MM/DD/YYYY format for datetime
     if (!empty($datetime)) {
@@ -172,6 +173,8 @@ exit;
     <!DOCTYPE html>
     <html lang="en">
     <head>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>qOverflow — Search Results</title>
@@ -208,7 +211,7 @@ exit;
       <ul class="space-y-2">
       <?php foreach ($titleMatches as $match): ?>
         <li>
-          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition">
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?>
              <br>
           <div class="flex justify-between text-gray-400 mt-2">
@@ -231,10 +234,12 @@ exit;
          <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
         <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center "> 📝 Body Text Matches:</h2>
         <ul class="space-y-2">
-        <?php foreach ($textMatches as $match): ?>
+        <?php foreach ($textMatches as $match): 
+            $rawMarkdown = $match['snippet'] ?? '';
+            ?>
         <li>
-          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition">
-          <?= htmlspecialchars($match['snippet']) ?>
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+         <div data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <?= htmlspecialchars($match['snippet']) ?> </div>
            <br>
            <div class="flex justify-between text-gray-400 mt-2">
           <small class="text-gray-400">Created on:
@@ -259,7 +264,7 @@ exit;
         <ul class="space-y-2">
         <?php foreach ($creatorMatches as $match): ?>
           <li>
-          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition">
+          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
             <br>
             <small class="text-gray-400">Created on:
@@ -279,7 +284,7 @@ exit;
         <ul class="space-y-2">
         <?php foreach ($dateMatches as $title): ?>
           <li>
-          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition">
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars(string: $title) ?>
           </a>
         </li>
@@ -293,6 +298,20 @@ exit;
         <p class="mt-6 text-red-400">No matching results found.</p>
         </div>
       <?php endif; ?>
+      <script>
+          function decodeHTMLEntities(text) {
+            const textarea = document.createElement('textarea');
+            textarea.innerHTML = text;
+            return textarea.value;
+          }
+          document.addEventListener('DOMContentLoaded', () => {
+          document.querySelectorAll('[data-markdown]').forEach(el => {
+              const rawMarkdown = decodeHTMLEntities(el.getAttribute('data-markdown') || '');
+              const html = marked.parse(rawMarkdown);
+              el.innerHTML = DOMPurify.sanitize(html);
+            })
+            });
+      </script>
 
     </body>
     </html>
