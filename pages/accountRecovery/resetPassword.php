@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm'] ?? '';
 
+    // Validation checks
     if (!$user_id || !$password || !$confirm) {
         $error = "All fields are required.";
     } elseif ($password !== $confirm) {
@@ -29,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $users = $api->listUsers();
         $matchedUser = null;
 
+        // Find user by ID
         foreach ($users['users'] ?? [] as $user) {
             if (isset($user['user_id']) && $user['user_id'] == $user_id) {
                 $matchedUser = $user;

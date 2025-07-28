@@ -94,9 +94,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 // Restore session via cookie
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
-    $_SESSION['username'] = $_COOKIE['remember_me'];
-    header("Location: /pages/buffet/buffet.php");
-    exit;
+    $username = $_COOKIE['remember_me'];
+    $userResponse = $api->getUser($username);
+
+    if (isset($userResponse['user'])) {
+        $_SESSION['username'] = $username;
+        $_SESSION['user_id'] = $userResponse['user']['id'] ?? null;
+        $_SESSION['points'] = $userResponse['user']['points'] ?? 0;
+        header("Location: /pages/buffet/buffet.php");
+        exit;
+    }
 }
 ?>
 
@@ -124,6 +131,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
         <?php if (isset($error)): ?>
           <p class="text-red-500 mb-4"><?php echo htmlspecialchars($error); ?></p>
         <?php endif; ?>
+
         <form class="space-y-6" method="POST" action="">
 
           <!-- Username input-->
@@ -169,7 +177,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
       </div>
     </div>
   </section>
-  
+
   <script>
     // Hide spinner once page is fully loaded 
     window.addEventListener('DOMContentLoaded', () => {
