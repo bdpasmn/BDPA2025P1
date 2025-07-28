@@ -1,19 +1,21 @@
 <?php
 session_start();
 include __DIR__ . '/../../components/navBarLogOut.php';
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../Api/api.php';
-$api = new qOverflowAPI(API_KEY);
 
-// Lockout settings for failed login attempts
-define('MAX_ATTEMPTS', 3);
-define('LOCKOUT_TIME', 3600); // 1 hour in seconds
+$api = new qOverflowAPI(API_KEY);
 
 $error = null;
 $userInfo = '';
+
+// Login attempt restrictions
+define('MAX_ATTEMPTS', 3); // Max login attempts
+define('LOCKOUT_TIME', 3600); // Lockout duration in seconds
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $username = isset($_POST['username']) ? trim($_POST['username']) : '';
@@ -23,7 +25,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (empty($username) || empty($rawPassword)) {
         $error = "Enter both username and password.";
     } else {
-        // Check if user is temporarily locked out due to repeated failures
+        // Check if user is locked out
         if (isset($_SESSION['failed_attempts']) && $_SESSION['failed_attempts'] >= MAX_ATTEMPTS) {
             $last_failed = $_SESSION['last_failed_time'] ?? 0;
             $time_since_last_fail = time() - $last_failed;
@@ -32,17 +34,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $minutes_left = ceil((LOCKOUT_TIME - $time_since_last_fail) / 60);
                 $error = "Too many failed attempts. Try again in $minutes_left minutes.";
             } else {
+                // Reset login attempts after lockout expires
                 $_SESSION['failed_attempts'] = 0;
                 $_SESSION['last_failed_time'] = 0;
             }
         }
 
-        // Proceed with login if not locked out and all field are filled
+        // Proceed with login if not locked out
         if (!$error) {
             $userResponse = $api->getUser($username);
 
             if (!isset($userResponse['user']['salt'])) {
-                // If user doesn't exist in the external API, count as failed attempt
+                // If username doesn't exist, count as failed attempt
                 $_SESSION['failed_attempts'] = ($_SESSION['failed_attempts'] ?? 0) + 1;
                 $_SESSION['last_failed_time'] = time();
                 $attempts_left = MAX_ATTEMPTS - $_SESSION['failed_attempts'];
@@ -50,33 +53,33 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     ? "Too many failed attempts. You are locked out for 1 hour."
                     : "User not found. $attempts_left attempt(s) left.";
             } else {
-                // Derive password hash using stored salt and validate with API
+                // Derive password hash using PBKDF2 with stored salt, then validate using API
                 $salt = $userResponse['user']['salt'];
                 $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
                 
-            
+                // Authenticate user
                 $authResponse = $api->authenticateUser($username, $passwordHash);
-
 
                 if (isset($authResponse['success']) && $authResponse['success'] === true) {
                     $_SESSION['username'] = $username;
                     $_SESSION['user_id'] = $authResponse['id'] ?? null;
 
+                    // Store additional user data
                     $userInfo = $api->getUser($username);
                     $_SESSION['points'] = $userInfo['user']['points'];
 
-                    // Reset lockout counters
+                    // Reset lockout
                     $_SESSION['failed_attempts'] = 0;
                     $_SESSION['last_failed_time'] = 0;
 
-                    // Optionally store cookie if user checked "remember me"
+                    // Set remember-me cookie if user requested it
                     if ($remember_me) {
                         setcookie('remember_me', $authResponse['username'], time() + 60 * 60 * 24 * 30, "/");
                     }
                     header("Location: /pages/buffet/buffet.php");
                     exit;
                 } else {
-                    // Password hash didn't match — count as failed attempt
+                    // Password hash didn't match, count as failed attempt
                     $_SESSION['failed_attempts'] = ($_SESSION['failed_attempts'] ?? 0) + 1;
                     $_SESSION['last_failed_time'] = time();
                     $attempts_left = MAX_ATTEMPTS - $_SESSION['failed_attempts'];
@@ -89,7 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
-// Restore session from cookie
+// Restore session via cookie
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
     $_SESSION['username'] = $_COOKIE['remember_me'];
     header("Location: /pages/buffet/buffet.php");
@@ -116,13 +119,14 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
         <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
 
-      <!-- Form Container (hidden until DOM is ready) -->
+      <!-- Form Container: Hidden until DOM is ready) -->
       <div id="login-form" class="hidden">
         <?php if (isset($error)): ?>
           <p class="text-red-500 mb-4"><?php echo htmlspecialchars($error); ?></p>
         <?php endif; ?>
-
         <form class="space-y-6" method="POST" action="">
+
+          <!-- Username input-->
           <div>
             <label class="block mb-2 text-md font-medium text-white">Username</label>
             <input name="username" type="text"
@@ -130,6 +134,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                    class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600" required />
           </div>
 
+          <!-- Password input -->
           <div>
             <label class="block mb-2 text-md font-medium text-white">Password</label>
             <input name="password" type="password"
@@ -137,6 +142,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                    class="w-full bg-gray-700 border border-gray-600 placeholder-gray-400 text-white text-md rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600" required />
           </div>
 
+          <!-- Remember Me checkbox -->
           <div>
             <label class="inline-flex items-center text-white">
               <input type="checkbox" name="remember_me" class="mr-2">
@@ -163,8 +169,9 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
       </div>
     </div>
   </section>
-
+  
   <script>
+    // Hide spinner once page is fully loaded 
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('spinner').classList.add('hidden');
       document.getElementById('login-form').classList.remove('hidden');

@@ -1,12 +1,14 @@
 <?php
 session_start();
 include __DIR__ . '/../../components/navBarLogOut.php';
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 require_once __DIR__ . '/../../db.php'; 
 require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../Api/api.php';
+
 $api = new qOverflowAPI(API_KEY);
 
 // Error placeholders
@@ -17,10 +19,7 @@ $captchaerror = '';
 $strengthMessage = '';
 $error = '';
 
-//$level = 1;
-//$points = 1;
-
-// CAPTCHA generation
+// Generate CAPTCHA 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     $num1 = rand(1, 10);
     $num2 = rand(1, 10);
@@ -28,6 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     $_SESSION['num2'] = $num2;
     $_SESSION['captcha_answer'] = $num1 + $num2;
 } else {
+    // Reuse values on POST
     $num1 = $_SESSION['num1'] ?? '?';
     $num2 = $_SESSION['num2'] ?? '?';
 }
@@ -39,9 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $rawPassword = $_POST['password'];
     $captcha = trim($_POST['captcha']);
 
-    // Create PDO
-    //$pdo = getPDO();
-
+    // Connect to Database
     try {
         $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     } catch (PDOException $e) {
@@ -49,20 +47,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $haserror = true;
     }
         
-
-    /* Password strength message
-    $passwordLength = strlen($rawPassword);
-    if ($passwordLength <= 10) {
-        $passwordStrength = "Weak";
-    } elseif ($passwordLength <= 17) {
-        $passwordStrength = "Moderate";
-    } else {
-        $passwordStrength = "Strong";
-    }
-    $strengthMessage = "Password strength: $passwordStrength.";
-*/
-
-    // CAPTCHA
+    // Validate CAPTCHA
     if (!isset($_SESSION['captcha_answer']) || $captcha != $_SESSION['captcha_answer']) {
         $captchaerror = "Incorrect answer";
         $haserror = true;
@@ -70,22 +55,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // Username validation
     if (
-        !preg_match('/^[a-zA-Z0-9_-]+$/', $username) ||
-        !preg_match('/[a-zA-Z]/', $username) ||
-        !preg_match('/[0-9]/', $username)
+        !preg_match('/^[a-zA-Z0-9_-]+$/', $username) || // Can include dashes and underscores
+        !preg_match('/[a-zA-Z]/', $username) || // Must include letters
+        !preg_match('/[0-9]/', $username) // Must include numbers
     ) {
         $usernameerror = " ";
         $haserror = true;
     }
 
-    // Password validation
+    // Password must be at least 11 characters
     if (strlen($rawPassword) < 11) {
         $passworderror = " ";
         $haserror = true;
     }
 
-    // Uniqueness checks
     if (!$haserror && isset($pdo)) {
+        // Check username uniqueness
         $userCheck = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
         $userCheck->execute([$username]);
         if ($userCheck->fetchColumn() > 0) {
@@ -93,6 +78,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $haserror = true;
         }
 
+        // Check email uniqueness
         $emailCheck = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
         $emailCheck->execute([$email]);
         if ($emailCheck->fetchColumn() > 0) {
@@ -101,14 +87,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
     }
 
+    // Proceed with registration if no error
     if (!$haserror && isset($pdo)) {
         $salt = bin2hex(random_bytes(16));
         $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
 
         try {
+            // Store username and email in DB
             $stmt = $pdo->prepare("INSERT INTO users (username, email) VALUES (?, ?)");
             $stmt->execute([$username, $email]);
 
+            // Store user info in API
             $result = $api->createUser($username, $email, $salt, $passwordHash);
             if ($result['error']) {
                 $error = "Login failed, try again later: " . $result['error'];
@@ -139,19 +128,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <div class="w-full bg-gray-800 rounded-2xl shadow-lg border border-gray-700 sm:max-w-lg p-8 sm:p-10">
       <h2 class="text-2xl font-bold mb-6 text-white">Sign Up</h2>
 
-      <?php if (!empty($error)): ?>
-        <p class="text-red-500 font-semibold mb-4"><?= htmlspecialchars($error) ?></p>
-      <?php endif; ?>
-
       <!-- Spinner -->
       <div id="spinner" class="flex justify-center items-center py-20">
         <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
 
-      <!-- Form container hidden initially -->
+      <!-- Form Container: Hidden until DOM is ready) -->
       <div id="question-list" class="hidden">
         <form class="space-y-6" method="POST" action="">
-          <!-- Username -->
+          <?php if (!empty($error)): ?>
+            <p class="text-red-500 font-semibold mb-4"><?= htmlspecialchars($error) ?></p>
+          <?php endif; ?>
+     
+        <!-- Username input -->
           <div>
             <label class="block mb-2 text-md font-medium text-white">Username</label>
             <input name="username" type="text" required
@@ -168,7 +157,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <?php endif; ?>
           </div>
 
-          <!-- Email -->
+          <!-- Email input -->
           <div>
             <label class="block mb-2 text-md font-medium text-white">Email</label>
             <input name="email" type="email" required
@@ -182,7 +171,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <?php endif; ?>
           </div>
 
-          <!-- Password -->
+          <!-- Password input-->
           <div>
             <label class="block mb-2 text-md font-medium text-white">Password</label>
             <input name="password" type="password" required
@@ -212,7 +201,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <?php endif; ?>
           </div>
 
-          <!-- Submit -->
           <button type="submit"
                   class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3">
             Sign Up
@@ -228,6 +216,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   </section>
 
   <script>
+    // Live password strength feedback
     function checkStrength(pw) {
       const strength = document.getElementById("strength");
       if (!pw) {
@@ -244,6 +233,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                              level === "Moderate" ? "orange" : "red";
     }
 
+    // Hide spinner once page is fully loaded 
     window.addEventListener('DOMContentLoaded', () => {
       const spinner = document.getElementById('spinner');
       const formContainer = document.getElementById('question-list');
