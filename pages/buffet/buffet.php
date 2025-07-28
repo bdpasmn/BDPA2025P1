@@ -114,7 +114,7 @@ function format_relative_time($timestamp_ms) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Home • qOverflow</title>
+  <title>Buffet • qOverflow</title>
   <link rel="icon" href="../../favicon.ico" type="image/x-icon" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -194,7 +194,7 @@ function format_relative_time($timestamp_ms) {
               $class = $active ? 'border-blue-600 text-blue-400' : 'border-transparent text-gray-400 hover:text-blue-400 hover:border-blue-600';
           ?>
           <li>
-            <button type="submit" name="sort" value="<?= $key ?>" class="pb-2 border-b-2 <?= $class ?>" onclick="document.getElementById('pageInput').value=1;">
+            <button type="submit" name="sort" value="<?= $key ?>" class="pb-2 border-b-2 <?= $class ?> sort-btn disabled pointer-events-none hover:text-blue-400 hover:border-blue-600" disabled onclick="document.getElementById('pageInput').value=1;">
               <?= htmlspecialchars($label) ?>
             </button>
           </li>
@@ -262,13 +262,13 @@ function format_relative_time($timestamp_ms) {
         <form method="GET" class="flex flex-wrap items-center gap-1">
           <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
           <?php if ($currentPage > 1): ?>
-            <button type="submit" name="page" value="<?= $currentPage - 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">Previous</button>
+            <button type="submit" name="page" value="<?= $currentPage - 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600 pagination-btn">Preview</button>
           <?php endif; ?>
           <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-            <button type="submit" name="page" value="<?= $i ?>" class="px-2 py-1 rounded <?= $i == $currentPage ? 'bg-blue-600 text-white' : 'bg-gray-700 hover:bg-gray-600' ?>"><?= $i ?></button>
+            <button type="submit" name="page" value="<?= $i ?>" class="px-2 py-1 rounded pagination-btn <?= $i == $currentPage ? 'bg-blue-600 text-white' : 'bg-gray-700 hover:bg-gray-600' ?>"><?php echo $i; ?></button>
           <?php endfor; ?>
           <?php if ($currentPage < $totalPages): ?>
-            <button type="submit" name="page" value="<?= $currentPage + 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">Next</button>
+            <button type="submit" name="page" value="<?= $currentPage + 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600 pagination-btn">Next</button>
           <?php endif; ?>
         </form>
       </div>
@@ -340,10 +340,65 @@ function format_relative_time($timestamp_ms) {
       document.getElementById('previewModal').classList.remove('hidden');
     }
 
-    // Trigger spinner
     window.addEventListener('DOMContentLoaded', () => {
+      // Hide spinner and show question list
       document.getElementById('spinner').classList.add('hidden');
       document.getElementById('question-list').classList.remove('hidden');
+
+      // Re-enable sort buttons
+      const sortButtons = document.querySelectorAll('.sort-btn');
+      sortButtons.forEach(button => {
+        button.disabled = false;
+        button.classList.remove('disabled', 'pointer-events-none');
+      });
+    });
+
+    // Disable post button
+    document.addEventListener('DOMContentLoaded', () => {
+      const askForm = document.querySelector('#modal form');
+      if (askForm) {
+        askForm.addEventListener('submit', () => {
+          const postBtn = askForm.querySelector('button[type="submit"]');
+          if (postBtn) {
+            postBtn.disabled = true;
+            postBtn.textContent = 'Posting...';
+            postBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          }
+        });
+      }
+    });
+
+    // Disable sort buttons
+    document.addEventListener('DOMContentLoaded', () => {
+      const sortButtons = document.querySelectorAll('form button[name="sort"]');
+
+      sortButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          setTimeout(() => {
+            sortButtons.forEach(btn => {
+              btn.disabled = true;
+              btn.classList.remove('hover:text-blue-400', 'hover:border-blue-600');
+              btn.classList.add('pointer-events-none');
+            });
+          }, 50);
+        });
+      });
+    });
+
+    // Disable pagination buttons
+    document.addEventListener('DOMContentLoaded', () => {
+      const paginationButtons = document.querySelectorAll('form button[name="page"]');
+
+      paginationButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          setTimeout(() => {
+            paginationButtons.forEach(btn => {
+              btn.disabled = true;
+              btn.classList.add('pointer-events-none');
+            });
+          }, 50);
+        });
+      });
     });
   </script>
 </body>
