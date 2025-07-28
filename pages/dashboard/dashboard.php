@@ -87,18 +87,18 @@ echo '</pre>';
 */
 
 
-$itemsPerPage = 9;//sets amount of questions per page to 9
+$QuestionsPerPage = 9;//sets amount of questions per page to 9
 
 // Get current page from URL, default to 1
-$currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1; //sees if page is set in the URL, if not, sets to 1
-$currentPage = max($currentPage, 1); // Ensures at least 1 page
+$currentQuestionsPage = isset($_GET['page']) ? (int)$_GET['page'] : 1; //sees if page is set in the URL, if not, sets to 1
+$currentQuestionsPage = max($currentQuestionsPage, 1); // Ensures at least 1 page
 
-$totalItems = count($JustUserQuestions); // Count total of user's questions
-$totalPages = ceil($totalItems / $itemsPerPage); //divides total questions by amount allowed per page to get total pages
+$totalQuestions = count($JustUserQuestions); // Count total of user's questions
+$totalQuestionsPages = ceil($totalQuestions / $QuestionsPerPage); //divides total questions by amount allowed per page to get total pages
 
 // Calculate offset and slice the questions array
-$startIndex = ($currentPage - 1) * $itemsPerPage; // Calculate the starting index for pagination
-$paginatedQuestions = array_slice($JustUserQuestions, $startIndex, $itemsPerPage); // Slice the questions array to get only the items for the current page
+$startQuestionsIndex = ($currentQuestionsPage - 1) * $QuestionsPerPage; // Calculate the starting index for pagination
+$paginatedQuestions = array_slice($JustUserQuestions, $startQuestionsIndex, $QuestionsPerPage); // Slice the questions array to get only the items for the current page
 
 
 // Pagination for answers
@@ -186,10 +186,10 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
     <?php endif; ?>
   </div>
 
-  <?php if ($totalPages > 1): ?> <!-- Check if there are multiple pages -->
+  <?php if ($totalQuestionsPages > 1): ?> <!-- Check if there are multiple pages -->
   <div id="questionPagination" class="mt-4 flex justify-center space-x-2 text-sm  mb-4 ">
-    <?php for ($i = 1; $i <= $totalPages; $i++): ?> <!-- Loop through each page number -->
-      <a href="?page=<?= $i ?>" class="px-3 py-1 rounded <?= $i === $currentPage ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' ?>"> <!-- Highlight current page -->
+    <?php for ($i = 1; $i <= $totalQuestionsPages; $i++): ?> <!-- Loop through each page number -->
+      <a href="?page=<?= $i ?>" class="px-3 py-1 rounded <?= $i === $currentQuestionsPage ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' ?>"> <!-- Highlight current page -->
         <?= $i ?> <!-- Display page number -->
       </a> 
     <?php endfor; ?>
@@ -219,7 +219,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
   </div>  
 
   <?php if ($totalAnswerPages > 1): ?>
-  <div id="answerPagination" class="mt-6 flex justify-center space-x-2 text-sm">
+  <div id="answerPagination" class="mt-6 flex justify-center space-x-2 text-sm mb-4 hidden">
     <?php for ($i = 1; $i <= $totalAnswerPages; $i++): ?>
       <a href="?answer_page=<?= $i ?>" class="px-3 py-1 rounded <?= $i === $currentAnswerPage ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' ?>">
         <?= $i ?>
@@ -251,10 +251,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
     <label for="editInput" class="block mb-2">New value:</label>
     <input id="editInput" type="text" class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-4" />
     
-    <div class="flex justify-end gap-4">
-      <button id="cancelBtn" class="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700">Cancel</button>
-      <button id="saveBtn" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700">Save</button>
-    </div>
+   
 
 <!--new password code -->
     <!-- Add this below the main password input -->
@@ -263,6 +260,10 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
     <input id="confirmInput" type="password" class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-4" />
   </div>
 <!--end of new password code -->
+ <div class="flex justify-end gap-4">
+      <button id="cancelBtn" class="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700">Cancel</button>
+      <button id="saveBtn" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700">Save</button>
+    </div>
   </div>
 </div>
 
@@ -377,12 +378,26 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
     document.getElementById('deleteModal').classList.add('hidden');
     document.getElementById('deleteModal').classList.remove('flex');
   }
-
+/*
   window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('spinner').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
-});
   
+});
+*/
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('spinner').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('answer_page')) {
+    showAnswers();  // show Answers tab if answer_page param is present
+  } else {
+    showQuestions(); // default to Questions tab
+  }
+});
+
 </script>
 
 </body>
