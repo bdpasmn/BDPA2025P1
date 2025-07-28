@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $users = $api->listUsers();
         $matchedUser = null;
 
-        // Find user by ID
+        // Find user by user_id
         foreach ($users['users'] ?? [] as $user) {
             if (isset($user['user_id']) && $user['user_id'] == $user_id) {
                 $matchedUser = $user;
@@ -41,9 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($matchedUser && isset($matchedUser['username'])) {
             $username = $matchedUser['username'];
 
+            // Generate new salt 
             $salt = bin2hex(random_bytes(16));
             $key = hash_pbkdf2("sha256", $password, $salt, 100000, 128, false);
 
+            // Update password in API
             $res = $api->updateUser($username, [
                 'salt' => $salt,
                 'key' => $key,
