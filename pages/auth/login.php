@@ -14,8 +14,24 @@ $error = null;
 $userInfo = '';
 
 // Login attempt restrictions
-define('MAX_ATTEMPTS', 3); // Max login attempts
-define('LOCKOUT_TIME', 3600); // Lockout duration in seconds
+define('MAX_ATTEMPTS', 3);
+define('LOCKOUT_TIME', 3600);
+
+// Restore session from remember_me cookie
+if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
+    list($cookieUsername, $cookieToken) = explode('|', $_COOKIE['remember_me'], 2);
+    $expectedToken = hash_hmac('sha256', $cookieUsername, API_KEY);
+    if (hash_equals($expectedToken, $cookieToken)) {
+        $userResponse = $api->getUser($cookieUsername);
+        if (isset($userResponse['user'])) {
+            $_SESSION['username'] = $cookieUsername;
+            $_SESSION['user_id'] = $userResponse['user']['id'];
+            $_SESSION['points'] = $userResponse['user']['points'] ?? 0;
+            header("Location: /pages/buffet/buffet.php");
+            exit;
+        }
+    }
+}
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $username = isset($_POST['username']) ? trim($_POST['username']) : '';
@@ -25,7 +41,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (empty($username) || empty($rawPassword)) {
         $error = "Enter both username and password.";
     } else {
-        // Check if user is locked out
         if (isset($_SESSION['failed_attempts']) && $_SESSION['failed_attempts'] >= MAX_ATTEMPTS) {
             $last_failed = $_SESSION['last_failed_time'] ?? 0;
             $time_since_last_fail = time() - $last_failed;
@@ -34,18 +49,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $minutes_left = ceil((LOCKOUT_TIME - $time_since_last_fail) / 60);
                 $error = "Too many failed attempts. Try again in $minutes_left minutes.";
             } else {
-                // Reset login attempts after lockout expires
                 $_SESSION['failed_attempts'] = 0;
                 $_SESSION['last_failed_time'] = 0;
             }
         }
 
-        // Proceed with login if not locked out
         if (!$error) {
             $userResponse = $api->getUser($username);
 
             if (!isset($userResponse['user']['salt'])) {
-                // If username doesn't exist, count as failed attempt
                 $_SESSION['failed_attempts'] = ($_SESSION['failed_attempts'] ?? 0) + 1;
                 $_SESSION['last_failed_time'] = time();
                 $attempts_left = MAX_ATTEMPTS - $_SESSION['failed_attempts'];
@@ -53,33 +65,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     ? "Too many failed attempts. You are locked out for 1 hour."
                     : "User not found. $attempts_left attempt(s) left.";
             } else {
-                // Derive password hash using PBKDF2 with stored salt, then validate using API
                 $salt = $userResponse['user']['salt'];
                 $passwordHash = hash_pbkdf2("sha256", $rawPassword, $salt, 100000, 128, false); 
                 
-                // Authenticate user
                 $authResponse = $api->authenticateUser($username, $passwordHash);
 
                 if (isset($authResponse['success']) && $authResponse['success'] === true) {
                     $_SESSION['username'] = $username;
                     $_SESSION['user_id'] = $authResponse['id'] ?? null;
 
-                    // Store additional user data
                     $userInfo = $api->getUser($username);
                     $_SESSION['points'] = $userInfo['user']['points'];
 
-                    // Reset lockout
                     $_SESSION['failed_attempts'] = 0;
                     $_SESSION['last_failed_time'] = 0;
 
-                    // Set remember-me cookie if user requested it
+                    // Set remember_me cookie using HMAC token
                     if ($remember_me) {
-                        setcookie('remember_me', $authResponse['username'], time() + 60 * 60 * 24 * 30, "/");
+                        $token = hash_hmac('sha256', $username, API_KEY);
+                        setcookie('remember_me', $username . '|' . $token, time() + 60 * 60 * 24 * 30, "/");
                     }
+
                     header("Location: /pages/buffet/buffet.php");
                     exit;
                 } else {
-                    // Password hash didn't match, count as failed attempt
                     $_SESSION['failed_attempts'] = ($_SESSION['failed_attempts'] ?? 0) + 1;
                     $_SESSION['last_failed_time'] = time();
                     $attempts_left = MAX_ATTEMPTS - $_SESSION['failed_attempts'];
@@ -89,20 +98,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 }
             }
         }
-    }
-}
-
-// Restore session via cookie
-if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
-    $username = $_COOKIE['remember_me'];
-    $userResponse = $api->getUser($username);
-
-    if (isset($userResponse['user'])) {
-        $_SESSION['username'] = $username;
-        $_SESSION['user_id'] = $userResponse['user']['id'] ?? null;
-        $_SESSION['points'] = $userResponse['user']['points'] ?? 0;
-        header("Location: /pages/buffet/buffet.php");
-        exit;
     }
 }
 ?>
@@ -153,7 +148,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
           <!-- Remember Me checkbox -->
           <div>
             <label class="inline-flex items-center text-white">
-              <input type="checkbox" name="remember_me" class="mr-2">
+              <input type="checkbox" name="remember_me" id="remember_me" <?= isset($_COOKIE['remember_me']) ? 'checked' : '' ?>>
               Remember Me
             </label>
           </div>
