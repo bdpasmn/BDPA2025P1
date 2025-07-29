@@ -1,5 +1,4 @@
 <?php
-
 session_start();
 
 require_once '../../api/key.php';
@@ -126,7 +125,7 @@ function incrementQuestionViews($questionId, $userId) {
     }
 }
 
-// Function to handle voting with point updates
+// Function to handle voting with point updates - FIXED VERSION
 function handleVote($api, $action, $postData, $currentUser) {
     $questionId = $postData['question_id'];
     $operation = $postData['operation']; // 'upvote' or 'downvote'
@@ -134,6 +133,7 @@ function handleVote($api, $action, $postData, $currentUser) {
     $result = null;
     switch ($action) {
         case 'vote_question':
+            // For question voting, pass empty string for comment_id since it's not used
             $result = $api->voteQuestionComment($questionId, '', $currentUser, $operation, 'question');
             break;
             
@@ -157,23 +157,28 @@ function handleVote($api, $action, $postData, $currentUser) {
             return ['error' => 'Invalid vote action'];
     }
     
-    // Update points based on voting action
+    // Update points based on voting action - only if vote was successful
     if (!isset($result['error'])) {
-        // Downvoting costs the voter 1 point
+        // Check if this is a new vote or undoing a vote
+        $isUndo = isset($result['undone']) && $result['undone'] === true;
+        
+        // Downvoting costs the voter 1 point (or refunds if undoing)
         if ($operation === 'downvote') {
-            updateUserPoints($currentUser, -1);
+            updateUserPoints($currentUser, $isUndo ? 1 : -1);
         }
         
-        // Award points to the content creator
+        // Award/deduct points to/from the content creator
         if ($action === 'vote_question') {
             // Get question creator and award/deduct points
             $questionData = $api->getQuestion($questionId);
             if (!isset($questionData['error'])) {
                 $creator = $questionData['creator'];
-                if ($operation === 'upvote') {
-                    updateUserPoints($creator, 5); // Question upvote: +5 points
-                } else {
-                    updateUserPoints($creator, -1); // Question downvote: -1 point
+                if ($creator !== $currentUser) { // Don't award points to self
+                    if ($operation === 'upvote') {
+                        updateUserPoints($creator, $isUndo ? -5 : 5); // Question upvote: +5 points
+                    } else {
+                        updateUserPoints($creator, $isUndo ? 1 : -1); // Question downvote: -1 point
+                    }
                 }
             }
         } elseif ($action === 'vote_answer') {
@@ -184,10 +189,12 @@ function handleVote($api, $action, $postData, $currentUser) {
                 foreach ($answersData['answers'] as $answer) {
                     if ($answer['answer_id'] === $answerId) {
                         $creator = $answer['creator'];
-                        if ($operation === 'upvote') {
-                            updateUserPoints($creator, 10); // Answer upvote: +10 points
-                        } else {
-                            updateUserPoints($creator, -5); // Answer downvote: -5 points
+                        if ($creator !== $currentUser) { // Don't award points to self
+                            if ($operation === 'upvote') {
+                                updateUserPoints($creator, $isUndo ? -10 : 10); // Answer upvote: +10 points
+                            } else {
+                                updateUserPoints($creator, $isUndo ? 5 : -5); // Answer downvote: -5 points
+                            }
                         }
                         break;
                     }
@@ -237,7 +244,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new Exception($result['error']);
                     }
                     
-                    $message = ucfirst($operation) . " successful!";
+                    // Check if vote was undone
+                    if (isset($result['undone']) && $result['undone'] === true) {
+                        $message = ucfirst($operation) . " removed successfully!";
+                    } else {
+                        $message = ucfirst($operation) . " successful!";
+                    }
                     break;
                     
                 case 'add_question_comment':
@@ -396,7 +408,7 @@ if (isset($_GET['msg'])) {
     $messageType = $_GET['type'] ?? 'success';
 }
 
-// Get question data
+// Get question data FIRST - SIMILAR TO BUFFET
 try {
     $questionResult = $api->getQuestion($questionName);
     
@@ -430,41 +442,49 @@ try {
     // Increment view count
     incrementQuestionViews($actualQuestionId, $CURRENT_USER);
     
-    // Get answers
-    $answersResult = $api->getAnswers($actualQuestionId);
-    debugLog("Answers lookup", $answersResult);
-    
-    $answers = [];
-    if (!isset($answersResult['error'])) {
-        $answers = $answersResult['answers'] ?? [];
-    }
-    
-    // Get question comments
-    $commentsResult = $api->getQuestionComments($actualQuestionId);
-    debugLog("Question comments lookup", $commentsResult);
-    
-    $questionComments = [];
-    if (!isset($commentsResult['error'])) {
-        $questionComments = $commentsResult['comments'] ?? [];
-    }
-    
-    // Get answer comments for each answer
-    foreach ($answers as &$answer) {
-        $answerId = $answer['answer_id'];
-        
-        $answerCommentsResult = $api->getAnswerComments($actualQuestionId, $answerId);
-        debugLog("Answer comments lookup for " . $answerId, $answerCommentsResult);
-        
-        $answer['comments'] = [];
-        if (!isset($answerCommentsResult['error'])) {
-            $answer['comments'] = $answerCommentsResult['comments'] ?? [];
-        }
-    }
-    
 } catch (Exception $ex) {
     $message = 'Error loading question: ' . $ex->getMessage();
     $messageType = 'error';
     debugLog("Exception loading question", ['message' => $ex->getMessage(), 'trace' => $ex->getTraceAsString()]);
+}
+
+// Get all related data AFTER question is loaded - LIKE BUFFET DOES
+if ($question && $actualQuestionId) {
+    try {
+        // Get answers - FETCH ONCE AND STORE
+        $answersResult = $api->getAnswers($actualQuestionId);
+        debugLog("Answers lookup", $answersResult);
+        
+        if (!isset($answersResult['error'])) {
+            $answers = $answersResult['answers'] ?? [];
+        }
+        
+        // Get question comments - FETCH ONCE AND STORE
+        $commentsResult = $api->getQuestionComments($actualQuestionId);
+        debugLog("Question comments lookup", $commentsResult);
+        
+        if (!isset($commentsResult['error'])) {
+            $questionComments = $commentsResult['comments'] ?? [];
+        }
+        
+        // Get answer comments for each answer - BATCH PROCESS LIKE BUFFET
+        $answerComments = [];
+        foreach ($answers as $answer) {
+            $answerId = $answer['answer_id'];
+            
+            $answerCommentsResult = $api->getAnswerComments($actualQuestionId, $answerId);
+            debugLog("Answer comments lookup for " . $answerId, $answerCommentsResult);
+            
+            if (!isset($answerCommentsResult['error'])) {
+                $answerComments[$answerId] = $answerCommentsResult['comments'] ?? [];
+            } else {
+                $answerComments[$answerId] = [];
+            }
+        }
+        
+    } catch (Exception $ex) {
+        debugLog("Error loading question data", ['message' => $ex->getMessage()]);
+    }
 }
 
 // Helper functions
@@ -511,7 +531,7 @@ function getStatusDisplay($status) {
     }
 }
 
-// Sort answers: accepted first, then by points desc
+// Sort answers: accepted first, then by points desc - SAME AS BUFFET SORTING
 if (!empty($answers)) {
     usort($answers, function($a, $b) {
         $aAccepted = $a['accepted'] ?? false;
@@ -909,11 +929,15 @@ if (!$question) {
                         </div>
                     <?php endif; ?>
 
-                    <!-- Answer Comments -->
-                    <?php if (!empty($answer['comments'])): ?>
+                    <!-- Answer Comments - NOW USING PRE-FETCHED DATA -->
+                    <?php 
+                    $answerId = $answer['answer_id'];
+                    $comments = $answerComments[$answerId] ?? [];
+                    ?>
+                    <?php if (!empty($comments)): ?>
                         <div class="bg-gray-700 rounded-lg p-4 mb-4">
                             <h4 class="text-md font-semibold mb-3 text-white">Comments</h4>
-                            <?php foreach ($answer['comments'] as $comment): ?>
+                            <?php foreach ($comments as $comment): ?>
                                 <div class="mb-3 pb-3 border-b border-gray-600 last:border-b-0">
                                     <div class="flex justify-between items-start mb-2">
                                         <div class="user-info">
@@ -1117,19 +1141,31 @@ if (!$question) {
                 }
                 
                 // Simple markdown rendering (matches PHP renderMarkdown function)
-                let html = text
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#039;')
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                    .replace(/`(.*?)`/g, '<code class="bg-gray-600 px-1 rounded">$1</code>')
-                    .replace(/```(.*?)```/gs, '<pre class="bg-gray-600 p-2 rounded mt-2 mb-2 overflow-x-auto"><code>$1</code></pre>')
-                    .replace(/\n/g, '<br>');
-                
-                preview.innerHTML = html;
+               let html = text
+                // Escape HTML
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;')
+
+                // Markdown: bold, italic, inline code, code block
+                .replace(/```(.*?)```/gs, '<pre class="bg-gray-600 p-2 rounded mt-2 mb-2 overflow-x-auto"><code>$1</code></pre>')
+                .replace(/`(.*?)`/g, '<code class="bg-gray-600 px-1 rounded">$1</code>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+
+                // Markdown: links and images
+                .replace(/!\[([^\]]+)]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded" />')
+                .replace(/\[([^\]]+)]\(([^)]+)\)/g, '<a href="$2" class="text-blue-500 underline" target="_blank" rel="noopener noreferrer">$1</a>')
+
+                // Line breaks
+                .replace(/\\n/g, '<br>')   // backslash n
+                .replace(/\\/, '<br>')     // single backslash
+                .replace(/\n/g, '<br>');   // normal enter
+
+            preview.innerHTML = html;
+
             }
         }
 
