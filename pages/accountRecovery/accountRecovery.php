@@ -61,37 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         if ($user) {
             $username = $user['username'];
-<<<<<<< Updated upstream
             $token = bin2hex(random_bytes(32));
-=======
-            //$response = $api->updateUser($username, ['key' => $token]);
-            $response = $api->updateUser($username, ['reset_token' => $token]);
-            if (
-        strlen($value) < 11 ||
-        !preg_match("/[A-Z]/", $value) || // Check for uppercase letter
-        !preg_match("/[a-z]/", $value) ||// Check for lowercase letter
-        !preg_match("/[0-9]/", $value) ||// Check for number
-        !preg_match("/[\W]/", $value)// Check for special character
-    ) {
-        echo "Password must be at least 11 characters and include uppercase, lowercase, number, and special character.";
-        exit();
-    }
-      $salt = bin2hex(random_bytes(16));// Generate a secure random salt
-      $passwordHash = hash_pbkdf2("sha256", $value,  $salt,100000, 128, false);// Hash the password with the salt
-      //$UpdatesInSupabase = json_encode(['password' => $passwordHash]);
-
-      $UpdatesInApi = $api->updateUser($username, [ // Prepare the data for API update
-            'key' => $passwordHash,// Hash the password
-            'salt' => $salt// Include the salt
-        ]);
-
-      $UpdatesInSupabase = $pdo->prepare("UPDATE users SET password = :password WHERE username = :username"); // Prepare the SQL statement for Supabase
-      $UpdatesInSupabase->execute(['password' => $passwordHash, 'username' => $username]);// Execute the SQL statement
-      echo "Successfully updated password."; 
-        exit();
-    }
-  }
->>>>>>> Stashed changes
 
             // Store reset token
             $response = $api->updateUser($username, ['reset_token' => $token]);
@@ -128,20 +98,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </script>
 <?php endif; ?>
 
-
 <section class="min-h-screen flex flex-col items-center justify-center px-6 py-10 mx-auto">
-
 
 <div class="w-full bg-gray-800 rounded-2xl shadow-lg border border-gray-700 sm:max-w-lg p-8 sm:p-10">
  <h1 class="mb-2 text-2xl font-bold leading-tight tracking-tight text-white md:text-3xl">
      Forgot Your Password?
    </h1>
 
-
    <?php if (!empty($error)): ?>
      <p class="text-gray-300 font-bold mb-4"><?= htmlspecialchars($error) ?></p>
    <?php endif; ?>
-
 
    <form class="space-y-6" method="POST" action="">
      <div>
@@ -153,7 +119,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
          <p class="text-gray-300 font-bold mt-1"><?= htmlspecialchars($email_err) ?></p>
        <?php endif; ?>
      </div>
-
 
      <div>
        <label for="captcha" class="block mb-2 text-md font-medium text-white">
@@ -167,7 +132,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
        <?php endif; ?>
      </div>
 
-
      <button type="submit"
              class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-md px-6 py-3
                     focus:outline-none focus:ring-4 focus:ring-blue-800">
@@ -176,7 +140,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
    </form>
  </div>
 </section>
-
 
 <?php if ($showPopup): ?>
 <div id="popup" class="fixed inset-0 bg-black/30 flex items-center justify-center p-3 md:p-10 hidden z-[90] overflow-auto">
