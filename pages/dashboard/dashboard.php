@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html>
   <?php
-  // DASHBOARD PAGE
-  //again!!!!! :)
   session_start();
 
   require_once '../../Api/api.php';
@@ -22,8 +20,6 @@
   $username = $_SESSION['username']; //set username to the session username
 
 
-
-
   $AllQuestionInfo= $api->getUserQuestions($username); //getting user questions
   $JustUserQuestions = $AllQuestionInfo['questions'] ?? [];// getting just the user questions
 
@@ -36,12 +32,12 @@
    // deleting user account
   if (isset($_POST['delete_account'])) {
 
-  $AllQuestionInfo= $api->getUserQuestions($username);          //this is just the code that deletes their questions
+  $AllQuestionInfo= $api->getUserQuestions($username); //this is just the code that deletes their questions
   $JustUserQuestions = $AllQuestionInfo['questions'] ?? [];
 
       foreach ($JustUserQuestions as $UserQuestion) {
        $api->deleteQuestion($UserQuestion['question_id']);
-   }                                                           //question deletion ends here
+   }  //question deletion ends here
 
   $deleteUser = $api->deleteUser($username);
   $stmt = $pdo->prepare("DELETE FROM users WHERE username = :username");
@@ -52,40 +48,10 @@
   }
   
 
-
-
 $email = $loggedInUser['email'] ?? ' '; //gets email of logged in user, if not found, sets to empty string
 $NormalizedEmail = strtolower(trim($email)); // Normalize email by converting to lowercase and trimming whitespace
 $HashedEmail = hash('sha256', $NormalizedEmail); // Hash the normalized email using SHA-256
 $gravatarUrl = "https://www.gravatar.com/avatar/$HashedEmail?d=identicon"; // Generate Gravatar URL with identicon fallback
-
-
-
-//priting all users
-/*
-$users = $api->listUsers();
-echo '<pre>';
-print_r($users);
-echo '</pre>';
-
-
-
-$AllQuestionInfo= $api->getUserQuestions($username);
-echo '<pre>';
-print_r($AllQuestionInfo);
-echo '</pre>';
-
-$JustUserQuestions = $AllQuestionInfo['questions'] ?? [];
-echo '<pre>';
-print_r($JustUserQuestions);
-echo '</pre>';
-
-$Answers= $api->getUserAnswers($username);
-echo '<pre>';
-print_r($Answers);
-echo '</pre>';
-*/
-
 
 $QuestionsPerPage = 9;//sets amount of questions per page to 9
 
@@ -120,9 +86,11 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
 <head>
   <meta charset="UTF-8">
-  <title>Authed Dashboard</title>
+  <title>Dashboard</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
 </head>
 <body class="bg-gray-900 text-white font-sans">
 
@@ -207,11 +175,13 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 px-4 sm:px-6 lg:px-10 hidden" id="answers">
     <?php if (!empty($JustUserAnswer)): ?> <!-- Check if there are user answers -->
-        <?php foreach ($paginatedAnswers as $UserAnswer): ?>
+        <?php foreach ($paginatedAnswers as $UserAnswer): 
+          $rawMarkdown = $UserAnswer['text'] ?? '';
+          ?>
         <a href="/pages/q&a/q&a.php?questionName=<?= urlencode($UserAnswer['question_id']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700"> <!-- got rid of w-[300px] in the div class -->
-          <p class="text-l font-semibold text-blue-400">ANSWER TITLE:</p>
-          <p class="mt-2 text-sm font-semibold hover:underline block truncate"><?php echo htmlspecialchars($UserAnswer['text']); ?></p> <!-- Display question title -->
+          <p class="text-l font-semibold text-blue-400">ANSWER:</p>
+       <div data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <p class="mt-2 text-sm hover:underline block truncate"><?php echo htmlspecialchars($UserAnswer['text']); ?></p> </div> <!-- Display question title -->
           <p class="mt-4 text-sm">VOTES: <?php echo $UserAnswer['upvotes'] ?? 'not found'; ?></p><!-- Display answer votes -->
         </div>
         </a>
@@ -311,13 +281,11 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
   }
 
 
-  //saveBtn.onclick = () => { // onlcick of save button
+// onlcick of save button
   saveBtn.onclick = function()  { 
   const value = editInput.value;// get the value from the input field
 
-  
-
-  //new password code to confirm password
+  //password code to confirm password
   if (currentField === 'password') {
     const confirmValue = document.getElementById('confirmInput').value;
     if (value !== confirmValue) {
@@ -325,9 +293,6 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
       return;
     }
   }
-  //end of password code to confirm password
-
-
 
   const data = new FormData();// Create a new FormData object to send data
   data.append('field', currentField);// Append the current field (email or password) to the FormData
@@ -395,24 +360,21 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
     document.getElementById('deleteModal').classList.add('hidden');
     document.getElementById('deleteModal').classList.remove('flex');
   }
-/*
+
+
+//spinner and dashboard visibility
   window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('spinner').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
-  
-});
-*/
 
-window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('spinner').classList.add('hidden');
-  document.getElementById('dashboard').classList.remove('hidden');
-
-  const params = new URLSearchParams(window.location.search);
+// Show Questions tab by default, or what the user changes too
+    const params = new URLSearchParams(window.location.search);
   if (params.has('answer_page')) {
     showAnswers();  // show Answers tab if answer_page param is present
   } else {
     showQuestions(); // default to Questions tab
   }
+  
 });
 
 //disable pagination buttons after click
@@ -430,6 +392,20 @@ window.addEventListener('DOMContentLoaded', () => {
         });
       });
     });
+
+//Mardown
+function decodeHTMLEntities(text) {
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = text;
+        return textarea.value;
+      }
+      document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('[data-markdown]').forEach(el => {
+          const rawMarkdown = decodeHTMLEntities(el.getAttribute('data-markdown') || '');
+          const html = marked.parse(rawMarkdown);
+          el.innerHTML = DOMPurify.sanitize(html);
+        })
+        });
 </script>
 
 </body>
