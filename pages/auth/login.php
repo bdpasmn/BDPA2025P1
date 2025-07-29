@@ -1,5 +1,11 @@
 <?php
 session_start();
+
+if (isset($_SESSION['username'])) {
+  header('Location: /pages/buffet/buffet.php');
+  exit();
+}
+
 include __DIR__ . '/../../components/navBarLogOut.php';
 
 error_reporting(E_ALL);

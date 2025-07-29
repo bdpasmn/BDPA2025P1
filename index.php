@@ -1,6 +1,18 @@
 <?php
 session_start();
 
+if (isset($_SESSION['username'])) {
+  header('Location: /pages/buffet/buffet.php');
+  exit();
+}
+
+require_once __DIR__ . '/Api/key.php';
+require_once __DIR__ . '/Api/api.php';
+require_once __DIR__ . '/rememberMe.php';
+
+$api = new qOverflowAPI(API_KEY);
+autoLoginFromCookie($api);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
