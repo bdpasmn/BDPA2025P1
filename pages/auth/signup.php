@@ -245,8 +245,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   </script>
 </body>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 </html>
 
+=======
+</html>
+>>>>>>> Stashed changes
 =======
 </html>
 >>>>>>> Stashed changes
