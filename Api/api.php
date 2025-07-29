@@ -49,7 +49,7 @@ class qOverflowAPI {
             }
 
             // Retry logic for server errors (5xx)
-            if ($httpCode >= 500 && $httpCode < 600) {
+            if ($httpCode >= 429 && $httpCode < 600) {
                 $retry--;
                 if ($retry > 0) {
                     error_log("qOverflow API - Retrying request. Attempts remaining: " . $retry);
