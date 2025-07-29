@@ -222,7 +222,8 @@ function format_relative_time($timestamp_ms) {
           </a>
           <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed text-sm sm:text-base break-words" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
           <div class="text-sm text-gray-400 flex flex-wrap gap-4 mt-2">
-            <span class="vote-count"><?= intval($q['upvotes'] ?? 0) ?> vote<?= (intval($q['upvotes'] ?? 0) == 1 ? '' : 's') ?></span>
+            <?php $upvotes = intval($q['upvotes'] ?? 0); $downvotes = intval($q['downvotes'] ?? 0); $votes = $upvotes - $downvotes; ?>
+            <span class="vote-count"><?= $votes ?> vote<?= ($votes == 1 || $votes == -1 ? '' : 's') ?></span>
             <span class="answer-count"><?= intval($q['answers'] ?? 0) ?> answer<?= (intval($q['answers'] ?? 0) == 1 ? '' : 's') ?></span>
             <span class="view-count"><?= intval($q['views'] ?? 0) ?> view<?= (intval($q['views'] ?? 0) == 1 ? '' : 's') ?></span>
           </div>
@@ -399,6 +400,39 @@ function format_relative_time($timestamp_ms) {
           }, 50);
         });
       });
+    });
+
+    // Ajax - Update question info
+    function updateQuestionStats() {
+      const questionElements = document.querySelectorAll('#question-list [data-id]');
+      const ids = Array.from(questionElements).map(el => el.getAttribute('data-id')).filter(Boolean);
+
+      if (ids.length === 0) return;
+
+      fetch(`../../api/getQuestionStats.php?ids=${ids.join(',')}&action=batch`)
+        .then(res => res.text())
+        .then(text => {
+          try {
+            const data = JSON.parse(text);
+            ids.forEach(id => {
+              const container = document.querySelector(`[data-id="${id}"]`);
+              if (!container || !data[id]) return;
+
+              container.querySelector('.view-count').textContent = `${data[id].views} view${data[id].views == 1 ? '' : 's'}`;
+              const upvotes = data[id].upvotes || 0;
+              const downvotes = data[id].downvotes || 0;
+              const votes = upvotes - downvotes;
+              container.querySelector('.vote-count').textContent = `${net} vote${Math.abs(votes) == 1 ? '' : 's'}`;
+              container.querySelector('.answer-count').textContent = `${data[id].answers} answer${data[id].answers == 1 ? '' : 's'}`;
+            });
+          } catch (e) {
+            console.error("⚠️ Not valid JSON. Got HTML instead:\n", text);
+          }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setInterval(updateQuestionStats, 10000);
     });
   </script>
 </body>
