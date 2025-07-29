@@ -161,14 +161,6 @@ try {
     usort($textMatches, 'sortByCreatedAtDesc');
     usort($creatorMatches, 'sortByCreatedAtDesc');
 
-    // Display results
-/*
-    $apiResponse = $api->searchQuestions(['limit' => 100]);
-echo '<pre>';
-print_r($apiResponse);
-echo '</pre>';
-exit;
-*/
     ?>
     <!DOCTYPE html>
     <html lang="en">

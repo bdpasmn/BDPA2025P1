@@ -51,7 +51,7 @@
     
     } elseif ($field === 'password') {//if the field is password
           if (
-        strlen($value) < 10   /*||
+        strlen($value) <= 10   /*||
         /*
         !preg_match("/[A-Z]/", $value) || // Check for uppercase letter
         !preg_match("/[a-z]/", $value) ||// Check for lowercase letter
@@ -59,7 +59,7 @@
         !preg_match("/[\W]/", $value)// Check for special character
         */
     ) {
-        echo "Password must be at least 10 charactersr.";
+        echo "Password must be more than 10 characters.";
         exit();
     }
       $salt = bin2hex(random_bytes(16));// Generate a secure random salt

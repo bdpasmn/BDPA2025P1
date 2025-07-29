@@ -171,12 +171,11 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 px-4 sm:px-6 lg:px-10" id="questions">
     <?php if (!empty($JustUserQuestions)): ?> <!-- Check if there are user questions -->
-      <?php /*foreach ($JustUserQuestions as $UserQuestion): */?> <!-- Loop through each user question -->
       <?php foreach ($paginatedQuestions as $UserQuestion): ?> <!-- Loop through each paginated user question for that page-->
         <a href="../q&a/q&a.php?questionName=<?= urlencode($UserQuestion['title']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700 "> <!-- got rid of w-[300px] in the div class -->
         <p class="text-l font-semibold text-blue-400">QUESTION TITLE:</p>
-          <p class="mt-2 text-sm font-semibold hover:underline block break-words"><?php echo htmlspecialchars($UserQuestion['title']); ?></p> <!-- Display question title -->
+          <p class="mt-2 text-sm font-semibold hover:underline block truncate"><?php echo htmlspecialchars($UserQuestion['title']); ?></p> <!-- Display question title -->
           <p class="mt-4 text-sm">VOTES: <?php echo $UserQuestion['upvotes'] ?? 'not found'; ?></p> <!-- Display question votes -->
         </div>
         </a>
@@ -188,27 +187,31 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
   <?php if ($totalQuestionsPages > 1): ?> <!-- Check if there are multiple pages -->
   <div id="questionPagination" class="mt-4 flex justify-center space-x-2 text-sm  mb-4 ">
+
+    <?php if ($currentQuestionsPage > 1): ?>
+        <a href="?page=<?= $currentQuestionsPage - 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">Previous</a>
+    <?php endif; ?>
+
     <?php for ($i = 1; $i <= $totalQuestionsPages; $i++): ?> <!-- Loop through each page number -->
       <a href="?page=<?= $i ?>" class="px-3 py-1 rounded <?= $i === $currentQuestionsPage ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' ?>"> <!-- Highlight current page -->
         <?= $i ?> <!-- Display page number -->
       </a> 
     <?php endfor; ?>
+
+    <?php if ($currentQuestionsPage < $totalQuestionsPages): ?>
+            <a href="?page=<?= $currentQuestionsPage + 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">Next</a>
+    <?php endif; ?>
+
   </div>
 <?php endif; ?>
 
-
-
-
-
-
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 px-4 sm:px-6 lg:px-10 hidden" id="answers">
     <?php if (!empty($JustUserAnswer)): ?> <!-- Check if there are user answers -->
-      <?php /*foreach ($JustUserAnswer as $UserAnswer): */?> <!-- Loop through each user answer -->
         <?php foreach ($paginatedAnswers as $UserAnswer): ?>
         <a href="/pages/q&a/q&a.php?questionName=<?= urlencode($UserAnswer['question_id']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700"> <!-- got rid of w-[300px] in the div class -->
           <p class="text-l font-semibold text-blue-400">ANSWER TITLE:</p>
-          <p class="mt-2 text-sm font-semibold"><?php echo htmlspecialchars($UserAnswer['text']); ?></p> <!-- Display question title -->
+          <p class="mt-2 text-sm font-semibold hover:underline block truncate"><?php echo htmlspecialchars($UserAnswer['text']); ?></p> <!-- Display question title -->
           <p class="mt-4 text-sm">VOTES: <?php echo $UserAnswer['upvotes'] ?? 'not found'; ?></p><!-- Display answer votes -->
         </div>
         </a>
@@ -220,13 +223,24 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
   <?php if ($totalAnswerPages > 1): ?>
   <div id="answerPagination" class="mt-6 flex justify-center space-x-2 text-sm mb-4 hidden">
+
+    <?php if ($currentAnswerPage > 1): ?>
+        <a href="?answer_page=<?= $currentAnswerPage - 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">Previous</a>
+    <?php endif; ?>
+
     <?php for ($i = 1; $i <= $totalAnswerPages; $i++): ?>
       <a href="?answer_page=<?= $i ?>" class="px-3 py-1 rounded <?= $i === $currentAnswerPage ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' ?>">
         <?= $i ?>
       </a>
     <?php endfor; ?>
+
+    <?php if ($currentAnswerPage < $totalAnswerPages): ?>
+      <a href="?answer_page=<?= $currentAnswerPage + 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">Next</a>
+    <?php endif; ?>
+
   </div>
-<?php endif; ?>
+
+  <?php endif; ?>
 
 
   <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
@@ -253,13 +267,11 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
     
    
 
-<!--new password code -->
-    <!-- Add this below the main password input -->
+
   <div id="confirmPasswordWrapper" class="hidden">
     <label for="confirmInput" class="block mb-2">Confirm password:</label>
     <input id="confirmInput" type="password" class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-4" />
   </div>
-<!--end of new password code -->
  <div class="flex justify-end gap-4">
       <button id="cancelBtn" class="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700">Cancel</button>
       <button id="saveBtn" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700">Save</button>
@@ -284,6 +296,8 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
     document.getElementById('confirmPasswordWrapper').classList.add('hidden');
 
+    editInput.value = '';
+    confirmInput.value = '';
 
     if (field === 'email') {//if the field
       modalTitle.textContent = 'Edit Email';//make the title of the modal Edit Email
@@ -292,7 +306,6 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
     } else if (field === 'password') {//if the feild is password
       modalTitle.textContent = 'Edit Password';// set the title to Edit Password
       editInput.type = 'password';//set the input type to password
-      editInput.value = '';//leave it empty for user to input new email
       document.getElementById('confirmPasswordWrapper').classList.remove('hidden');
     }
   }
@@ -335,6 +348,10 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
   .then(function (t) {// Handle the response text
 
     alert(t);// Show an alert with the response text
+    if(currentField === 'email') {
+      document.getElementById('emailDisplay').textContent = value;
+    }
+    
     modal.classList.add('hidden');// hide the modal
     modal.classList.remove('flex');//remove the flex class to hide it
     });
@@ -398,6 +415,21 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+//disable pagination buttons after click
+ document.addEventListener('DOMContentLoaded', () => {
+      const paginationLink = document.querySelectorAll('#questionPagination a, #answerPagination a');
+
+      paginationLink.forEach(link => {
+        link.addEventListener('click', () => {
+          setTimeout(() => {
+            paginationLink.forEach(l => {
+              //l.disabled = true;
+              l.classList.add('pointer-events-none', 'opacity-50');
+            });
+          }, 50);
+        });
+      });
+    });
 </script>
 
 </body>
