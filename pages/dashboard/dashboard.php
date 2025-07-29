@@ -143,7 +143,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
         <a href="../q&a/q&a.php?questionName=<?= urlencode($UserQuestion['title']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700 "> <!-- got rid of w-[300px] in the div class -->
         <p class="text-l font-semibold text-blue-400">QUESTION TITLE:</p>
-          <p class="mt-2 text-sm font-semibold hover:underline block truncate"><?php echo htmlspecialchars($UserQuestion['title']); ?></p> <!-- Display question title -->
+          <p class="mt-2 text-sm hover:underline block truncate"><?php echo htmlspecialchars($UserQuestion['title']); ?></p> <!-- Display question title -->
           <p class="mt-4 text-sm">VOTES: <?php echo $UserQuestion['upvotes'] ?? 'not found'; ?></p> <!-- Display question votes -->
         </div>
         </a>
