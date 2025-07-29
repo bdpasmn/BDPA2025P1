@@ -1,15 +1,13 @@
 <?php
 session_start();
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
 
 require_once '../../api/key.php';
 require_once '../../api/api.php';
 
-
 $api = new qOverflowAPI(API_KEY);
-
 
 $showPopup = false;
 $recoveryLink = '';
@@ -18,104 +16,70 @@ $email = '';
 $email_err = '';
 $captcha_err = '';
 
-
+// Generate CAPTCHA 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-   $num1 = rand(1, 10);
-   $num2 = rand(1, 10);
-   $_SESSION['num1'] = $num1;
-   $_SESSION['num2'] = $num2;
-   $_SESSION['captcha_answer'] = $num1 + $num2;
+    $num1 = rand(1, 10);
+    $num2 = rand(1, 10);
+    $_SESSION['num1'] = $num1;
+    $_SESSION['num2'] = $num2;
+    $_SESSION['captcha_answer'] = $num1 + $num2;
 } else {
-   $num1 = $_SESSION['num1'] ?? '?';
-   $num2 = $_SESSION['num2'] ?? '?';
+    $num1 = $_SESSION['num1'] ?? '?';
+    $num2 = $_SESSION['num2'] ?? '?';
 }
 
-
+// Find user by email
 function getUserByEmail($api, $email) {
-   $response = $api->listUsers();
-   $users = $response['users'] ?? [];
-   foreach ($users as $u) {
-       if (isset($u['email']) && strtolower($u['email']) === strtolower($email)) {
-           return $u;
-       }
-   }
-   return null;
+    $response = $api->listUsers();
+    $users = $response['users'] ?? [];
+    foreach ($users as $u) {
+        if (isset($u['email']) && strtolower($u['email']) === strtolower($email)) {
+            return $u;
+        }
+    }
+    return null;
 }
-
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-   $email = trim($_POST['email'] ?? '');
-   $captcha = trim($_POST['captcha'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $captcha = trim($_POST['captcha'] ?? '');
 
+    if (empty($email)) {
+        $email_err = "Please enter your email.";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $email_err = "Please enter a valid email address.";
+    }
 
-   if (empty($email)) {
-       $email_err = "Please enter your email.";
-   } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-       $email_err = "Please enter a valid email address.";
-   }
+    if (empty($captcha)) {
+        $captcha_err = "Please answer the captcha.";
+    } elseif (intval($captcha) !== ($_SESSION['captcha_answer'] ?? -1)) {
+        $captcha_err = "Incorrect captcha answer.";
+    }
 
-<<<<<<< Updated upstream
-=======
-            // Store token in API (in `key` field)
+    if (empty($email_err) && empty($captcha_err)) {
+        $user = getUserByEmail($api, $email);
+
+        if ($user) {
             $username = $user['username'];
-            //$response = $api->updateUser($username, ['key' => $token]);
+            $token = bin2hex(random_bytes(32));
+
+            // Store reset token
             $response = $api->updateUser($username, ['reset_token' => $token]);
-            if (
-        strlen($value) < 11 ||
-        !preg_match("/[A-Z]/", $value) || // Check for uppercase letter
-        !preg_match("/[a-z]/", $value) ||// Check for lowercase letter
-        !preg_match("/[0-9]/", $value) ||// Check for number
-        !preg_match("/[\W]/", $value)// Check for special character
-    ) {
-        echo "Password must be at least 11 characters and include uppercase, lowercase, number, and special character.";
-        exit();
+            $idForUrl = $user['user_id'] ?? $username ?? null;
+
+            if ($idForUrl === null) {
+                $error = "User record missing identifier.";
+            } else {
+                $host = $_SERVER['HTTP_HOST'];
+                $recoveryLink = "http://$host/pages/accountRecovery/resetPassword.php?user_id=" . urlencode($idForUrl);
+                $showPopup = true;
+            }
+        } else {
+            $error = "Email not found in our records.";
+        }
     }
-      $salt = bin2hex(random_bytes(16));// Generate a secure random salt
-      $passwordHash = hash_pbkdf2("sha256", $value,  $salt,100000, 128, false);// Hash the password with the salt
-      //$UpdatesInSupabase = json_encode(['password' => $passwordHash]);
-
-      $UpdatesInApi = $api->updateUser($username, [ // Prepare the data for API update
-            'key' => $passwordHash,// Hash the password
-            'salt' => $salt// Include the salt
-        ]);
-
-      $UpdatesInSupabase = $pdo->prepare("UPDATE users SET password = :password WHERE username = :username"); // Prepare the SQL statement for Supabase
-      $UpdatesInSupabase->execute(['password' => $passwordHash, 'username' => $username]);// Execute the SQL statement
-      echo "Successfully updated password."; 
-        exit();
-    }
-  }
->>>>>>> Stashed changes
-
-   if (empty($captcha)) {
-       $captcha_err = "Please answer the captcha.";
-   } elseif (intval($captcha) !== ($_SESSION['captcha_answer'] ?? -1)) {
-       $captcha_err = "Incorrect captcha answer.";
-   }
-
-
-   if (empty($email_err) && empty($captcha_err)) {
-       $user = getUserByEmail($api, $email);
-
-
-       if ($user) {
-           $idForUrl = $user['user_id'] ?? $user['username'] ?? null;
-
-
-           if ($idForUrl === null) {
-               $error = "User record missing identifier.";
-           } else {
-               $host = $_SERVER['HTTP_HOST'];
-               $recoveryLink = "http://$host/pages/accountRecovery/resetPassword.php?user_id=" . urlencode($idForUrl);
-               $showPopup = true;
-           }
-       } else {
-           $error = "Email not found in our records.";
-       }
-   }
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">

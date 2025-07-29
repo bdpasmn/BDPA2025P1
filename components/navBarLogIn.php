@@ -144,7 +144,7 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
             Mail
           </a>    
           <a href="/pages/auth/logout.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/auth/logout.php') !== false ? ' active' : ''; ?>">
-            LogOut
+            Logout
           </a>
           </form>
         </div>

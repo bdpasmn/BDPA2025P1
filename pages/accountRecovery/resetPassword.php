@@ -1,13 +1,16 @@
 <?php
 session_start();
+
 require_once __DIR__ . '/../../Api/key.php';
 require_once __DIR__ . '/../../Api/api.php';
 
 $api = new qOverflowAPI(API_KEY);
 
+// Get user_id to check if user is authed
 $user_id = $_GET['user_id'] ?? '';
 $error = '';
 
+// Redirect to landing page if user is not authed
 if (!$user_id) {
     header('Location: http://127.0.0.1:3000/');
     exit();
@@ -18,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm'] ?? '';
 
-    // Validation checks
+    // Basic validation checks
     if (!$user_id || !$password || !$confirm) {
         $error = "All fields are required.";
     } elseif ($password !== $confirm) {
@@ -38,11 +41,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // If user found, proceed to reset password
         if ($matchedUser && isset($matchedUser['username'])) {
             $username = $matchedUser['username'];
 
             // Generate new salt 
             $salt = bin2hex(random_bytes(16));
+            // Hash the new password using PBKDF2
             $key = hash_pbkdf2("sha256", $password, $salt, 100000, 128, false);
 
             // Update password in API
@@ -71,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Reset Password</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    // Live password strength feedback
     function checkStrength(pw) {
       const strength = document.getElementById("strength");
       if (!pw) {
@@ -78,14 +84,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         return;
       }
 
-      let lengthCategory = "Weak (11 characters minimum)";
-      if (pw.length > 17) lengthCategory = "Strong";
-      else if (pw.length >= 11) lengthCategory = "Moderate";
+      let level = "Weak (11 characters minimum";
+      if (pw.length > 17) level = "Strong";
+      else if (pw.length >= 11) level = "Moderate";
 
-      const message = `Password strength: ${lengthCategory}`;
-      strength.textContent = message;
+      strength.textContent = `Password strength: ${level}`;
+      strength.style.color = level === "Strong" ? "limegreen" :
+                             level === "Moderate" ? "orange" : "red";
     }
 
+    // Hide spinner once page is fully loaded
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('spinner').classList.add('hidden');
       document.getElementById('reset-form').classList.remove('hidden');
@@ -106,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
     </div>
 
-    <!-- Form (initially hidden) -->
+    <!-- Form Container: Hidden until DOM is ready) -->
     <div id="reset-form" class="hidden">
       <?php if ($error): ?>
         <p class="text-gray-300 font-bold"><?= htmlspecialchars($error) ?></p>
@@ -115,6 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <form method="POST" class="space-y-6" novalidate>
         <input type="hidden" name="user_id" value="<?= htmlspecialchars($user_id) ?>">
 
+         <!-- New password input -->
         <div>
           <label for="password" class="block mb-2 text-md font-medium text-white">New Password</label>
           <input type="password" name="password" id="password" required
@@ -124,6 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div id="strength" class="text-white text-sm mt-1"></div>
         </div>
 
+        <!-- Confirm password input -->
         <div>
           <label for="confirm" class="block mb-2 text-md font-medium text-white">Confirm Password</label>
           <input type="password" name="confirm" id="confirm" required
