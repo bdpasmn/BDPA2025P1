@@ -147,7 +147,10 @@ function format_relative_time($timestamp_ms) {
     <div class="flex justify-between items-center">
       <div class="text-3xl text-white font-semibold">
         <?php $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest'; ?>
-        Welcome <span class="text-blue-400 text-5xl max-w-full truncate block" style="max-width: 100%;"><?= htmlspecialchars($username) ?></span>
+        Welcome 
+        <span class="text-blue-400 text-4xl block truncate max-w-[12rem] sm:max-w-[16rem]" title="<?= htmlspecialchars($username) ?>">
+          <?= htmlspecialchars($username) ?>
+        </span>
       </div>
       <div class="flex gap-2">
         <?php if (isset($_SESSION['username'])): ?>
@@ -168,7 +171,11 @@ function format_relative_time($timestamp_ms) {
       <h1 class="text-3xl font-bold mb-6 leading-tight text-white">
         <?php $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest'; ?>
         Welcome <br />
-        <span class="text-blue-400 text-5xl"><?= htmlspecialchars($username) ?></span>!
+        <div class="flex items-center h-auto max-w-full overflow-hidden">
+          <span class="inline-block truncate text-blue-400 text-4xl font-bold leading-none pt-[2px] pb-[2px]" title="<?= htmlspecialchars($username) ?>">
+            <?= htmlspecialchars($username) ?>
+          </span>
+        </div>
       </h1>
 
       <?php if (isset($_SESSION['username'])): ?>
@@ -422,7 +429,7 @@ function format_relative_time($timestamp_ms) {
               const upvotes = data[id].upvotes || 0;
               const downvotes = data[id].downvotes || 0;
               const votes = upvotes - downvotes;
-              container.querySelector('.vote-count').textContent = `${net} vote${Math.abs(votes) == 1 ? '' : 's'}`;
+              container.querySelector('.vote-count').textContent = `${votes} vote${Math.abs(votes) == 1 ? '' : 's'}`;
               container.querySelector('.answer-count').textContent = `${data[id].answers} answer${data[id].answers == 1 ? '' : 's'}`;
             });
           } catch (e) {
