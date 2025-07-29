@@ -86,7 +86,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard</title>
+  <title>Dashboard • qOverflow</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -144,7 +144,10 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700 "> <!-- got rid of w-[300px] in the div class -->
         <p class="text-l font-semibold text-blue-400">QUESTION TITLE:</p>
           <p class="mt-2 text-sm hover:underline block truncate"><?php echo htmlspecialchars($UserQuestion['title']); ?></p> <!-- Display question title -->
-          <p class="mt-4 text-sm">VOTES: <?php echo $UserQuestion['upvotes'] ?? 'not found'; ?></p> <!-- Display question votes -->
+         
+         
+           <p class="mt-4 text-sm">VOTES:  <?php $Questionupvotes = intval($UserQuestion['upvotes'] ?? 0); $Questiondownvotes = intval($UserQuestion['downvotes'] ?? 0); $Questionvotes = $Questionupvotes - $Questiondownvotes;   echo $Questionvotes; ?> </p>
+        
         </div>
         </a>
       <?php endforeach; ?>
@@ -181,8 +184,8 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
         <a href="/pages/q&a/q&a.php?questionName=<?= urlencode($UserAnswer['question_id']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700"> <!-- got rid of w-[300px] in the div class -->
           <p class="text-l font-semibold text-blue-400">ANSWER:</p>
-       <div data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <p class="mt-2 text-sm hover:underline block truncate"><?php echo htmlspecialchars($UserAnswer['text']); ?></p> </div> <!-- Display question title -->
-          <p class="mt-4 text-sm">VOTES: <?php echo $UserAnswer['upvotes'] ?? 'not found'; ?></p><!-- Display answer votes -->
+      <div class="mt-2 text-sm hover:underline block"  style="display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <?php echo htmlspecialchars($UserAnswer['text']); ?> </div> <!-- Display question title -->
+       <p class="mt-4 text-sm">VOTES:  <?php $Answerupvotes = intval($UserAnswer['upvotes'] ?? 0); $Answerdownvotes = intval($UserAnswer['downvotes'] ?? 0); $Answervotes = $Answerupvotes - $Answerdownvotes;   echo $Answervotes; ?> </p>
         </div>
         </a>
       <?php endforeach; ?>
@@ -406,6 +409,14 @@ function decodeHTMLEntities(text) {
           el.innerHTML = DOMPurify.sanitize(html);
         })
         });
+
+$Questionupvotes = intval($UserQuestion['upvotes'] ?? 0); 
+$Questiondownvotes = intval($UserQuestion['downvotes'] ?? 0); 
+$Questionvotes = $Questionupvotes - $Questiondownvotes;
+
+$Answerupvotes = intval($UserAnswer['upvotes'] ?? 0); 
+$Answerdownvotes = intval($UserAnswer['downvotes'] ?? 0); 
+$Answervotes = $Answerupvotes - $Answerdownvotes;
 </script>
 
 </body>
