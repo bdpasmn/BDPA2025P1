@@ -84,7 +84,7 @@ include 'components/navBarLogOut.php';
       <div class="bg-gray-800 p-6 rounded-xl shadow border border-gray-700 feature-card">
         <div class="text-5xl mb-4 text-pink-400">📬</div>
         <h3 class="text-xl font-semibold mb-2">Private Messaging</h3>
-        <p class="text-gray-400">Chat securely with other users through the built-in mail system — perfect for mentors and teams.</p>
+        <p class="text-gray-400">Chat securely with other users through the built in mail system, perfect for mentors and teams.</p>
       </div>
     </div>
   </div>
