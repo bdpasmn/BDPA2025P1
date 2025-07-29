@@ -90,10 +90,6 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
   <title>qOverflow — Logged-In Navbar</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      background: radial-gradient(ellipse at top, #0f172a, #0b1120);
-      font-family: 'Inter', sans-serif;
-    }
     .custom-shadow {
       box-shadow: 0 0 16px rgba(59, 130, 246, 0.5);
       transition: box-shadow 0.3s ease, transform 0.2s ease;
@@ -117,7 +113,7 @@ $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
     }
   </style>
 </head>
-<body class="text-white">
+<body class="text-white bg-gray-900">
 <nav class="sticky top-0 z-50 bg-gray-900 shadow-lg">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between py-4 gap-4 flex-wrap">
