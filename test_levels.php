@@ -56,6 +56,22 @@ $username = $_GET['user'] ?? '';
 if ($username && in_array($username, ['smnuser1', 'smnuser2', 'smnuser3', 'smnuser4', 'smnuser5', 'smnuser6', 'smnuser7'])) {
     session_start();
     $_SESSION['username'] = $username;
+    
+    // Get the actual user data from API and set session points
+    try {
+        require_once __DIR__ . '/Api/key.php';
+        $api = new qOverflowAPI(API_KEY);
+        $userData = $api->getUser($username);
+        if (isset($userData['user']['points'])) {
+            $_SESSION['points'] = $userData['user']['points'];
+        } else {
+            // Fallback to expected points if API doesn't return them
+            $_SESSION['points'] = $testUsers[$username]['points'] ?? 1;
+        }
+    } catch (Exception $e) {
+        // Fallback to expected points if API call fails
+        $_SESSION['points'] = $testUsers[$username]['points'] ?? 1;
+    }
 }
 
 // Handle actions
