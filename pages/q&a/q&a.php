@@ -279,7 +279,7 @@ function voteQuestionViaAPI($questionId, $username, $operation) {
     // Map upvote/downvote to increment/decrement
     $opStr = ($operation === 'upvote') ? 'increment' : 'decrement';
 
-    $apiBase = defined('API_BASE') ? API_BASE : 'https://api.qoverflow.example.com/api';
+$apiBase = 'https://qoverflow.api.hscc.bdpa.org/$version';
 
     $url = rtrim($apiBase, '/') . "/questions/{$questionId}/vote/{$username}?operation={$opStr}&key=" . urlencode(API_KEY);
 
