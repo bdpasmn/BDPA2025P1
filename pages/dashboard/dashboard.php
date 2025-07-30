@@ -316,12 +316,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
       return r.text();//return the response text
   })
   .then(function (t) {// Handle the response text
-
     alert(t);// Show an alert with the response text
-    if(currentField === 'email') {
-      document.getElementById('emailDisplay').textContent = value;
-    }
-    
     modal.classList.add('hidden');// hide the modal
     modal.classList.remove('flex');//remove the flex class to hide it
     });
