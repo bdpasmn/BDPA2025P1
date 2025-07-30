@@ -18,10 +18,12 @@ function h($str) {
 
   <h1 class="text-3xl font-bold mb-4">Search Results</h1>
 
+  <!-- If user submitted a text query, display it -->
   <?php if (!empty($query)): ?>
     <p class="mb-2">Search Query: <span class="text-blue-400"><?= h($query) ?></span></p>
   <?php endif; ?>
 
+   <!-- If user submitted a datetime string, show original + Unix timestamp -->
   <?php if (!empty($datetime)): ?>
     <?php
       $unix = strtotime($datetime);

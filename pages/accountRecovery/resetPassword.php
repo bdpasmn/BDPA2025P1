@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Reset Password</title>
+  <title>Reset Password • qOverflow</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     // Live password strength feedback
