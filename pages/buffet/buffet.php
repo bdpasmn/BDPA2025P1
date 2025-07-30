@@ -222,18 +222,39 @@ function format_relative_time($timestamp_ms) {
           $createdAt = $q['createdAt'] ?? null;
           $relative = $createdAt ? format_relative_time($createdAt) : 'unknown';
           $exact = $createdAt ? (new DateTime('@' . ($createdAt / 1000)))->setTimezone(new DateTimeZone('America/Chicago'))->format('m/d/Y h:i:s A') : '';
+          $status = $q['status'];
+          $isClosed = $status == 'closed';
+          $isProtected = $status == 'protected';
         ?>
         <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-gray-500 transition" data-id="<?= $q['question_id'] ?>">
-          <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline block break-words" href="../q&a/q&a.php?questionId=<?= urlencode($q['question_id']) ?>">
-            <?= htmlspecialchars($q['title']) ?>
-          </a>
+          <div class="flex flex-wrap items-center gap-2">
+            <?php if ($isClosed): ?>
+              <span class="text-lg sm:text-xl font-semibold text-blue-400 break-words cursor-not-allowed">
+                <?= htmlspecialchars($q['title']) ?>
+              </span>
+            <?php else: ?>
+              <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words" href="../q&a/q&a.php?questionId=<?= urlencode($q['question_id']) ?>">
+                <?= htmlspecialchars($q['title']) ?>
+              </a>
+            <?php endif; ?>
+
+            <?php if ($isClosed): ?>
+              <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Closed</span>
+            <?php endif; ?>
+            <?php if ($isProtected): ?>
+              <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Protected</span>
+            <?php endif; ?>
+          </div>
+
           <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed text-sm sm:text-base break-words" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
+
           <div class="text-sm text-gray-400 flex flex-wrap gap-4 mt-2">
             <?php $upvotes = intval($q['upvotes'] ?? 0); $downvotes = intval($q['downvotes'] ?? 0); $votes = $upvotes - $downvotes; ?>
             <span class="vote-count"><?= $votes ?> vote<?= ($votes == 1 || $votes == -1 ? '' : 's') ?></span>
             <span class="answer-count"><?= intval($q['answers'] ?? 0) ?> answer<?= (intval($q['answers'] ?? 0) == 1 ? '' : 's') ?></span>
             <span class="view-count"><?= intval($q['views'] ?? 0) ?> view<?= (intval($q['views'] ?? 0) == 1 ? '' : 's') ?></span>
           </div>
+
           <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
             <?php
               $email = '';
@@ -243,10 +264,8 @@ function format_relative_time($timestamp_ms) {
                   $stmt = $pdo->prepare("SELECT email, level FROM users WHERE username = :username LIMIT 1");
                   $stmt->execute(['username' => $creator]);
                   $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                  if ($row) {
-                      if (!empty($row['email'])) {
-                          $email = trim(strtolower($row['email']));
-                      }
+                  if ($row && !empty($row['email'])) {
+                      $email = trim(strtolower($row['email']));
                   }
               }
 
