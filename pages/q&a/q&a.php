@@ -1180,7 +1180,7 @@ if ($isGuest) {
         <h2 class="text-2xl font-bold text-white mb-6">Your Answer</h2>
         <div class="tab-container">
             <div class="flex border-b border-gray-700">
-                <button class="tab-button active" onclick="switchTab('write')">Write</button>
+                <button class="tab-button active" onclick="switchTab('write')">Write</button>&nbsp;&nbsp;&nbsp;
                 <button class="tab-button" onclick="switchTab('preview')">Preview</button>
             </div>
 
