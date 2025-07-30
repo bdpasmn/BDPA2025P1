@@ -175,10 +175,7 @@ try {
   <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<<<<<<< HEAD
       <title>Search Results • qOverflow</title>
-=======
->>>>>>> 578fb20d4da9df7de76e5b2104126252b77ed7f2
       <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-900 text-white font-sans">
