@@ -7,9 +7,16 @@ session_start();
 
 $api = new qOverflowAPI(API_KEY);
 
-// Get input
-$searchQuery = isset($_GET['query']) ? $_GET['query'] : '';
-$datetime = isset($_GET['datetime']) ? $_GET['datetime'] : '';
+$query = isset($_GET['query']) ? trim($_GET['query']) : '';
+$searchQuery = '';
+$datetime = '';
+
+if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $query)) {
+    $datetime = $query;
+} else {
+    $searchQuery = $query;
+}
+
 
 $searchQuery = is_array($searchQuery) ? reset($searchQuery) : trim($searchQuery);
 $datetime = trim($datetime);
@@ -26,22 +33,28 @@ try {
        $date = DateTime::createFromFormat('m/d/Y', $datetime, new DateTimeZone('UTC'));
 
         if ($date) {
-            $startOfDay = $date->setTime(0, 0, 0)->getTimestamp() * 1000;
-            $endOfDay = $date->setTime(23, 59, 59)->getTimestamp() * 1000 + 999;
+            $startOfDay = $date->setTime(0, 0, 0)->getTimestamp();
+            $endOfDay = $date->setTime(23, 59, 59)->getTimestamp();
 
             $params = ['limit' => 100];
             $results = $api->searchQuestions($params);
-
             if (is_array($results)) {
-                foreach ($results as $question) {
-                    if (is_array($question)) {
+              foreach ($results['questions'] as $question) {
+                if (is_array($question)) {
                         $qTime = $question['createdAt'] ?? null;
-            if ($qTime !== null && is_numeric($qTime) && $qTime >= $startOfDay && $qTime <= $endOfDay) {
-                          $dateMatches[] = [
-                              'title' => $question['title'],
-                              'creator' => $question['creator'] ?? 'Unknown',
-                          ];
-                      }
+                        $qTime = $question['createdAt'] ?? null;
+                        if ($qTime !== null && is_numeric($qTime)) {
+                            $qTimeInSeconds = (int)($qTime / 1000);
+
+                            if ($qTimeInSeconds >= $startOfDay && $qTimeInSeconds <= $endOfDay) {
+                                $dateMatches[] = [
+                                    'title' => $question['title'],
+                                    'creator' => $question['creator'] ?? 'Unknown',
+                                    'createdAt' => $question['createdAt'],
+                                    'question_id' => $question['question_id']
+                                ];
+                            }
+                        }
                   }
                 }
             }
@@ -199,9 +212,8 @@ try {
       <?php endif; ?>
 
       <?php if (!empty($datetime)): ?>
-        <p class="mb-4 text-lg">Date: <span class="text-blue-400"><?= htmlspecialchars($datetime) ?></span></p>
-      <?php endif; ?>
-
+        <p class="mb-4 text-lg text-center">Your Query: <span class="text-blue-400"><?= htmlspecialchars($datetime) ?></span></p>
+      <?php endif; ?>      
       
       <?php if ($titleMatches): ?>
         <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
@@ -279,12 +291,16 @@ try {
         <div class="bg-gray-800 rounded-lg p-6  w-full max-w-4xl mx-auto mb-6">
         <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center ">📆 Date Matches:</h2>
         <ul class="space-y-2">
-        <?php foreach ($dateMatches as $title): ?>
+        <?php foreach ($dateMatches as $match): ?>
           <li>
-          <a href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
-            <?= htmlspecialchars(string: $title) ?>
+          <a  href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+            <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
+            <br>
+            <small class="text-gray-400">Created on:
+            <?= $match['createdAt'] ? date('m/d/y', (int)($match['createdAt'] / 1000)) : 'Unknown' ?>
+          </small>
           </a>
-        </li>
+          </li>
         <?php endforeach; ?>
         </div>
       <?php endif; ?>
