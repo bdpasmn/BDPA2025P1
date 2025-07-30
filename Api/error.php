@@ -82,7 +82,14 @@ if (is_numeric($errorCode) && $errorCode >= 500 && $errorCode <= 529) {
         }
     </style>
 </head>
+<?php 
+        include '../components/navBarLogOut.php';
+?> 
+
 <body class="bg-gray-900 m-0 p-0 font-sans text-white flex justify-start items-center min-h-screen text-left">
+
+<br />
+<br />
     <div class="absolute top-5 left-5 text-white text-lg font-bold text-shadow-sm">qOverflow</div>
     
     <div class="max-w-4xl w-full px-5">
@@ -131,10 +138,7 @@ if (is_numeric($errorCode) && $errorCode >= 500 && $errorCode <= 529) {
         </div>
         <?php endif; ?>
         
-        <p class="text-2xl my-5 text-white ml-12 text-shadow-sm leading-relaxed lg:text-2xl md:text-xl sm:text-lg sm:ml-5">
-            Try refreshing the page or go back to the 
-            <a href="/" class="text-blue-400 underline text-2xl mt-5 inline-block transition-colors duration-300 hover:text-blue-300 text-shadow-sm lg:text-2xl md:text-xl sm:text-lg">qOverflow home page</a>.
-        </p>
+        
     </div>
 
     <!-- Responsive stuff -->

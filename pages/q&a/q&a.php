@@ -26,7 +26,7 @@ function getUserEmail($username) {
         // Fallback: generate a consistent email based on username for consistent gravatar
         return strtolower($username) . '@example.com';
     } catch (Exception $e) {
-        debugLog("Error getting user email", ['username' => $username, 'error' => $e->getMessage()]);
+    //    debugLog("Error getting user email", ['username' => $username, 'error' => $e->getMessage()]);
         return strtolower($username) . '@example.com';
     }
 }
@@ -47,7 +47,7 @@ if (!$isGuest) {
             $userLevel = $userLevelData['level'];
         }
     } catch (Exception $e) {
-        debugLog("Error getting user level/points from API", ['error' => $e->getMessage()]);
+      //  debugLog("Error getting user level/points from API", ['error' => $e->getMessage()]);
     }
 }
 
@@ -72,7 +72,7 @@ function getUserLevelAndPoints($username) {
         
         return ['level' => 0, 'points' => 0];
     } catch (Exception $e) {
-        debugLog("Error getting user data", ['username' => $username, 'error' => $e->getMessage()]);
+ //       debugLog("Error getting user data", ['username' => $username, 'error' => $e->getMessage()]);
         return ['level' => 0, 'points' => 0];
     }
 }
@@ -97,14 +97,14 @@ function canPerformAction($action, $userLevel, $userPoints, $isGuest) {
 }
 
 // Enhanced debugging function
-function debugLog($message, $data = null) {
+/*function debugLog($message, $data = null) {
     $logMessage = "[DEBUG] " . $message;
     if ($data !== null) {
         $logMessage .= " | Data: " . json_encode($data);
     }
     error_log($logMessage);
 }
-
+*/ 
 // Function to increment question views
 function incrementQuestionViews($questionId, $userId) {
     try {
@@ -118,10 +118,10 @@ function incrementQuestionViews($questionId, $userId) {
             global $api;
             $result = $api->updateQuestion($questionId, ['views' => 'increment']);
             
-            debugLog("Question view incremented", ['questionId' => $questionId, 'result' => $result]);
+      //      debugLog("Question view incremented", ['questionId' => $questionId, 'result' => $result]);
         }
     } catch (Exception $e) {
-        debugLog("Error incrementing views", ['error' => $e->getMessage()]);
+    //    debugLog("Error incrementing views", ['error' => $e->getMessage()]);
     }
 }
 
@@ -133,30 +133,54 @@ function handleVote($api, $action, $postData, $currentUser) {
     $result = null;
     switch ($action) {
         case 'vote_question':
-            // For question voting, pass empty string for comment_id since it's not used
-            $result = $api->voteQuestionComment($questionId, '', $currentUser, $operation, 'question');
+            // For question voting - check what parameters your API expects
+            // Option 1: If your API method expects (questionId, username, operation)
+            $result = $api->voteQuestion($questionId, $currentUser, $operation);
+            
+            // Option 2: If it expects different parameters, adjust accordingly
+            // $result = $api->voteQuestionComment($questionId, '', $currentUser, $operation, 'question');
             break;
             
         case 'vote_answer':
             $answerId = $postData['answer_id'];
-            $result = $api->voteAnswer($questionId, $answerId, $currentUser, $operation, 'answer');
+            // Make sure answer_id is provided
+            if (empty($answerId)) {
+                return ['error' => 'Answer ID is required'];
+            }
+            $result = $api->voteAnswer($questionId, $answerId, $currentUser, $operation);
             break;
             
         case 'vote_question_comment':
             $commentId = $postData['comment_id'];
-            $result = $api->voteQuestionComment($questionId, $commentId, $currentUser, $operation, 'comment');
+            // Make sure comment_id is provided
+            if (empty($questionId) || empty($commentId) || empty($currentUser)) {
+                return ['error' => 'Question ID, Comment ID, and username are required'];
+            }
+            $result = $api->voteQuestionComment($questionId, $commentId, $currentUser, $operation);
             break;
             
         case 'vote_answer_comment':
             $answerId = $postData['answer_id'];
             $commentId = $postData['comment_id'];
-            $result = $api->voteAnswerComment($questionId, $answerId, $commentId, $currentUser, $operation, 'comment');
+            // Make sure all required IDs are provided
+            if (empty($questionId) || empty($answerId) || empty($commentId) || empty($currentUser)) {
+                return ['error' => 'Question ID, Answer ID, Comment ID, and username are required'];
+            }
+            $result = $api->voteAnswerComment($questionId, $answerId, $commentId, $currentUser, $operation);
             break;
             
         default:
             return ['error' => 'Invalid vote action'];
     }
     
+    // Debug logging
+  /*  debugLog("Vote result for action $action", [
+        'questionId' => $questionId,
+        'operation' => $operation,
+        'user' => $currentUser,
+        'result' => $result
+    ]);
+    */
     // Update points based on voting action - only if vote was successful
     if (!isset($result['error'])) {
         // Check if this is a new vote or undoing a vote
@@ -206,6 +230,85 @@ function handleVote($api, $action, $postData, $currentUser) {
     return $result;
 }
 
+// Enhanced POST handling with better validation
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($isGuest) {
+        $message = 'You must be logged in to perform this action.';
+        $messageType = 'error';
+    } else {
+        $action = $_POST['action'] ?? '';
+        
+     //   debugLog("POST Request received", $_POST);
+        
+        try {
+            $actualQuestionId = $_POST['question_id'] ?? $questionName;
+            
+            // Validate that we have a question ID
+            if (empty($actualQuestionId)) {
+                throw new Exception('Question ID is required');
+            }
+            
+         //   debugLog("Processing action: $action with question_id: $actualQuestionId");
+            
+            switch ($action) {
+                case 'vote_question':
+                case 'vote_answer':
+                case 'vote_question_comment':
+                case 'vote_answer_comment':
+                    $operation = $_POST['operation'] ?? '';
+                    if (!in_array($operation, ['upvote', 'downvote'])) {
+                        throw new Exception('Invalid vote operation');
+                    }
+                    
+                    // Additional validation for specific vote types
+                    if ($action === 'vote_answer' && empty($_POST['answer_id'])) {
+                        throw new Exception('Answer ID is required for answer voting');
+                    }
+                    
+                    if (($action === 'vote_question_comment' || $action === 'vote_answer_comment') && empty($_POST['comment_id'])) {
+                        throw new Exception('Comment ID is required for comment voting');
+                    }
+                    
+                    if ($action === 'vote_answer_comment' && empty($_POST['answer_id'])) {
+                        throw new Exception('Answer ID is required for answer comment voting');
+                    }
+                    
+                    // Check permissions
+                    $canVote = ($operation === 'upvote' && canPerformAction('upvote', $userLevel, $userPoints, $isGuest)) ||
+                              ($operation === 'downvote' && canPerformAction('downvote', $userLevel, $userPoints, $isGuest));
+                    
+                    if (!$canVote) {
+                        throw new Exception('You do not have permission to ' . $operation);
+                    }
+                    
+                    $result = handleVote($api, $action, $_POST, $CURRENT_USER);
+                    
+                    if (isset($result['error'])) {
+                        throw new Exception($result['error']);
+                    }
+                    
+                    // Check if vote was undone
+                    if (isset($result['undone']) && $result['undone'] === true) {
+                        $message = ucfirst($operation) . " removed successfully!";
+                    } else {
+                        $message = ucfirst($operation) . " successful!";
+                    }
+                    break;
+                    
+                // ... rest of your switch cases remain the same
+            }
+        } catch (Exception $ex) {
+            $message = 'Error: ' . $ex->getMessage();
+            $messageType = 'error';
+           // debugLog("Exception caught", ['message' => $ex->getMessage(), 'trace' => $ex->getTraceAsString()]);
+        }
+    }
+    
+    // Redirect to prevent form resubmission
+    header("Location: " . $_SERVER['PHP_SELF'] . "?questionName=" . urlencode($questionName) . "&msg=" . urlencode($message) . "&type=" . urlencode($messageType));
+    exit;
+}
+
 // Handle POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($isGuest) {
@@ -214,11 +317,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $action = $_POST['action'] ?? '';
         
-        debugLog("POST Request received", $_POST);
+      //  debugLog("POST Request received", $_POST);
         
         try {
             $actualQuestionId = $_POST['question_id'] ?? $questionName;
-            debugLog("Processing action: $action with question_id: $actualQuestionId");
+       //     debugLog("Processing action: $action with question_id: $actualQuestionId");
             
             switch ($action) {
                 case 'vote_question':
@@ -350,10 +453,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Check if user is the question creator
                     $questionResult = $api->getQuestion($actualQuestionId);
+                    /* not needed 
                     if (isset($questionResult['error']) || ($questionResult['creator'] ?? '') !== $CURRENT_USER) {
                         throw new Exception('Only the question creator can accept answers');
                     }
-                    
+                    */ 
                     $result = $api->updateAnswer($actualQuestionId, $answerId, ['accepted' => true]);
                     
                     if (isset($result['error'])) {
@@ -393,7 +497,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $ex) {
             $message = 'Error: ' . $ex->getMessage();
             $messageType = 'error';
-            debugLog("Exception caught", ['message' => $ex->getMessage(), 'trace' => $ex->getTraceAsString()]);
+           // debugLog("Exception caught", ['message' => $ex->getMessage(), 'trace' => $ex->getTraceAsString()]);
         }
     }
     
@@ -412,12 +516,12 @@ if (isset($_GET['msg'])) {
 try {
     $questionResult = $api->getQuestion($questionName);
     
-    debugLog("Question lookup", ['questionName' => $questionName, 'result' => $questionResult]);
+   // debugLog("Question lookup", ['questionName' => $questionName, 'result' => $questionResult]);
     
     if (!$questionResult || isset($questionResult['error'])) {
         // Try searching for questions by title if direct ID lookup fails
         $searchResult = $api->searchQuestions(['limit' => 50]);
-        debugLog("Search fallback", $searchResult);
+    //    debugLog("Search fallback", $searchResult);
         
         if (isset($searchResult['questions']) && is_array($searchResult['questions'])) {
             foreach ($searchResult['questions'] as $q) {
@@ -437,7 +541,7 @@ try {
         $actualQuestionId = $question['question_id'] ?? $questionName;
     }
     
-    debugLog("Final question data", ['actualQuestionId' => $actualQuestionId, 'question' => $question]);
+    //debugLog("Final question data", ['actualQuestionId' => $actualQuestionId, 'question' => $question]);
     
     // Increment view count
     incrementQuestionViews($actualQuestionId, $CURRENT_USER);
@@ -445,7 +549,7 @@ try {
 } catch (Exception $ex) {
     $message = 'Error loading question: ' . $ex->getMessage();
     $messageType = 'error';
-    debugLog("Exception loading question", ['message' => $ex->getMessage(), 'trace' => $ex->getTraceAsString()]);
+  //  debugLog("Exception loading question", ['message' => $ex->getMessage(), 'trace' => $ex->getTraceAsString()]);
 }
 
 // Get all related data AFTER question is loaded - LIKE BUFFET DOES
@@ -453,7 +557,7 @@ if ($question && $actualQuestionId) {
     try {
         // Get answers - FETCH ONCE AND STORE
         $answersResult = $api->getAnswers($actualQuestionId);
-        debugLog("Answers lookup", $answersResult);
+      //  debugLog("Answers lookup", $answersResult);
         
         if (!isset($answersResult['error'])) {
             $answers = $answersResult['answers'] ?? [];
@@ -461,7 +565,7 @@ if ($question && $actualQuestionId) {
         
         // Get question comments - FETCH ONCE AND STORE
         $commentsResult = $api->getQuestionComments($actualQuestionId);
-        debugLog("Question comments lookup", $commentsResult);
+      //  debugLog("Question comments lookup", $commentsResult);
         
         if (!isset($commentsResult['error'])) {
             $questionComments = $commentsResult['comments'] ?? [];
@@ -473,7 +577,7 @@ if ($question && $actualQuestionId) {
             $answerId = $answer['answer_id'];
             
             $answerCommentsResult = $api->getAnswerComments($actualQuestionId, $answerId);
-            debugLog("Answer comments lookup for " . $answerId, $answerCommentsResult);
+      //      debugLog("Answer comments lookup for " . $answerId, $answerCommentsResult);
             
             if (!isset($answerCommentsResult['error'])) {
                 $answerComments[$answerId] = $answerCommentsResult['comments'] ?? [];
@@ -483,7 +587,7 @@ if ($question && $actualQuestionId) {
         }
         
     } catch (Exception $ex) {
-        debugLog("Error loading question data", ['message' => $ex->getMessage()]);
+      //  debugLog("Error loading question data", ['message' => $ex->getMessage()]);
     }
 }
 
