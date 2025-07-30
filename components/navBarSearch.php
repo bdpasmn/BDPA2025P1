@@ -224,7 +224,7 @@ try {
       <ul class="space-y-2">
       <?php foreach ($titleMatches as $match): ?>
         <li>
-          <a href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?>
              <br>
           <div class="flex justify-between text-gray-400 mt-2">
@@ -251,7 +251,7 @@ try {
             $rawMarkdown = $match['snippet'] ?? '';
             ?>
         <li>
-          <a href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
          <div data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <?= htmlspecialchars($match['snippet']) ?> </div>
            <div class="flex justify-between text-gray-400 mt-2">
           <small class="text-gray-400">Created on:
@@ -276,7 +276,7 @@ try {
         <ul class="space-y-2">
         <?php foreach ($creatorMatches as $match): ?>
           <li>
-          <a  href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?>
             <br>
             <div class="flex justify-between mt-2">
@@ -302,7 +302,7 @@ try {
         <ul class="space-y-2">
         <?php foreach ($dateMatches as $match): ?>
           <li>
-          <a  href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?>
             <br>
             <div class="flex justify-between mt-2">
