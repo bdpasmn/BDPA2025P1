@@ -218,8 +218,8 @@ class qOverflowAPI {
         if (empty($question_id) || empty($answer_id) || empty($username)) {
             throw new InvalidArgumentException('Question ID, Answer ID, and username are required');
         }
-        if (!in_array($operation, ['upvote', 'downvote', 'unvote'])) {
-            throw new InvalidArgumentException('Operation must be upvote, downvote, or unvote');
+        if (!in_array($operation, ['increment', 'decrement', 'unvote'])) {
+            throw new InvalidArgumentException('Operation must be increment, decrement, or unvote');
         }
         return $this->request('PATCH', "/questions/$question_id/answers/$answer_id/vote/$username", compact('operation', 'target'));
     }
@@ -250,8 +250,9 @@ class qOverflowAPI {
         if (empty($question_id) || empty($comment_id) || empty($username)) {
             throw new InvalidArgumentException('Question ID, Comment ID, and username are required');
         }
-        if (!in_array($operation, ['upvote', 'downvote', 'unvote'])) {
-            throw new InvalidArgumentException('Operation must be upvote, downvote, or unvote');
+        if (!in_array($operation, ['increment', 'decrement', 'unvote'])) {
+            throw new InvalidArgumentException('Operation must be increment, decrement, or unvote');
+        
         }
         return $this->request('PATCH', "/questions/$question_id/comments/$comment_id/vote/$username", compact('operation', 'target'));
     }
@@ -282,8 +283,8 @@ class qOverflowAPI {
         if (empty($question_id) || empty($answer_id) || empty($comment_id) || empty($username)) {
             throw new InvalidArgumentException('Question ID, Answer ID, Comment ID, and username are required');
         }
-        if (!in_array($operation, ['upvote', 'downvote', 'unvote'])) {
-            throw new InvalidArgumentException('Operation must be upvote, downvote, or unvote');
+        if (!in_array($operation, ['increment', 'decrement', 'unvote'])) {
+            throw new InvalidArgumentException('Operation must be increment, decrement, or unvote');
         }
         return $this->request('PATCH', "/questions/$question_id/answers/$answer_id/comments/$comment_id/vote/$username", compact('operation', 'target'));
     }
