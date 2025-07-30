@@ -31,6 +31,15 @@
     $UpdatesInApi = [];// Initialize the updates array for API
     $UpdatesInSupabase = [];// Initialize the updates array for Supabase
 
+
+    if ($field === 'email') {//if the field is email
+      if (!filter_var($value, FILTER_VALIDATE_EMAIL)){
+        echo "invalid input, please put in a correct email.";
+        exit();
+      }
+    };
+      
+
     if ($field === 'email') {//if the field is email
 
         //check if the email exists
@@ -45,7 +54,7 @@
       $UpdatesInApi = $api->updateUser($username, ['email' => $value]);// Update email in API
       $UpdatesInSupabase = $pdo->prepare("UPDATE users SET email = :email WHERE username = :username");// Prepare the SQL statement for Supabase
       $UpdatesInSupabase->execute(['email' => $value, 'username' => $username]);// Execute the SQL statement
-      echo "Successfully updated email.";
+      echo "Successfully updated email. Refresh page to see.";
       exit();
     }
     
@@ -76,4 +85,6 @@
       echo "Successfully updated password."; 
         exit();
     }
+  
+  
   }
