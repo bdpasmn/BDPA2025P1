@@ -64,8 +64,7 @@ if (isset($_SESSION['username'])) {
     </div>
 
     <p class="text-2xl my-5 ml-12 text-shadow-sm leading-relaxed sm:ml-5">
-      You can try opening the question again or head back to the 
-      <a href="../buffet/buffet.php" class="text-blue-400 underline hover:text-blue-300 transition-colors duration-300">qOverflow Buffet</a>.
+      You can try opening the question again or head back to the qOverflow Buffet.
     </p>
   </div>
 

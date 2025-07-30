@@ -213,7 +213,7 @@ function format_relative_time($timestamp_ms) {
         <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
 
-      <!-- Question boxs -->
+      <!-- Question boxes -->
       <div id="question-list" class="space-y-6 hidden">
         <?php foreach ($questions as $q):
           $rawMarkdown = $q['text'] ?? '';
@@ -223,19 +223,23 @@ function format_relative_time($timestamp_ms) {
           $relative = $createdAt ? format_relative_time($createdAt) : 'unknown';
           $exact = $createdAt ? (new DateTime('@' . ($createdAt / 1000)))->setTimezone(new DateTimeZone('America/Chicago'))->format('m/d/Y h:i:s A') : '';
           $status = $q['status'];
-          $isClosed = $status == 'closed';
-          $isProtected = $status == 'protected';
+          $isClosed = $status === 'closed';
+          $isProtected = $status === 'protected';
+
+          $viewerLevel = isset($_SESSION['username']) ? getUserLevel($_SESSION['username'])['level'] : 0;
+          $canAccessClosed = !$isClosed || $viewerLevel >= 7;
         ?>
         <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-gray-500 transition" data-id="<?= $q['question_id'] ?>">
           <div class="flex flex-wrap items-center gap-2">
-            <?php if ($isClosed): ?>
-              <span class="text-lg sm:text-xl font-semibold text-blue-400 break-words cursor-not-allowed">
-                <?= htmlspecialchars($q['title']) ?>
-              </span>
-            <?php else: ?>
-              <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words" href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>&questionId=<?= urlencode($q['question_id']) ?>">
+            <?php if ($canAccessClosed): ?>
+              <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words"
+                href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>&questionId=<?= urlencode($q['question_id']) ?>">
                 <?= htmlspecialchars($q['title']) ?>
               </a>
+            <?php else: ?>
+              <span class="text-lg sm:text-xl font-semibold text-blue-400 break-words cursor-not-allowed" title="Closed - Level 7+ required">
+                <?= htmlspecialchars($q['title']) ?>
+              </span>
             <?php endif; ?>
 
             <?php if ($isClosed): ?>
@@ -250,31 +254,28 @@ function format_relative_time($timestamp_ms) {
 
           <div class="text-sm text-gray-400 flex flex-wrap gap-4 mt-2">
             <?php $upvotes = intval($q['upvotes'] ?? 0); $downvotes = intval($q['downvotes'] ?? 0); $votes = $upvotes - $downvotes; ?>
-            <span class="vote-count"><?= $votes ?> vote<?= ($votes == 1 || $votes == -1 ? '' : 's') ?></span>
-            <span class="answer-count"><?= intval($q['answers'] ?? 0) ?> answer<?= (intval($q['answers'] ?? 0) == 1 ? '' : 's') ?></span>
-            <span class="view-count"><?= intval($q['views'] ?? 0) ?> view<?= (intval($q['views'] ?? 0) == 1 ? '' : 's') ?></span>
+            <span class="vote-count"><?= $votes ?> vote<?= abs($votes) === 1 ? '' : 's' ?></span>
+            <span class="answer-count"><?= intval($q['answers'] ?? 0) ?> answer<?= intval($q['answers'] ?? 0) === 1 ? '' : 's' ?></span>
+            <span class="view-count"><?= intval($q['views'] ?? 0) ?> view<?= intval($q['views'] ?? 0) === 1 ? '' : 's' ?></span>
           </div>
 
           <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
             <?php
               $email = '';
-              $level = null;
-
               if ($pdo) {
-                  $stmt = $pdo->prepare("SELECT email, level FROM users WHERE username = :username LIMIT 1");
-                  $stmt->execute(['username' => $creator]);
-                  $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                  if ($row && !empty($row['email'])) {
-                      $email = trim(strtolower($row['email']));
-                  }
+                $stmt = $pdo->prepare("SELECT email FROM users WHERE username = :username LIMIT 1");
+                $stmt->execute(['username' => $creator]);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($row && !empty($row['email'])) {
+                  $email = trim(strtolower($row['email']));
+                }
               }
-
               $gravatarHash = md5($email);
               $gravatarUrl = "https://www.gravatar.com/avatar/$gravatarHash?d=identicon";
             ?>
             <span class="flex items-center gap-1">
               <img src="<?= htmlspecialchars($gravatarUrl) ?>" alt="Avatar" class="w-6 h-6 rounded-full border border-gray-600">
-              <?= htmlspecialchars($creator) ?>
+              <?= $creator ?>
               <span class="text-xs text-gray-400 bg-gray-700 px-1 py-0.5 rounded-md border border-gray-600 ml-1">Level <?= $levelInfo['level'] ?></span>
             </span>
             <span><?= $relative ?> <span class="text-gray-500">•</span> <?= $exact ?></span>
