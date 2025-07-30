@@ -180,8 +180,10 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
     <?php if (!empty($JustUserAnswer)): ?> <!-- Check if there are user answers -->
         <?php foreach ($paginatedAnswers as $UserAnswer): 
           $rawMarkdown = $UserAnswer['text'] ?? '';
+          $questionInfo =  $api->getQuestion($UserAnswer['question_id']);
+          $questionName = $questionInfo['question']['title'];
           ?>
-        <a href="/pages/q&a/q&a.php?questionId=<?= urlencode($UserAnswer['question_id']) ?>">
+        <a href="/pages/q&a/q&a.php?questionName=<?=urlencode($questionName)?>&questionId=<?= urlencode($UserAnswer['question_id']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700"> <!-- got rid of w-[300px] in the div class -->
           <p class="text-l font-semibold text-blue-400">ANSWER:</p>
       <div class="mt-2 text-sm hover:underline block"  style="display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <?php echo htmlspecialchars($UserAnswer['text']); ?> </div> <!-- Display question title -->
