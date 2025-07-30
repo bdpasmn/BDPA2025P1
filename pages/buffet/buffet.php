@@ -233,7 +233,7 @@ function format_relative_time($timestamp_ms) {
                 <?= htmlspecialchars($q['title']) ?>
               </span>
             <?php else: ?>
-              <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words" href="../q&a/q&a.php?questionId=<?= urlencode($q['question_id']) ?>">
+              <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words" href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>&questionId=<?= urlencode($q['question_id']) ?>">
                 <?= htmlspecialchars($q['title']) ?>
               </a>
             <?php endif; ?>

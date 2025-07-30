@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>qOverflow — Logged-Out Navbar</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .custom-shadow {
@@ -31,14 +30,16 @@
 </head>
 <body class="text-white bg-gray-900">
 
+<!-- Sticky navbar -->
 <nav class="sticky top-0 z-50 bg-gray-900 shadow-lg">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between py-4 gap-4 flex-wrap">
 
-      <!-- Left: Logo and Nav Links -->
+      <!-- Track current page URL to mark active links -->
       <?php
         $current = $_SERVER['REQUEST_URI'];
       ?>
+      
       <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-6">
         <div class="flex items-center space-x-3">
           <img src="https://bdpa.org/wp-content/uploads/2020/12/f0e60ae421144f918f032f455a2ac57a.png" alt="BDPA Logo" class="h-9 w-auto">
@@ -47,13 +48,18 @@
           </a>
         </div>
 
+        <!-- Buffet -->
         <div class="flex flex-wrap gap-2 mt-2 sm:mt-0">       
         <a href="/pages/buffet/buffet.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/buffet/buffet.php') !== false ? ' active' : ''; ?>">
             Buffet                    
           </a> 
+
+          <!-- Login -->
           <a href="/pages/auth/login.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/auth/login.php') !== false ? ' active' : ''; ?>">
           Login
         </a>
+
+        <!-- Signup -->
         <a href="/pages/auth/signup.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded custom-shadow text-sm font-medium<?php echo strpos($current, '/pages/auth/signup.php') !== false ? ' active' : ''; ?>">
           Sign Up
         </a>

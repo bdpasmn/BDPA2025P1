@@ -1,10 +1,16 @@
 <?php
-session_start();
+session_start(); 
 
-  require_once '../Api/api.php';
-  require_once '../Api/key.php';
+require_once '../Api/api.php';
+require_once '../Api/key.php';
 
+$api = new qOverflowAPI(API_KEY); 
 
+<<<<<<< HEAD
+// Retrieve query and date parameters from the GET request
+$searchQuery = isset($_GET['query']) ? $_GET['query'] : '';
+$datetime = isset($_GET['datetime']) ? $_GET['datetime'] : '';
+=======
 $api = new qOverflowAPI(API_KEY);
 
 $query = isset($_GET['query']) ? trim($_GET['query']) : '';
@@ -17,31 +23,55 @@ if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $query)) {
     $searchQuery = $query;
 }
 
+>>>>>>> 9050944871127e302afe5eb466404a42f8c4f340
 
+// Sanitize input
 $searchQuery = is_array($searchQuery) ? reset($searchQuery) : trim($searchQuery);
 $datetime = trim($datetime);
 
+// Initialize arrays to hold matches
 $dateMatches = [];
 $titleMatches = [];
 $textMatches = [];
 $creatorMatches = [];
 
-
 try {
-    // Accept MM/DD/YYYY format for datetime
+    // If a date is given, attempt to parse it in MM/DD/YYYY format
     if (!empty($datetime)) {
-       $date = DateTime::createFromFormat('m/d/Y', $datetime, new DateTimeZone('UTC'));
+        $date = DateTime::createFromFormat('m/d/Y', $datetime, new DateTimeZone('UTC'));
 
         if ($date) {
+<<<<<<< HEAD
+            // Get timestamp range for the entire day in milliseconds
+            $startOfDay = $date->setTime(0, 0, 0)->getTimestamp() * 1000;
+            $endOfDay = $date->setTime(23, 59, 59)->getTimestamp() * 1000 + 999;
+=======
             $startOfDay = $date->setTime(0, 0, 0)->getTimestamp();
             $endOfDay = $date->setTime(23, 59, 59)->getTimestamp();
+>>>>>>> 9050944871127e302afe5eb466404a42f8c4f340
 
+            // Fetch a batch of questions (limit to 100)
             $params = ['limit' => 100];
             $results = $api->searchQuestions($params);
+<<<<<<< HEAD
+
+            // Filter results by questions created within the date range
+=======
+>>>>>>> 9050944871127e302afe5eb466404a42f8c4f340
             if (is_array($results)) {
               foreach ($results['questions'] as $question) {
                 if (is_array($question)) {
                         $qTime = $question['createdAt'] ?? null;
+<<<<<<< HEAD
+
+                        if ($qTime !== null && is_numeric($qTime) && $qTime >= $startOfDay && $qTime <= $endOfDay) {
+                            $dateMatches[] = [
+                                'title' => $question['title'],
+                                'creator' => $question['creator'] ?? 'Unknown',
+                            ];
+                        }
+                    }
+=======
                         $qTime = $question['createdAt'] ?? null;
                         if ($qTime !== null && is_numeric($qTime)) {
                             $qTimeInSeconds = (int)($qTime / 1000);
@@ -56,29 +86,43 @@ try {
                             }
                         }
                   }
+>>>>>>> 9050944871127e302afe5eb466404a42f8c4f340
                 }
             }
         }
     }
 
-    // If query is provided, search by text, title, or creator
+    // If a keyword query is provided, search by title, text, or creator fields
     if (!empty($searchQuery)) {
         $params = ['query' => $searchQuery];
         $results = $api->searchQuestions($params);
-        $searchQueryLower = strtolower($searchQuery);
-/*
+        $searchQueryLower = strtolower($searchQuery); // Normalize for case-insensitive search
+
         if (is_array($results)) {
             foreach ($results as $question) {
                 if (is_array($question)) {
+                    // Match by title
                     if (isset($question['title']) && strpos(strtolower($question['title']), $searchQueryLower) !== false) {
-                        $titleMatches[] = $question['title'];
+                        $titleMatches[] = [
+                            'title' => $question['title'],
+                            'creator' => $question['creator'] ?? 'Unknown',
+                            'createdAt' => $question['createdAt'] ?? null
+                        ];
                     }
+
+                    // Match by text body
                     if (isset($question['text']) && strpos(strtolower($question['text']), $searchQueryLower) !== false) {
                         $textMatches[] = [
                             'snippet' => $question['text'],
-                            'title' => $question['title']
+                            'title' => $question['title'],
+                            'creator' => $question['creator'] ?? 'Unknown',
+                            'createdAt' => $question['createdAt'] ?? null
                         ];
                     }
+<<<<<<< HEAD
+
+                    // Match by creator username
+=======
 */
                       if (is_array($results)) {
                       foreach ($results as $question) {
@@ -107,27 +151,44 @@ try {
 
 
                     
+>>>>>>> 9050944871127e302afe5eb466404a42f8c4f340
                     if (isset($question['creator']) && strpos(strtolower($question['creator']), $searchQueryLower) !== false) {
                         $creatorMatches[] = [
                             'title' => $question['title'],
                             'creator' => $question['creator'],
+<<<<<<< HEAD
+                            'createdAt' => $question['createdAt'] ?? null
+=======
                              'createdAt' => $question['createdAt'] ?? null,
                              'question_id' => $subval['question_id'] ?? 'Unknown'
                             
+>>>>>>> 9050944871127e302afe5eb466404a42f8c4f340
                         ];
                     }
-                    /*
+
+                    // Nested sub-objects in each question
                     foreach ($question as $subval) {
                         if (is_array($subval)) {
+                            // Match nested title
                             if (isset($subval['title']) && strpos(strtolower($subval['title']), $searchQueryLower) !== false) {
-                                $titleMatches[] = $subval['title'];
+                                $titleMatches[] = [
+                                    'title' => $subval['title'],
+                                    'createdAt' => $subval['createdAt'] ?? null,
+                                    'creator' => $subval['creator'] ?? 'Unknown'
+                                ];
                             }
+
+                            // Match nested text
                             if (isset($subval['text']) && strpos(strtolower($subval['text']), $searchQueryLower) !== false) {
                                 $textMatches[] = [
                                     'snippet' => $subval['text'],
-                                    'title' => $subval['title']
+                                    'title' => $subval['title'],
+                                    'creator' => $subval['creator'],
+                                    'createdAt' => $subval['createdAt'] ?? null
                                 ];
                             }
+<<<<<<< HEAD
+=======
                                 */
                          foreach ($question as $subval) {
                        if (is_array($subval)) {
@@ -152,7 +213,9 @@ try {
                           }
 
 
+>>>>>>> 9050944871127e302afe5eb466404a42f8c4f340
 
+                            // Match nested creator
                             if (isset($subval['creator']) && strpos(strtolower($subval['creator']), $searchQueryLower) !== false) {
                                 $creatorMatches[] = [
                                     'title' => $subval['title'],
@@ -161,11 +224,16 @@ try {
                                     'question_id' => $subval['question_id'] ?? 'Unknown'
                                 ];
                             }
+
                             if (isset($subval['createdAt']) && strpos(strtolower($subval['createdAt']), $searchQueryLower) !== false) {
+<<<<<<< HEAD
+                                $creatorMatches[] = $subval['title']; // Add title for match
+=======
                                 $creatorMatches[] = [
                                 'title' => $subval['title'], // Use title for link
                                 'creator' => $subval['creator']
                                 ];
+>>>>>>> 9050944871127e302afe5eb466404a42f8c4f340
                             }
                         }
                     }
@@ -173,12 +241,13 @@ try {
             }
         }
     }
+
     // Sort helper
     function sortByCreatedAtDesc($a, $b) {
         return ($b['createdAt'] ?? 0) <=> ($a['createdAt'] ?? 0);
     }
 
-    // Sort the matches
+    // Sort matches
     usort($titleMatches, 'sortByCreatedAtDesc');
     usort($textMatches, 'sortByCreatedAtDesc');
     usort($creatorMatches, 'sortByCreatedAtDesc');
@@ -210,23 +279,34 @@ try {
     
       <h1 class="text-3xl font-bold mb-2 text-center">Search Results</h1>
 
+      <!-- Show the user's search query if available -->
       <?php if (!empty($searchQuery)): ?>
         <p class="mb-4 text-lg text-center">Your Query: <span class="text-blue-400"><?= htmlspecialchars($searchQuery) ?></span></p>
       <?php endif; ?>
 
+      <!-- Show the search date if provided -->
       <?php if (!empty($datetime)): ?>
+<<<<<<< HEAD
+        <p class="mb-4 text-lg">Date: <span class="text-blue-400"><?= htmlspecialchars($datetime) ?></span></p>
+      <?php endif; ?> 
+
+      <!-- Render results that matched the title -->
+=======
         <p class="mb-4 text-lg text-center">Your Query: <span class="text-blue-400"><?= htmlspecialchars($datetime) ?></span></p>
       <?php endif; ?>      
       
+>>>>>>> 9050944871127e302afe5eb466404a42f8c4f340
       <?php if ($titleMatches): ?>
         <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
         <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center "> 📌 Title Matches:</h2>
       <ul class="space-y-2">
       <?php foreach ($titleMatches as $match): ?>
         <li>
-          <a href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?>
              <br>
+          <!-- Display creation metadata -->
           <div class="flex justify-between text-gray-400 mt-2">
           <small class="text-gray-400">Created on:
             <?= $match['createdAt'] ? date('m/d/y', (int)($match['createdAt'] / 1000)) : 'Unknown' ?>
@@ -242,7 +322,8 @@ try {
       <?php endforeach; ?>
        </div>
       <?php endif; ?>
-       
+
+      <!-- Render results that matched the body content -->
       <?php if ($textMatches): ?>
          <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
         <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center "> 📝 Body Text Matches:</h2>
@@ -251,7 +332,8 @@ try {
             $rawMarkdown = $match['snippet'] ?? '';
             ?>
         <li>
-          <a href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
          <div data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <?= htmlspecialchars($match['snippet']) ?> </div>
            <div class="flex justify-between text-gray-400 mt-2">
           <small class="text-gray-400">Created on:
@@ -269,14 +351,16 @@ try {
       <?php endif; ?>
       
 
-      
+      <!-- Render results that matched the body content -->
       <?php if ($creatorMatches): ?>
         <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
         <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center " > 👤 Titles of Creator Matches:</h2>
         <ul class="space-y-2">
         <?php foreach ($creatorMatches as $match): ?>
           <li>
-          <a  href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+            <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
+          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?>
             <br>
             <div class="flex justify-between mt-2">
@@ -294,15 +378,16 @@ try {
         </div>
       <?php endif; ?>
 
-
-      
+      <!-- Render titles that matched the given date -->
       <?php if ($dateMatches): ?>
         <div class="bg-gray-800 rounded-lg p-6  w-full max-w-4xl mx-auto mb-6">
         <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center ">📆 Date Matches:</h2>
         <ul class="space-y-2">
         <?php foreach ($dateMatches as $match): ?>
           <li>
-          <a  href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+            <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
+          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?>
             <br>
             <div class="flex justify-between mt-2">
@@ -320,7 +405,7 @@ try {
         </div>
       <?php endif; ?>
 
-
+      <!-- If no matches found, show fallback -->
       <?php if (!$titleMatches && !$textMatches && !$creatorMatches && !$dateMatches): ?>
         <div class="bg-gray-800 rounded-lg p-4 w-[500px] h-[100px] mx-auto text-center">
         <p class="mt-6 text-red-400">No matching results found.</p>
