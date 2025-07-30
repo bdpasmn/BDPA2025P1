@@ -162,7 +162,10 @@ try {
                                 ];
                             }
                             if (isset($subval['createdAt']) && strpos(strtolower($subval['createdAt']), $searchQueryLower) !== false) {
-                                $creatorMatches[] = $subval['title']; // Use title for link
+                                $creatorMatches[] = [
+                                'title' => $subval['title'], // Use title for link
+                                'creator' => $subval['creator']
+                                ];
                             }
                         }
                     }
@@ -274,11 +277,17 @@ try {
         <?php foreach ($creatorMatches as $match): ?>
           <li>
           <a  href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
-            <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
+            <?= htmlspecialchars($match['title']) ?>
             <br>
+            <div class="flex justify-between mt-2">
             <small class="text-gray-400">Created on:
             <?= $match['createdAt'] ? date('m/d/y', (int)($match['createdAt'] / 1000)) : 'Unknown' ?>
           </small>
+          <br>
+          <small class="text-gray-400">Created by:
+          <?= htmlspecialchars($match['creator']) ?>
+          </small>
+          </div>
           </a>
           </li>
         <?php endforeach; ?>
@@ -294,11 +303,17 @@ try {
         <?php foreach ($dateMatches as $match): ?>
           <li>
           <a  href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
-            <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
+            <?= htmlspecialchars($match['title']) ?>
             <br>
+            <div class="flex justify-between mt-2">
             <small class="text-gray-400">Created on:
             <?= $match['createdAt'] ? date('m/d/y', (int)($match['createdAt'] / 1000)) : 'Unknown' ?>
           </small>
+          <br>
+          <small class="text-gray-400">Created by:
+          <?= htmlspecialchars($match['creator']) ?>
+          </small>
+          </div>
           </a>
           </li>
         <?php endforeach; ?>
