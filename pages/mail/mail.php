@@ -80,7 +80,9 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
       font-style: italic;
     }
     #inbox-list .message-body {
-      white-space: pre-line;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
     }
   </style>
 </head>
@@ -188,7 +190,10 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
       div.className = 'bg-gray-700 rounded-lg p-3 border border-gray-600 shadow hover:border-blue-500 transition flex flex-col gap-1 relative';
       // Get only the first line or up to 60 chars
       let firstLine = (msg.text || '').split(/\r?\n/)[0];
-      if (firstLine.length > 60) firstLine = firstLine.slice(0, 57) + '...';
+      if (firstLine.length > 60) {
+        // Simple truncation - let the markdown renderer handle incomplete formatting
+        firstLine = firstLine.slice(0, 57) + '...';
+      }
       // Convert markdown for preview (safe since we're using innerHTML)
       const previewLine = convertMarkdown(firstLine);
       // Unique id for expand/collapse
@@ -197,7 +202,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
         <div class=\"font-semibold text-white text-base mb-1 truncate\">${escapeHtml(msg.subject)}</div>
         <div class=\"flex items-baseline gap-2\">
           <span class=\"font-bold text-blue-300 text-sm whitespace-nowrap\">${escapeHtml(msg.sender)}:</span>
-          <span class=\"text-sm text-gray-200 whitespace-pre-line message-body\" id=\"${msgId}-preview\">${previewLine}</span>
+          <div class=\"text-sm text-gray-200 message-body flex-1 min-w-0\" id=\"${msgId}-preview\">${previewLine}</div>
         </div>
         <button class=\"text-xs text-blue-400 hover:underline focus:outline-none mt-1 mb-2 self-start\" id=\"${msgId}-toggle\">View Full Message</button>
         <div class=\"hidden mt-1 mb-2\" id=\"${msgId}-full\"></div>
@@ -296,9 +301,9 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
     previewCard.innerHTML = `
       <div class='bg-gray-700 rounded-lg p-3 border border-gray-600 shadow flex flex-col gap-1 relative min-h-[90px]'>
         <div class='font-semibold text-white text-base mb-1 truncate'>${convertMarkdown(subject)}</div>
-        <div class='text-sm message-body text-gray-200 mb-6' style='display:flex; align-items:baseline;'>
-          <span class='font-bold text-blue-300 text-sm' style='display:inline-block; white-space:nowrap;'>${convertMarkdown(username).replace(/<\/?(p|div)[^>]*>/g, '')}<span class='text-blue-300'>:</span></span>
-          <div style='flex:1; padding-left:4px;'>
+        <div class='text-sm message-body text-gray-200 mb-6' style='display:flex; align-items:baseline; gap: 4px;'>
+          <span class='font-bold text-blue-300 text-sm' style='flex-shrink: 0; white-space:nowrap;'>${convertMarkdown(username).replace(/<\/?(p|div)[^>]*>/g, '')}<span class='text-blue-300'>:</span></span>
+          <div style='flex:1; min-width: 0; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;'>
             ${convertMarkdown(processedRaw)}
           </div>
         </div>
