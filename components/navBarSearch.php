@@ -77,7 +77,8 @@ try {
                                 $titleMatches[] = [
                                 'title' => $question['title'],
                                 'creator' => $question['creator'] ?? 'Unknown',
-                                'createdAt' => $question['createdAt'] ?? null
+                                'createdAt' => $question['createdAt'] ?? null,
+                                'question_id' => $subval['question_id'] ?? 'Unknown'
                             ];
 
                               }
@@ -86,7 +87,8 @@ try {
                                   'snippet' => $question['text'],
                                   'title' => $question['title'],
                                   'creator' => $question['creator'] ?? 'Unknown',
-                                  'createdAt' => $question['createdAt'] ?? null
+                                  'createdAt' => $question['createdAt'] ?? null,
+                                  'question_id' => $subval['question_id'] ?? 'Unknown'
                                 ];
                               }
 
@@ -96,7 +98,8 @@ try {
                         $creatorMatches[] = [
                             'title' => $question['title'],
                             'creator' => $question['creator'],
-                             'createdAt' => $question['createdAt'] ?? null
+                             'createdAt' => $question['createdAt'] ?? null,
+                             'question_id' => $subval['question_id'] ?? 'Unknown'
                             
                         ];
                     }
@@ -120,7 +123,8 @@ try {
                                 $titleMatches[] = [
                                 'title' => $subval['title'],
                                 'createdAt' => $subval['createdAt'] ?? null,
-                                'creator' => $subval['creator'] ?? 'Unknown'
+                                'creator' => $subval['creator'] ?? 'Unknown',
+                                'question_id' => $subval['question_id'] ?? 'Unknown'
                             ];
                                
                            }
@@ -129,7 +133,8 @@ try {
                                 'snippet' => $subval['text'],
                                 'title' => $subval['title'],
                                 'creator' => $subval['creator'],
-                                'createdAt' => $subval['createdAt'] ?? null
+                                'createdAt' => $subval['createdAt'] ?? null,
+                                'question_id' => $subval['question_id'] ?? 'Unknown'
                             ];
                           }
 
@@ -139,7 +144,8 @@ try {
                                 $creatorMatches[] = [
                                     'title' => $subval['title'],
                                     'creator' => $subval['creator'],
-                                    'createdAt' => $subval['createdAt'] ?? null
+                                    'createdAt' => $subval['createdAt'] ?? null,
+                                    'question_id' => $subval['question_id'] ?? 'Unknown'
                                 ];
                             }
                             if (isset($subval['createdAt']) && strpos(strtolower($subval['createdAt']), $searchQueryLower) !== false) {
@@ -169,7 +175,7 @@ try {
   <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>qOverflow — Search Results</title>
+      <title>Search Results • qOverflow</title>
       <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-900 text-white font-sans">
@@ -203,7 +209,7 @@ try {
       <ul class="space-y-2">
       <?php foreach ($titleMatches as $match): ?>
         <li>
-          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?>
              <br>
           <div class="flex justify-between text-gray-400 mt-2">
@@ -230,9 +236,8 @@ try {
             $rawMarkdown = $match['snippet'] ?? '';
             ?>
         <li>
-          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
          <div data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <?= htmlspecialchars($match['snippet']) ?> </div>
-           <br>
            <div class="flex justify-between text-gray-400 mt-2">
           <small class="text-gray-400">Created on:
             <?= $match['createdAt'] ? date('m/d/y', (int)($match['createdAt'] / 1000)) : 'Unknown' ?>
@@ -256,7 +261,7 @@ try {
         <ul class="space-y-2">
         <?php foreach ($creatorMatches as $match): ?>
           <li>
-          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a  href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
             <br>
             <small class="text-gray-400">Created on:
@@ -276,7 +281,7 @@ try {
         <ul class="space-y-2">
         <?php foreach ($dateMatches as $title): ?>
           <li>
-          <a href="../pages/q&a/q&a.php?questionName=<?= urlencode($title) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+          <a href="../pages/q&a/q&a.php?questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars(string: $title) ?>
           </a>
         </li>

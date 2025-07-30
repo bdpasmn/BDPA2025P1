@@ -140,7 +140,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 px-4 sm:px-6 lg:px-10" id="questions">
     <?php if (!empty($JustUserQuestions)): ?> <!-- Check if there are user questions -->
       <?php foreach ($paginatedQuestions as $UserQuestion): ?> <!-- Loop through each paginated user question for that page-->
-        <a href="../q&a/q&a.php?questionName=<?= urlencode($UserQuestion['title']) ?>">
+        <a href="../q&a/q&a.php?questionId=<?= urlencode($UserQuestion['question_id']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700 "> <!-- got rid of w-[300px] in the div class -->
         <p class="text-l font-semibold text-blue-400">QUESTION TITLE:</p>
           <p class="mt-2 text-sm hover:underline block truncate"><?php echo htmlspecialchars($UserQuestion['title']); ?></p> <!-- Display question title -->
@@ -181,7 +181,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
         <?php foreach ($paginatedAnswers as $UserAnswer): 
           $rawMarkdown = $UserAnswer['text'] ?? '';
           ?>
-        <a href="/pages/q&a/q&a.php?questionName=<?= urlencode($UserAnswer['question_id']) ?>">
+        <a href="/pages/q&a/q&a.php?questionId=<?= urlencode($UserAnswer['question_id']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700"> <!-- got rid of w-[300px] in the div class -->
           <p class="text-l font-semibold text-blue-400">ANSWER:</p>
       <div class="mt-2 text-sm hover:underline block"  style="display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <?php echo htmlspecialchars($UserAnswer['text']); ?> </div> <!-- Display question title -->
