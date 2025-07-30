@@ -6,10 +6,10 @@ header('Content-Type: text/html; charset=UTF-8');
 $errorCode = isset($_GET['code']) ? htmlspecialchars($_GET['code'], ENT_QUOTES, 'UTF-8') : 'Uh oh...';
 
 // Check if no error code is provided or if it's empty - redirect to index.php
-if (!isset($_GET['code']) || empty($_GET['code']) || $_GET['code'] === '') {
+/*if (!isset($_GET['code']) || empty($_GET['code']) || $_GET['code'] === '') {
     header('Location: ../index.php');
     exit();
-}
+}*/
 
 // Define valid error codes
 $validErrorCodes = array(
@@ -68,7 +68,7 @@ if (is_numeric($errorCode) && $errorCode >= 500 && $errorCode <= 529) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>qOverflow Error</title>
+    <title>Error • qOverflow</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .error-icon-filter {
@@ -82,9 +82,14 @@ if (is_numeric($errorCode) && $errorCode >= 500 && $errorCode <= 529) {
         }
     </style>
 </head>
-<?php 
-        include '../components/navBarLogOut.php';
-?> 
+<?php
+if (isset($_SESSION['username'])) {
+    include '../components/navBarLogin.php';
+} else {
+    include '../components/navBarLogOut.php';
+}
+?>
+
 
 <body class="bg-gray-900 m-0 p-0 font-sans text-white flex justify-start items-center min-h-screen text-left">
 
