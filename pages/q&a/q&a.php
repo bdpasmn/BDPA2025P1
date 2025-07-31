@@ -109,11 +109,37 @@ function formatDate($timestamp) {
 
 function renderMarkdown($text) {
     $text = htmlspecialchars($text);
-    $text = preg_replace('/```([\s\S]*?)```/', '<pre class="bg-gray-600 p-2 rounded mt-2 mb-2 overflow-x-auto"><code>$1</code></pre>', $text);
-    $text = preg_replace('/`([^`\n]+)`/', '<code class="bg-gray-600 px-1 rounded">$1</code>', $text);
-    $text = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $text);
-    $text = preg_replace('/\*(.*?)\*/', '<em>$1</em>', $text);
+    
+    // Code blocks (triple backticks)
+    $text = preg_replace('/```([\s\S]*?)```/', '<pre class="bg-gray-600 p-3 rounded-lg mt-3 mb-3 overflow-x-auto border border-gray-500"><code class="text-gray-100">$1</code></pre>', $text);
+    
+    // Inline code
+    $text = preg_replace('/`([^`\n]+)`/', '<code class="bg-gray-600 px-2 py-1 rounded text-gray-100 text-sm border border-gray-500">$1</code>', $text);
+    
+    // Images - ![alt text](url)
+    $text = preg_replace('/!\[([^\]]*)\]\(([^)]+)\)/', '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg shadow-lg my-4 border border-gray-600" loading="lazy" />', $text);
+    
+    // Links - [text](url)
+    $text = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" class="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">$1</a>', $text);
+    
+    // Bold text
+    $text = preg_replace('/\*\*(.*?)\*\*/', '<strong class="font-bold text-white">$1</strong>', $text);
+    
+    // Italic text
+    $text = preg_replace('/\*(.*?)\*/', '<em class="italic text-gray-200">$1</em>', $text);
+    
+    // Headers
+    $text = preg_replace('/^### (.+)$/m', '<h3 class="text-xl font-bold text-white mt-6 mb-3">$1</h3>', $text);
+    $text = preg_replace('/^## (.+)$/m', '<h2 class="text-2xl font-bold text-white mt-6 mb-4">$1</h2>', $text);
+    $text = preg_replace('/^# (.+)$/m', '<h1 class="text-3xl font-bold text-white mt-6 mb-4">$1</h1>', $text);
+    
+    // Lists - simple bullet points
+    $text = preg_replace('/^- (.+)$/m', '<li class="ml-4 mb-1">• $1</li>', $text);
+    $text = preg_replace('/^(\d+)\. (.+)$/m', '<li class="ml-4 mb-1">$1. $2</li>', $text);
+    
+    // Line breaks
     $text = nl2br($text);
+    
     return $text;
 }
 
@@ -801,6 +827,15 @@ if (!empty($answers)) {
     });
 }
 
+// Check if there's an accepted answer
+$hasAcceptedAnswer = false;
+foreach ($answers as $answer) {
+    if ($answer['accepted'] ?? false) {
+        $hasAcceptedAnswer = true;
+        break;
+    }
+}
+
 if (!$question) {
  header("Location: q&aError.php");    
  echo "Question not found";
@@ -816,10 +851,16 @@ if (!$question) {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         .tab-button {
-            @apply px-4 py-2 bg-gray-900 text-gray-300 border-b-2 border-transparent hover:bg-gray-800 transition-colors;
+            @apply px-6 py-3 bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 transition-all duration-200 font-medium;
+        }
+        .tab-button:first-child {
+            @apply rounded-l-lg border-r-0;
+        }
+        .tab-button:last-child {
+            @apply rounded-r-lg border-l-0;
         }
         .tab-button.active {
-            @apply bg-gray-800 border-gray-600 text-white;
+            @apply bg-blue-600 border-blue-500 text-white shadow-lg;
         }
         .tab-content {
             @apply hidden;
@@ -828,7 +869,7 @@ if (!$question) {
             @apply block;
         }
         .markdown-preview {
-            @apply bg-gray-700 p-4 rounded border border-gray-600 min-h-32 max-h-64 overflow-y-auto;
+            @apply bg-gray-700 p-4 rounded-lg border border-gray-600 min-h-32 max-h-64 overflow-y-auto;
         }
         .level-badge {
             @apply inline-block px-2 py-1 text-xs font-semibold rounded;
@@ -847,7 +888,10 @@ if (!$question) {
             @apply flex items-center space-x-2;
         }
         .tab-container {
-            @apply bg-gray-900 border border-gray-700 rounded-lg;
+            @apply bg-gray-800 border border-gray-600 rounded-lg overflow-hidden;
+        }
+        .tab-header {
+            @apply bg-gray-900 border-b border-gray-600 p-1;
         }
         .text-wrap {
             word-wrap: break-word;
@@ -868,6 +912,29 @@ if (!$question) {
         .vote-button { cursor: pointer; font-weight: bold; }
         .disabled { opacity: 0.5; cursor: not-allowed; }
         .vote-processing { opacity: 0.7; pointer-events: none; }
+        
+        /* Remove focus outline from tab buttons and other interactive elements */
+        .tab-button:focus,
+        input:focus,
+        textarea:focus,
+        button:focus {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        
+        /* Custom focus styles that don't include blue shadow */
+        .tab-button:focus {
+            @apply ring-2 ring-gray-500 ring-opacity-50;
+        }
+        
+        input:focus,
+        textarea:focus {
+            @apply ring-2 ring-blue-500 ring-opacity-50 border-blue-500;
+        }
+        
+        button:focus {
+            @apply ring-2 ring-blue-500 ring-opacity-50;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-300 font-sans">
@@ -1027,7 +1094,7 @@ if ($isGuest) {
                 <input type="hidden" name="question_id" value="<?=htmlspecialchars($actualQuestionId);?>">
                 <div class="mb-4">
                     <textarea id="question-comment-text" name="comment_text" rows="3" maxlength="150"
-                        class="w-full bg-gray-800 text-gray-300 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        class="w-full bg-gray-800 text-gray-300 border border-gray-600 rounded-lg p-3 resize-none"
                         placeholder="Add a comment (max 150 characters)..." required></textarea>
                     <div class="text-xs text-gray-400 mt-1">Characters remaining: <span id="question-comment-chars">150</span></div>
                 </div>
@@ -1159,9 +1226,10 @@ if ($isGuest) {
                     <input type="hidden" name="action" value="add_answer_comment">
                     <input type="hidden" name="question_id" value="<?=htmlspecialchars($actualQuestionId);?>">
                     <input type="hidden" name="answer_id" value="<?=htmlspecialchars($answerId);?>">
-                    <div class="mb-3">
-                        <textarea class="answer-comment-text w-full bg-gray-800 text-gray-300 border border-gray-600 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" 
-                                  name="comment_text" rows="2" maxlength="150" placeholder="Add a comment (max 150 characters)..." required></textarea>
+                    <div class="mb-4">
+                        <textarea name="comment_text" rows="2" maxlength="150"
+                            class="w-full bg-gray-800 text-gray-300 border border-gray-600 rounded-lg p-3 resize-none answer-comment-textarea"
+                            placeholder="Add a comment (max 150 characters)..." required></textarea>
                         <div class="text-xs text-gray-400 mt-1">Characters remaining: <span class="answer-comment-chars">150</span></div>
                     </div>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
@@ -1174,298 +1242,319 @@ if ($isGuest) {
         <?php endforeach; ?>
     </section>
 
-    <!-- Add Answer Form -->
-    <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel) && canPerformAction('create_answer', $userLevel, $userPoints, $isGuest)): ?>
+    <!-- Create Answer Section -->
+    <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel) && canPerformAction('create_answer', $userLevel, $userPoints, $isGuest) && !$hasAcceptedAnswer): ?>
     <section class="bg-gray-800 rounded-lg p-6 shadow-lg">
         <h2 class="text-2xl font-bold text-white mb-6">Your Answer</h2>
-        <div class="tab-container">
-            <div class="flex border-b border-gray-700">
-                <button class="tab-button active" onclick="switchTab('write')">Write</button>&nbsp;&nbsp;&nbsp;
-                <button class="tab-button" onclick="switchTab('preview')">Preview</button>
-            </div>
-
-            <form method="POST" id="answer-form">
-                <input type="hidden" name="action" value="add_answer">
-                <input type="hidden" name="question_id" value="<?=htmlspecialchars($actualQuestionId);?>">
-                <div class="tab-content active" id="write-tab">
-                    <div class="p-4">
+        
+        <form method="POST" id="answer-form">
+            <input type="hidden" name="action" value="add_answer">
+            <input type="hidden" name="question_id" value="<?=htmlspecialchars($actualQuestionId);?>">
+            
+            <div class="tab-container mb-6">
+                <div class="tab-header">
+                    <div class="flex">
+                        <button type="button" class="tab-button active" data-tab="write-tab">Write</button>
+                        <button type="button" class="tab-button" data-tab="preview-tab">Preview</button>
+                    </div>
+                </div>
+                
+                <div class="p-4">
+                    <div id="write-tab" class="tab-content active">
                         <textarea id="answer-text" name="answer_text" rows="12" maxlength="3000"
-                            class="w-full bg-gray-800 text-gray-300 border border-gray-600 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
-                            placeholder="Write your answer here... You can use **bold**, *italic*, `code`, and ```code blocks```" required></textarea>
-                        <div class="text-xs text-gray-400 mt-2">Characters remaining: <span id="answer-chars">3000</span></div>
-                    </div>
-                </div>
+                            class="w-full bg-gray-700 text-gray-300 border border-gray-600 rounded-lg p-4 resize-vertical"
+                            placeholder="Write your answer here... You can use markdown formatting:
 
-                <div class="tab-content" id="preview-tab">
-                    <div class="p-4">
-                        <div id="answer-preview" class="markdown-preview">
-                            <p class="text-gray-500 italic">Write something in the "Write" tab to see a preview here...</p>
+**bold text**
+*italic text*
+`inline code`
+```
+code blocks
+```
+![alt text](image-url)
+[link text](url)
+# Headers
+- List items
+
+Images and links are supported!" required></textarea>
+                        <div class="text-xs text-gray-400 mt-2">
+                            Characters remaining: <span id="answer-chars">3000</span> | 
+                            <span class="text-blue-400">Markdown supported</span>
+                        </div>
+                    </div>
+                    
+                    <div id="preview-tab" class="tab-content">
+                        <div class="markdown-preview" id="answer-preview">
+                            <p class="text-gray-500 italic">Nothing to preview yet...</p>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="p-4 border-t border-gray-700">
-                    <div class="flex justify-between items-center">
-                        <div class="text-sm text-gray-400">
-                            You need <strong>Level 1</strong> to answer questions. Current level: <strong><?=$userLevel;?></strong>
-                        </div>
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-semibold">
-                            Post Your Answer
-                        </button>
-                    </div>
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-400">
+                    <?php if (!canPerformAction('create_answer', $userLevel, $userPoints, $isGuest)): ?>
+                        <span class="text-red-400">You need Level 1 (1 point) to create answers.</span>
+                    <?php else: ?>
+                        <span class="text-green-400">✓ You can create answers</span>
+                    <?php endif; ?>
                 </div>
-            </form>
-        </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg transition-colors font-semibold">
+                    Post Your Answer
+                </button>
+            </div>
+        </form>
     </section>
-    <?php else: ?>
-        <?php if ($isGuest): ?>
-            <div class="bg-gray-800 rounded-lg p-6 text-center">
-                <p class="text-gray-400 mb-4">Want to answer this question?</p>
-                <a href="../../auth/login.php" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-semibold">
-                    Login to Answer
-                </a>
-            </div>
-        <?php elseif (!canPerformAction('create_answer', $userLevel, $userPoints, $isGuest)): ?>
-            <div class="bg-gray-800 rounded-lg p-6 text-center">
-                <p class="text-gray-400 mb-4">You need <strong>Level 1</strong> to answer questions.</p>
-                <p class="text-gray-400">Current level: <strong><?=$userLevel;?></strong></p>
-                <p class="text-gray-400">Get more points by asking questions and receiving upvotes!</p>
-            </div>
-        <?php else: ?>
-            <div class="bg-gray-800 rounded-lg p-6 text-center">
-                <p class="text-gray-400">This question is <?=($question['status'] ?? 'open');?> and does not accept new answers.</p>
-            </div>
-        <?php endif; ?>
+    <?php elseif ($hasAcceptedAnswer): ?>
+    <section class="bg-gray-700 rounded-lg p-6 shadow-lg text-center">
+        <div class="text-green-400 text-6xl mb-4">✓</div>
+        <h2 class="text-2xl font-bold text-white mb-2">Question Solved!</h2>
+        <p class="text-gray-300">This question has an accepted answer and is no longer accepting new responses.</p>
+    </section>
+    <?php elseif ($isGuest): ?>
+    <section class="bg-gray-700 rounded-lg p-6 shadow-lg text-center">
+        <h2 class="text-2xl font-bold text-white mb-4">Want to Answer?</h2>
+        <p class="text-gray-300 mb-4">Please log in to share your knowledge and help the community.</p>
+        <a href="../../auth/login.php" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-semibold">
+            Login to Answer
+        </a>
+    </section>
+    <?php elseif (!canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
+    <section class="bg-gray-700 rounded-lg p-6 shadow-lg text-center">
+        <h2 class="text-2xl font-bold text-white mb-4">Cannot Answer</h2>
+        <p class="text-gray-300">
+            <?php if (($question['status'] ?? 'open') === 'closed'): ?>
+                This question is closed and no longer accepts answers.
+            <?php elseif (($question['status'] ?? 'open') === 'protected'): ?>
+                This question is protected. You need Level 5 to answer.
+            <?php endif; ?>
+        </p>
+    </section>
     <?php endif; ?>
 </div>
 
 <script>
-    $(document).ready(function() {
-        // Show main content after a brief delay
-        setTimeout(function() {
-            $('#spinner').hide();
-            $('#main-content').removeClass('hidden').hide().fadeIn(500);
-        }, 500);
+$(document).ready(function() {
+    // Hide spinner and show content
+    setTimeout(function() {
+        $('#spinner').addClass('hidden');
+        $('#main-content').removeClass('hidden');
+    }, 500);
 
-        // Update view count when page loads (for logged-in users)
-        <?php if (!$isGuest && $actualQuestionId): ?>
-        setTimeout(function() {
-            $.post('', {
-                ajax: true,
-                action: 'update_view',
-                question_id: '<?=htmlspecialchars($actualQuestionId);?>'
-            }, function(data) {
-                if (data.success && data.views) {
-                    $('#question-views').text(data.views);
-                }
-            }, 'json').fail(function() {
-                console.log('Failed to update view count');
-            });
-        }, 1000);
-        <?php endif; ?>
+    // Character counters
+    $('#question-comment-text').on('input', function() {
+        const remaining = 150 - $(this).val().length;
+        $('#question-comment-chars').text(remaining);
+    });
 
-        // Character counters
-        $('#question-comment-text').on('input', function() {
-            const remaining = 150 - $(this).val().length;
-            $('#question-comment-chars').text(remaining);
-        });
+    $('.answer-comment-textarea').on('input', function() {
+        const remaining = 150 - $(this).val().length;
+        $(this).siblings().find('.answer-comment-chars').text(remaining);
+    });
 
-        $('.answer-comment-text').on('input', function() {
-            const remaining = 150 - $(this).val().length;
-            $(this).siblings('div').find('.answer-comment-chars').text(remaining);
-        });
+    $('#answer-text').on('input', function() {
+        const remaining = 3000 - $(this).val().length;
+        $('#answer-chars').text(remaining);
+    });
 
-        $('#answer-text').on('input', function() {
-            const remaining = 3000 - $(this).val().length;
-            $('#answer-chars').text(remaining);
-            
-            // Update preview if preview tab is visible
-            if ($('#preview-tab').hasClass('active')) {
-                updateAnswerPreview();
-            }
-        });
-
-        // Voting functionality
-        function handleVote(element, action, data) {
-            if ($(element).hasClass('vote-processing')) return;
-            
-            $(element).addClass('vote-processing');
-            
-            $.post('', {
-                ajax: true,
-                action: action,
-                operation: data.operation,
-                question_id: '<?=htmlspecialchars($actualQuestionId);?>',
-                answer_id: data.answer_id || '',
-                comment_id: data.comment_id || ''
-            }, function(response) {
-                if (response.success) {
-                    // Update vote count
-                    const targetSelector = data.target_selector;
-                    if (targetSelector) {
-                        $(targetSelector).text(response.votes);
-                    }
-                    
-                    // Show success message briefly
-                    const message = response.undone ? 
-                        `${data.operation} removed` : 
-                        `${data.operation}d successfully`;
-                    showMessage(message, 'success');
-                } else {
-                    showMessage(response.message || 'Vote failed', 'error');
-                }
-            }, 'json').fail(function() {
-                showMessage('Network error occurred', 'error');
-            }).always(function() {
-                $(element).removeClass('vote-processing');
-            });
+    // Enhanced markdown rendering function
+    function renderMarkdown(text) {
+        if (!text || text.trim() === '') {
+            return '<p class="text-gray-500 italic">Nothing to preview yet...</p>';
         }
+        
+        // Escape HTML first
+        text = $('<div>').text(text).html();
+        
+        // Code blocks (triple backticks) - must be processed first
+        text = text.replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-600 p-3 rounded-lg mt-3 mb-3 overflow-x-auto border border-gray-500"><code class="text-gray-100">$1</code></pre>');
+        
+        // Inline code
+        text = text.replace(/`([^`\n]+)`/g, '<code class="bg-gray-600 px-2 py-1 rounded text-gray-100 text-sm border border-gray-500">$1</code>');
+        
+        // Images - ![alt text](url)
+        text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg shadow-lg my-4 border border-gray-600" loading="lazy" />');
+        
+        // Links - [text](url)
+        text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">$1</a>');
+        
+        // Bold text
+        text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
+        
+        // Italic text
+        text = text.replace(/\*(.*?)\*/g, '<em class="italic text-gray-200">$1</em>');
+        
+        // Headers
+        text = text.replace(/^### (.+)$/gm, '<h3 class="text-xl font-bold text-white mt-6 mb-3">$1</h3>');
+        text = text.replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold text-white mt-6 mb-4">$1</h2>');
+        text = text.replace(/^# (.+)$/gm, '<h1 class="text-3xl font-bold text-white mt-6 mb-4">$1</h1>');
+        
+        // Lists - simple bullet points
+        text = text.replace(/^- (.+)$/gm, '<li class="ml-4 mb-1">• $1</li>');
+        text = text.replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4 mb-1">$1. $2</li>');
+        
+        // Line breaks
+        text = text.replace(/\n/g, '<br>');
+        
+        return text;
+    }
 
-        // Question voting
-        $('#question-upvote').click(function() {
-            handleVote(this, 'vote_question', {
-                operation: 'upvote',
-                target_selector: '#question-points'
-            });
-        });
-
-        $('#question-downvote').click(function() {
-            handleVote(this, 'vote_question', {
-                operation: 'downvote',
-                target_selector: '#question-points'
-            });
-        });
-
-        // Answer voting
-        $('.answer-upvote').click(function() {
-            const answerId = $(this).data('answer-id');
-            handleVote(this, 'vote_answer', {
-                operation: 'upvote',
-                answer_id: answerId,
-                target_selector: `.answer-points[data-answer-id="${answerId}"]`
-            });
-        });
-
-        $('.answer-downvote').click(function() {
-            const answerId = $(this).data('answer-id');
-            handleVote(this, 'vote_answer', {
-                operation: 'downvote',
-                answer_id: answerId,
-                target_selector: `.answer-points[data-answer-id="${answerId}"]`
-            });
-        });
-
-        // Question comment voting
-        $('.question-comment-upvote').click(function() {
-            const commentId = $(this).data('comment-id');
-            handleVote(this, 'vote_question_comment', {
-                operation: 'upvote',
-                comment_id: commentId,
-                target_selector: `.question-comment-votes[data-comment-id="${commentId}"]`
-            });
-        });
-
-        $('.question-comment-downvote').click(function() {
-            const commentId = $(this).data('comment-id');
-            handleVote(this, 'vote_question_comment', {
-                operation: 'downvote',
-                comment_id: commentId,
-                target_selector: `.question-comment-votes[data-comment-id="${commentId}"]`
-            });
-        });
-
-        // Answer comment voting
-        $('.answer-comment-upvote').click(function() {
-            const answerId = $(this).data('answer-id');
-            const commentId = $(this).data('comment-id');
-            handleVote(this, 'vote_answer_comment', {
-                operation: 'upvote',
-                answer_id: answerId,
-                comment_id: commentId,
-                target_selector: `.answer-comment-votes[data-answer-id="${answerId}"][data-comment-id="${commentId}"]`
-            });
-        });
-
-        $('.answer-comment-downvote').click(function() {
-            const answerId = $(this).data('answer-id');
-            const commentId = $(this).data('comment-id');
-            handleVote(this, 'vote_answer_comment', {
-                operation: 'downvote',
-                answer_id: answerId,
-                comment_id: commentId,
-                target_selector: `.answer-comment-votes[data-answer-id="${answerId}"][data-comment-id="${commentId}"]`
-            });
-        });
-
-        // Question status actions
-        $('#question-protect, #question-close, #question-reopen').click(function() {
-            const action = $(this).attr('id').replace('question-', '') + '_question';
-            const actionName = $(this).text().toLowerCase();
-            
-            if (confirm(`Are you sure you want to ${actionName} this question?`)) {
-                $.post('', {
-                    ajax: true,
-                    action: action,
-                    question_id: '<?=htmlspecialchars($actualQuestionId);?>'
-                }, function(response) {
-                    if (response.success) {
-                        showMessage(response.message, 'success');
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showMessage(response.message || 'Action failed', 'error');
-                    }
-                }, 'json').fail(function() {
-                    showMessage('Network error occurred', 'error');
-                });
-            }
-        });
-
-        function showMessage(text, type) {
-            const existing = $('#temp-message');
-            if (existing.length) existing.remove();
-            
-            const messageClass = type === 'success' ? 'bg-green-600' : 'bg-red-600';
-            const message = $(`<div id="temp-message" class="fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${messageClass} text-white">${text}</div>`);
-            
-            $('body').append(message);
-            setTimeout(() => {
-                message.fadeOut(300, () => message.remove());
-            }, 3000);
+    // Tab functionality with better styling
+    $('.tab-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const targetTab = $(this).data('tab');
+        const container = $(this).closest('.tab-container');
+        
+        // Remove active class from all tabs and contents in this container
+        container.find('.tab-button').removeClass('active');
+        container.find('.tab-content').removeClass('active');
+        
+        // Add active class to clicked tab and corresponding content
+        $(this).addClass('active');
+        container.find('#' + targetTab).addClass('active');
+        
+        // Update preview if switching to preview tab
+        if (targetTab === 'preview-tab') {
+            const answerText = $('#answer-text').val();
+            const previewHtml = renderMarkdown(answerText);
+            $('#answer-preview').html(previewHtml);
         }
     });
 
-    function switchTab(tab) {
-        // Update buttons
-        $('.tab-button').removeClass('active');
-        $(`.tab-button:contains("${tab.charAt(0).toUpperCase() + tab.slice(1)}")`).addClass('active');
+    // Auto-update preview when typing (debounced)
+    let previewTimeout;
+    $('#answer-text').on('input', function() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(function() {
+            if ($('#preview-tab').hasClass('active')) {
+                const answerText = $('#answer-text').val();
+                const previewHtml = renderMarkdown(answerText);
+                $('#answer-preview').html(previewHtml);
+            }
+        }, 500);
+    });
+
+    // AJAX voting functionality
+    function handleVote(action, data, button) {
+        const originalText = button.html();
+        button.addClass('vote-processing').html('Processing...');
         
-        // Update content
-        $('.tab-content').removeClass('active');
-        $(`#${tab}-tab`).addClass('active');
-        
-        if (tab === 'preview') {
-            updateAnswerPreview();
-        }
+        $.post(window.location.href, {
+            ajax: true,
+            action: action,
+            ...data
+        })
+        .done(function(response) {
+            if (response.success) {
+                // Update vote count
+                if (action === 'vote_question') {
+                    $('#question-points').text(response.votes);
+                } else if (action === 'vote_answer') {
+                    $('.answer-points[data-answer-id="' + data.answer_id + '"]').text(response.votes);
+                } else if (action === 'vote_question_comment') {
+                    $('.question-comment-votes[data-comment-id="' + data.comment_id + '"]').text(response.votes);
+                } else if (action === 'vote_answer_comment') {
+                    $('.answer-comment-votes[data-answer-id="' + data.answer_id + '"][data-comment-id="' + data.comment_id + '"]').text(response.votes);
+                }
+                
+                // Visual feedback
+                button.removeClass('vote-processing').html(originalText);
+                
+                // Temporary success indication
+                const originalBg = button.attr('class');
+                button.removeClass('bg-green-600 bg-red-600').addClass('bg-yellow-500');
+                setTimeout(() => {
+                    button.attr('class', originalBg);
+                }, 1000);
+            } else {
+                button.removeClass('vote-processing').html(originalText);
+                alert('Error: ' + (response.message || 'Vote failed'));
+            }
+        })
+        .fail(function() {
+            button.removeClass('vote-processing').html(originalText);
+            alert('Network error. Please try again.');
+        });
     }
 
-    function updateAnswerPreview() {
-        const text = $('#answer-text').val();
-        if (text.trim() === '') {
-            $('#answer-preview').html('<p class="text-gray-500 italic">Write something in the "Write" tab to see a preview here...</p>');
-            return;
-        }
+    // Question voting
+    $('#question-upvote').on('click', function() {
+        handleVote('vote_question', {
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
+            operation: 'upvote'
+        }, $(this));
+    });
+
+    $('#question-downvote').on('click', function() {
+        handleVote('vote_question', {
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
+            operation: 'downvote'
+        }, $(this));
+    });
+
+    // Answer voting
+    $('.answer-upvote').on('click', function() {
+        const answerId = $(this).data('answer-id');
+        handleVote('vote_answer', {
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
+            answer_id: answerId,
+            operation: 'upvote'
+        }, $(this));
+    });
+
+    $('.answer-downvote').on('click', function() {
+        const answerId = $(this).data('answer-id');
+        handleVote('vote_answer', {
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
+            answer_id: answerId,
+            operation: 'downvote'
+        }, $(this));
+    });
+
+    // Question status buttons
+    $('#question-protect, #question-close, #question-reopen').on('click', function() {
+        const action = $(this).attr('id').replace('question-', '') + '_question';
+        const button = $(this);
+        const originalText = button.html();
         
-        // Simple markdown rendering for preview
-        let preview = text;
-        preview = preview.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        preview = preview.replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-600 p-2 rounded mt-2 mb-2 overflow-x-auto"><code>$1</code></pre>');
-        preview = preview.replace(/`([^`\n]+)`/g, '<code class="bg-gray-600 px-1 rounded">$1</code>');
-        preview = preview.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        preview = preview.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        preview = preview.replace(/\n/g, '<br>');
+        button.addClass('vote-processing').html('Processing...');
         
-        $('#answer-preview').html(preview);
+        $.post(window.location.href, {
+            ajax: true,
+            action: action,
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>'
+        })
+        .done(function(response) {
+            if (response.success) {
+                location.reload(); // Reload to show new status
+            } else {
+                button.removeClass('vote-processing').html(originalText);
+                alert('Error: ' + (response.message || 'Action failed'));
+            }
+        })
+        .fail(function() {
+            button.removeClass('vote-processing').html(originalText);
+            alert('Network error. Please try again.');
+        });
+    });
+
+    // Update view count on page load (only once)
+    if (!sessionStorage.getItem('viewed_<?=htmlspecialchars($actualQuestionId);?>')) {
+        $.post(window.location.href, {
+            ajax: true,
+            action: 'update_view',
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>'
+        })
+        .done(function(response) {
+            if (response.success) {
+                $('#question-views').text(response.views);
+                sessionStorage.setItem('viewed_<?=htmlspecialchars($actualQuestionId);?>', 'true');
+            }
+        });
     }
+});
 </script>
+
 </body>
 </html>
