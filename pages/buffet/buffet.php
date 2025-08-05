@@ -53,12 +53,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       $text = trim($_POST['text']);
       $username = $_SESSION['username'];
 
-      $api->createQuestion($username, $title, $text);
+      $question = $api->createQuestion($username, $title, $text);
 
-      updateUserPoints($username, 1);
+      if (isset($question['question']['question_id'])) {
+          $questionId = $question['question']['question_id'];
 
-      header("Location: buffet.php?sort=$sort&page=$currentPage");
-      exit();
+          if (!empty($_POST['tags'])) {
+              $tags = trim($_POST['tags']);
+
+              try {
+                  $stmt = $pdo->prepare("INSERT INTO question_tags (question_id, tags) VALUES (:qid, :tags)");
+                  $stmt->execute([
+                      ':qid' => $questionId,
+                      ':tags' => $tags
+                  ]);
+              } catch (PDOException $e) {
+                  error_log("Tag insert error: " . $e->getMessage());
+              }
+          }
+
+          updateUserPoints($username, 1);
+          header("Location: buffet.php?sort=$sort&page=$currentPage");
+          exit();
+      } else {
+          echo "<p class='text-red-500'>Failed to post question. Please try again.</p>";
+      }
   }
 }
 
@@ -213,7 +232,7 @@ function format_relative_time($timestamp_ms) {
         <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
 
-      <!-- Question boxes -->
+      <!-- Question Boxes -->
       <div id="question-list" class="space-y-6 hidden">
         <?php foreach ($questions as $q):
           $rawMarkdown = $q['text'] ?? '';
@@ -223,31 +242,57 @@ function format_relative_time($timestamp_ms) {
           $relative = $createdAt ? format_relative_time($createdAt) : 'unknown';
           $exact = $createdAt ? (new DateTime('@' . ($createdAt / 1000)))->setTimezone(new DateTimeZone('America/Chicago'))->format('m/d/Y h:i:s A') : '';
           $status = $q['status'];
-          $isClosed = $status === 'closed';
-          $isProtected = $status === 'protected';
+          $isClosed = $status == 'closed';
+          $isProtected = $status == 'protected';
 
           $viewerLevel = isset($_SESSION['username']) ? getUserLevel($_SESSION['username'])['level'] : 0;
           $canAccessClosed = !$isClosed || $viewerLevel >= 7;
+
+          $tags = null;
+          if ($pdo) {
+            $stmt = $pdo->prepare("SELECT tags FROM question_tags WHERE question_id = :qid LIMIT 1");
+            $stmt->execute([':qid' => $q['question_id']]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty(trim($row['tags']))) {
+              $tags = explode(',', $row['tags']);
+              $tags = array_map('trim', $tags);
+              $tags = array_filter($tags, fn($tag) => $tag !== '');
+            }
+          }
         ?>
         <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-gray-500 transition" data-id="<?= $q['question_id'] ?>">
-          <div class="flex flex-wrap items-center gap-2">
-            <?php if ($canAccessClosed): ?>
-              <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words"
-                href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>&questionId=<?= urlencode($q['question_id']) ?>">
-                <?= htmlspecialchars($q['title']) ?>
-              </a>
-            <?php else: ?>
-              <span class="text-lg sm:text-xl font-semibold text-blue-400 break-words cursor-not-allowed" title="Closed - Level 7+ required">
-                <?= htmlspecialchars($q['title']) ?>
-              </span>
-            <?php endif; ?>
+          <div class="flex justify-between flex-wrap items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2 max-w-[75%]">
+              <?php if ($canAccessClosed): ?>
+                <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words"
+                  href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>&questionId=<?= urlencode($q['question_id']) ?>">
+                  <?= htmlspecialchars($q['title']) ?>
+                </a>
+              <?php else: ?>
+                <span class="text-lg sm:text-xl font-semibold text-blue-400 break-words cursor-not-allowed" title="Closed - Level 7+ required">
+                  <?= htmlspecialchars($q['title']) ?>
+                </span>
+              <?php endif; ?>
 
-            <?php if ($isClosed): ?>
-              <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Closed</span>
-            <?php endif; ?>
-            <?php if ($isProtected): ?>
-              <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Protected</span>
-            <?php endif; ?>
+              <?php if ($isClosed): ?>
+                <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Closed</span>
+              <?php endif; ?>
+              <?php if ($isProtected): ?>
+                <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Protected</span>
+              <?php endif; ?>
+            </div>
+
+            <div class="flex flex-wrap gap-1 items-center max-w-[24%] justify-end">
+              <?php if ($tags && count($tags) > 0): ?>
+                <?php foreach ($tags as $tag): ?>
+                  <span class="text-xs text-gray-200 bg-gray-700 px-2 py-0.5 rounded-md border border-gray-600 truncate max-w-full" title="<?= htmlspecialchars($tag) ?>">
+                    <?= htmlspecialchars($tag) ?>
+                  </span>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <!-- Nothing if no tags -->
+              <?php endif; ?>
+            </div>
           </div>
 
           <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed text-sm sm:text-base break-words" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
@@ -255,8 +300,8 @@ function format_relative_time($timestamp_ms) {
           <div class="text-sm text-gray-400 flex flex-wrap gap-4 mt-2">
             <?php $upvotes = intval($q['upvotes'] ?? 0); $downvotes = intval($q['downvotes'] ?? 0); $votes = $upvotes - $downvotes; ?>
             <span class="vote-count"><?= $votes ?> vote<?= abs($votes) === 1 ? '' : 's' ?></span>
-            <span class="answer-count"><?= intval($q['answers'] ?? 0) ?> answer<?= intval($q['answers'] ?? 0) === 1 ? '' : 's' ?></span>
-            <span class="view-count"><?= intval($q['views'] ?? 0) ?> view<?= intval($q['views'] ?? 0) === 1 ? '' : 's' ?></span>
+            <span class="answer-count"><?= intval($q['answers'] ?? 0) ?> answer<?= intval($q['answers'] ?? 0) == 1 ? '' : 's' ?></span>
+            <span class="view-count"><?= intval($q['views'] ?? 0) ?> view<?= intval($q['views'] ?? 0) == 1 ? '' : 's' ?></span>
           </div>
 
           <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
@@ -282,7 +327,7 @@ function format_relative_time($timestamp_ms) {
           </div>
         </div>
         <?php endforeach; ?>
-      </div>
+        </div>
 
       <!-- Pagination -->
       <?php if ($totalCount > $perPage): ?>
@@ -306,7 +351,7 @@ function format_relative_time($timestamp_ms) {
 
   <!-- Ask Question Modal -->
   <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 md:p-10 hidden z-[70] overflow-auto">
-    <form method="POST" class="bg-gray-800 w-full max-w-3xl p-6 md:p-8 rounded-xl shadow-xl space-y-5 relative">
+    <form id="askForm" method="POST" class="bg-gray-800 w-full max-w-3xl p-6 md:p-8 rounded-xl shadow-xl space-y-5 relative" onsubmit="return validateTags()">
       <div class="flex justify-between items-center">
         <h2 class="text-2xl font-semibold text-white">Ask a Question</h2>
         <button type="button" class="text-gray-400 hover:text-white" onclick="document.getElementById('modal').classList.add('hidden')">✕</button>
@@ -320,10 +365,15 @@ function format_relative_time($timestamp_ms) {
         <textarea id="questionText" name="text" rows="8" maxlength="3000" placeholder="Explain your question in detail..." required class="w-full mt-1 p-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 resize-none"></textarea>
       </div>
       <div class="text-sm text-gray-400">
-       <strong>Formatting examples:</strong> Use **bold**, *italic*, `code`, and [links](https://example.com)
+        <strong>Formatting examples:</strong> Use **bold**, *italic*, `code`, and [links](https://example.com)
+      </div>
+      <div>
+        <label for="tagsInput" class="text-gray-300 text-sm">Tags • Up to tags, comma separated, alphanumeric only</label>
+        <input id="tagsInput" name="tags" type="text" placeholder="e.g. example,question,name" class="w-full mt-1 p-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400" />
+        <p id="tagsError" class="text-red-500 text-xs mt-1 hidden"></p>
       </div>
       <div class="flex justify-between items-center pt-2">
-        <button type="button" onclick="previewMarkdown()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">Preview</button>
+        <button type="button" onclick="previewMarkdown()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">Preview Markdown</button>
         <div class="flex space-x-3">
           <button type="button" onclick="document.getElementById('modal').classList.add('hidden')" class="px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">Cancel</button>
           <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition duration-200 shadow-md">Post</button>
@@ -369,31 +419,14 @@ function format_relative_time($timestamp_ms) {
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      // Hide spinner and show question list
       document.getElementById('spinner').classList.add('hidden');
       document.getElementById('question-list').classList.remove('hidden');
 
-      // Re-enable sort buttons
       const sortButtons = document.querySelectorAll('.sort-btn');
       sortButtons.forEach(button => {
         button.disabled = false;
         button.classList.remove('disabled', 'pointer-events-none');
       });
-    });
-
-    // Disable post button
-    document.addEventListener('DOMContentLoaded', () => {
-      const askForm = document.querySelector('#modal form');
-      if (askForm) {
-        askForm.addEventListener('submit', () => {
-          const postBtn = askForm.querySelector('button[type="submit"]');
-          if (postBtn) {
-            postBtn.disabled = true;
-            postBtn.textContent = 'Posting...';
-            postBtn.classList.add('opacity-50', 'cursor-not-allowed');
-          }
-        });
-      }
     });
 
     // Disable sort buttons
@@ -461,6 +494,46 @@ function format_relative_time($timestamp_ms) {
     document.addEventListener('DOMContentLoaded', () => {
       setInterval(updateQuestionStats, 10000);
     });
+
+    function validateTags() {
+      const tagsInput = document.getElementById('tagsInput');
+      const errorMsg = document.getElementById('tagsError');
+      const rawTags = tagsInput.value.trim();
+      const askForm = document.getElementById('askForm');
+      const postBtn = askForm?.querySelector('button[type="submit"]');
+
+      if (!rawTags) {
+        errorMsg.classList.add('hidden');
+      } else {
+        const tags = rawTags.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
+
+        if (tags.length > 5) {
+          errorMsg.textContent = 'Please enter no more than 5 tags.';
+          errorMsg.classList.remove('hidden');
+          return false;
+        }
+
+        const tagRegex = /^[a-z0-9]+$/;
+        for (const tag of tags) {
+          if (!tagRegex.test(tag)) {
+            errorMsg.textContent = 'Tags can only contain letters and digits, no spaces or special characters.';
+            errorMsg.classList.remove('hidden');
+            return false;
+          }
+        }
+ 
+        tagsInput.value = tags.join(',');
+        errorMsg.classList.add('hidden');
+      }
+
+      if (postBtn) {
+        postBtn.disabled = true;
+        postBtn.textContent = 'Posting...';
+        postBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+
+      return true;
+    }
   </script>
 </body>
 </html>
