@@ -53,7 +53,7 @@ $action = $_GET['action'] ?? 'main';
 $username = $_GET['user'] ?? '';
 
 // Set session for test users
-if ($username && in_array($username, ['smnuser1', 'smnuser2', 'smnuser3', 'smnuser4', 'smnuser5', 'smnuser6', 'smnuser7'])) {
+if ($username && in_array($username, ['smnuser1', 'smnuser2', 'smnuser3', 'smnuser4', 'smnuser5', 'smnuser6', 'smnuser7', 'testingsmn6', 'testingsmn66', 'testingsmn666', 'testingsmn7', 'testingsmn77', 'testingsmn777'])) {
     session_start();
     $_SESSION['username'] = $username;
     
@@ -90,7 +90,13 @@ $testUsers = [
     'smnuser4' => ['points' => 125, 'level' => 4],
     'smnuser5' => ['points' => 1000, 'level' => 5],
     'smnuser6' => ['points' => 3000, 'level' => 6],
-    'smnuser7' => ['points' => 10000, 'level' => 7]
+    'smnuser7' => ['points' => 10000, 'level' => 7],
+    'testingsmn6' => ['points' => 3000, 'level' => 6],
+    'testingsmn66' => ['points' => 3000, 'level' => 6],
+    'testingsmn666' => ['points' => 3000, 'level' => 6],
+    'testingsmn7' => ['points' => 10000, 'level' => 7],
+    'testingsmn77' => ['points' => 10000, 'level' => 7],
+    'testingsmn777' => ['points' => 10000, 'level' => 7]
 ];
 
 ?>
@@ -336,7 +342,13 @@ $testUsers = [
             <h2>Test Users</h2>
             <p>Click a user to set session and view their capabilities:</p>
             <div class='user-grid'>
-                <?php foreach ($testUsers as $user => $data): ?>
+                <?php 
+                // Only show testingsmn users in the interface
+                $displayUsers = array_filter($testUsers, function($key) {
+                    return strpos($key, 'testingsmn') === 0;
+                }, ARRAY_FILTER_USE_KEY);
+                
+                foreach ($displayUsers as $user => $data): ?>
                     <a href='?action=test_user&user=<?= urlencode($user) ?>' class='user-btn level<?= $data['level'] ?>'>
                         <strong><?= htmlspecialchars($user) ?></strong><br>
                         Level <?= $data['level'] ?> • <?= $data['points'] ?> pts

@@ -11,8 +11,41 @@ if (!$appUser) {
 
 $api = new qOverflowAPI(API_KEY);
 
+// Handle AJAX requests for marking messages as read
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    if (isset($input['action']) && $input['action'] === 'markAsRead') {
+        $messageId = $input['messageId'] ?? null;
+        
+        if ($messageId) {
+            try {
+                require_once __DIR__ . '/../../db.php';
+                $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+                
+                // Use PostgreSQL's ON CONFLICT instead of MySQL's ON DUPLICATE KEY UPDATE
+                $stmt = $pdo->prepare("INSERT INTO mail_status (message_id, recipient, is_read, read_at) 
+                                      VALUES (?, ?, TRUE, NOW()) 
+                                      ON CONFLICT (message_id, recipient) 
+                                      DO UPDATE SET is_read = TRUE, read_at = NOW()");
+                $stmt->execute([$messageId, $appUser]);
+                
+                // Debug: Log the insert/update
+                error_log("Marked message as read: $messageId for user: $appUser");
+                
+                echo json_encode(['success' => true]);
+                exit;
+            } catch (PDOException $e) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Database error']);
+                exit;
+            }
+        }
+    }
+}
+
 // Handle sending a new message
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_SERVER['CONTENT_TYPE'])) {
     $recipient = trim($_POST['recipient'] ?? '');
     $subject = trim($_POST['subject'] ?? '');
     $body = trim($_POST['body'] ?? '');
@@ -39,6 +72,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Get inbox messages (where user is receiver)
 $inboxMessages = $api->getMail($appUser)['messages'] ?? [];
+
+// Get read status from local database - unread if not in system, read if in system
+$readStatus = [];
+try {
+    require_once __DIR__ . '/../../db.php';
+    $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    
+    foreach ($inboxMessages as $msg) {
+        // Create a unique message identifier using sender + subject + createdAt
+        $messageId = $msg['sender'] . '|' . $msg['subject'] . '|' . $msg['createdAt'];
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM mail_status WHERE message_id = ? AND recipient = ?");
+        $stmt->execute([$messageId, $appUser]);
+        
+        // If message exists in mail_status table = read, if not = unread
+        $readStatus[$messageId] = $stmt->fetchColumn() > 0;
+        
+        // Debug: Log what we're checking
+        error_log("Checking message: $messageId for user: $appUser - Read: " . ($readStatus[$messageId] ? 'true' : 'false'));
+    }
+} catch (PDOException $e) {
+    // If database fails, assume all messages are unread
+    foreach ($inboxMessages as $msg) {
+        $messageId = $msg['sender'] . '|' . $msg['subject'] . '|' . $msg['createdAt'];
+        $readStatus[$messageId] = false;
+    }
+}
 
 // Determine active tab
 $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'inbox';
@@ -169,6 +228,11 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
 
   // Inbox pagination and search
   const inboxMessages = <?php echo json_encode($inboxMessages); ?>;
+  const readStatus = <?php echo json_encode($readStatus); ?>;
+  
+  // Debug: Log the read status to console
+  console.log('Read status from server:', readStatus);
+  console.log('Inbox messages:', inboxMessages);
   const inboxList = document.getElementById('inbox-list');
   const searchInput = document.getElementById('inbox-search');
   const pageInfo = document.getElementById('page-info');
@@ -187,6 +251,8 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
     const pageMessages = filtered.slice(start, end);
     pageMessages.forEach((msg, idx) => {
       const div = document.createElement('div');
+      const messageId = msg.sender + '|' + msg.subject + '|' + msg.createdAt;
+      const isRead = readStatus[messageId] || false;
       div.className = 'bg-gray-700 rounded-lg p-3 border border-gray-600 shadow hover:border-blue-500 transition flex flex-col gap-1 relative';
       // Get only the first line or up to 60 chars
       let firstLine = (msg.text || '').split(/\r?\n/)[0];
@@ -207,6 +273,7 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
         <button class=\"text-xs text-blue-400 hover:underline focus:outline-none mt-1 mb-2 self-start\" id=\"${msgId}-toggle\">View Full Message</button>
         <div class=\"hidden mt-1 mb-2\" id=\"${msgId}-full\"></div>
         <div class=\"absolute bottom-2 right-3 text-xs text-gray-400\">${formatDate(msg.createdAt)}</div>
+        <div class=\"absolute top-2 right-3 text-xs ${isRead ? 'text-gray-400' : 'text-blue-400 font-semibold'}\">${isRead ? 'Read' : 'Unread'}</div>
       `;
       inboxList.appendChild(div);
       // Add expand/collapse logic
@@ -218,6 +285,35 @@ $activeTab = isset($_GET['compose']) && $_GET['compose'] == '1' ? 'compose' : 'i
         document.querySelectorAll('[id$="-full"]').forEach(el => { el.classList.add('hidden'); });
         document.querySelectorAll('[id$="-toggle"]').forEach(el => { el.textContent = 'View Full Message'; });
         if (!expanded) {
+          // Update local read status immediately
+          readStatus[messageId] = true;
+          
+          // Update the read/unread text
+          const statusDiv = div.querySelector('.absolute.top-2.right-3');
+          if (statusDiv) {
+            statusDiv.textContent = 'Read';
+            statusDiv.className = 'absolute top-2 right-3 text-xs text-gray-400';
+          }
+          
+          // Mark as read in database (non-blocking)
+          fetch('/pages/mail/mail.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              action: 'markAsRead',
+              messageId: messageId 
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              console.error('Error marking as read:', data.error);
+            }
+          })
+          .catch(error => {
+            console.error('Error marking as read:', error);
+          });
+          
           // Render full message with markdown support
           fullDiv.innerHTML = `<div class='text-sm message-body text-gray-200'>${convertMarkdown(msg.text || '')}</div>`;
           fullDiv.classList.remove('hidden');
