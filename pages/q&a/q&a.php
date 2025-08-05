@@ -1014,6 +1014,15 @@ if ($isGuest) {
                 </div>
             </div>
         </div>
+        
+        <!-- Share Question Button -->
+        <div class="mb-4">
+            <button id="share-question" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors cursor-pointer" 
+                    data-question-id="<?=htmlspecialchars($actualQuestionId);?>"
+                    title="Share this question">
+                📤 Share Question
+            </button>
+        </div>
 
         <h1 class="text-white text-3xl font-bold mb-5 text-wrap"><?=htmlspecialchars($question['title'] ?? 'Untitled Question');?></h1>
 
@@ -1144,6 +1153,16 @@ if ($isGuest) {
                         <span class="level-badge level-<?=$answererLevel;?>">Level <?=$answererLevel;?></span>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Share Answer Button -->
+            <div class="mb-4">
+                <button class="share-answer bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors cursor-pointer" 
+                        data-question-id="<?=htmlspecialchars($actualQuestionId);?>"
+                        data-answer-id="<?=htmlspecialchars($answerId);?>"
+                        title="Share this answer">
+                    📤 Share Answer
+                </button>
             </div>
 
             <div class="prose prose-invert bg-gray-700 p-6 rounded-lg mb-6 leading-relaxed text-gray-300 shadow-inner text-wrap code-wrap">
@@ -1552,6 +1571,47 @@ $(document).ready(function() {
                 sessionStorage.setItem('viewed_<?=htmlspecialchars($actualQuestionId);?>', 'true');
             }
         });
+    }
+
+    // Simple share functionality
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            alert('Link copied to clipboard!');
+        }).catch(function() {
+            // Fallback
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('Link copied to clipboard!');
+        });
+    }
+
+    // Share buttons
+    $('#share-question').on('click', function() {
+        const questionId = $(this).data('question-id');
+        const shareUrl = window.location.origin + '/pages/q&a/q&a.php?questionName=' + encodeURIComponent(questionId);
+        copyToClipboard(shareUrl);
+    });
+
+    $('.share-answer').on('click', function() {
+        const questionId = $(this).data('question-id');
+        const answerId = $(this).data('answer-id');
+        const shareUrl = window.location.origin + '/pages/q&a/q&a.php?questionName=' + encodeURIComponent(questionId) + '#answer-' + answerId;
+        copyToClipboard(shareUrl);
+    });
+
+    // Simple hash navigation
+    if (window.location.hash && window.location.hash.startsWith('#answer-')) {
+        const answerId = window.location.hash.substring(8);
+        setTimeout(function() {
+            const answerElement = $('#answer-' + answerId);
+            if (answerElement.length > 0) {
+                $('html, body').scrollTop(answerElement.offset().top - 100);
+            }
+        }, 500);
     }
 });
 </script>
