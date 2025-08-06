@@ -6,6 +6,16 @@ require_once '../../api/api.php';
 require_once '../../levels/getUserLevel.php';
 require_once '../../levels/updateUserPoints.php';
 
+// Database connection for tags
+try {
+    require_once '../../db.php';
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    ]);
+} catch (PDOException $e) {
+    $pdo = null;
+}
+
 $api = new qOverflowAPI(API_KEY);
 
 // Function to generate Gravatar URL
@@ -63,6 +73,32 @@ if (!isset($_SESSION['edit_votes'])) {
 }
 
 // --- Helper functions ---
+
+// Function to get tags for a question
+function getQuestionTags($questionId) {
+    global $pdo;
+    
+    if (!$pdo) {
+        return [];
+    }
+    
+    try {
+        $stmt = $pdo->prepare("SELECT tags FROM question_tags WHERE question_id = :qid LIMIT 1");
+        $stmt->execute([':qid' => $questionId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($row && !empty(trim($row['tags']))) {
+            $tags = explode(',', $row['tags']);
+            $tags = array_map('trim', $tags);
+            $tags = array_filter($tags, fn($tag) => $tag !== '');
+            return $tags;
+        }
+    } catch (PDOException $e) {
+        error_log("[DEBUG] Error loading question tags: " . $e->getMessage());
+    }
+    
+    return [];
+}
 
 function getUserLevelAndPoints($username) {
     global $api;
@@ -984,6 +1020,10 @@ try {
         $question = $questionResult;
         $actualQuestionId = $question['question_id'] ?? $questionName;
     }
+    
+    // Load tags for this question
+    $questionTags = getQuestionTags($actualQuestionId);
+    
     incrementQuestionViews($actualQuestionId);
 } catch (Exception $ex) {
     $message = 'Error loading question: ' . $ex->getMessage();
@@ -1320,6 +1360,16 @@ if ($isGuest) {
         </div>
 
         <h1 class="text-white text-3xl font-bold mb-5 text-wrap"><?=htmlspecialchars($question['title'] ?? 'Untitled Question');?></h1>
+
+        <?php if (!empty($questionTags)): ?>
+        <div class="mb-4">
+            <div class="flex flex-wrap gap-2">
+                <?php foreach ($questionTags as $tag): ?>
+                    <span class="text-sm text-gray-200 bg-gray-700 px-3 py-1 rounded-md border border-gray-600"><?=htmlspecialchars($tag);?></span>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <article class="prose prose-invert bg-gray-700 p-6 rounded-lg mb-8 leading-relaxed text-gray-300 shadow-inner text-wrap code-wrap">
             <?=renderMarkdown($question['body'] ?? $question['text'] ?? 'No content available');?>
