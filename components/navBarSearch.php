@@ -7,28 +7,29 @@ session_start();
 
 $api = new qOverflowAPI(API_KEY);
 
+// Gets user input from URL
 $query = isset($_GET['query']) ? trim($_GET['query']) : '';
 $searchQuery = '';
 $datetime = '';
 
+// Distinguishes if query is a date or text
 if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $query)) {
     $datetime = $query;
 } else {
     $searchQuery = $query;
 }
 
-
 $searchQuery = is_array($searchQuery) ? reset($searchQuery) : trim($searchQuery);
 $datetime = trim($datetime);
 
+// Initilaize match arrays
 $dateMatches = [];
 $titleMatches = [];
 $textMatches = [];
 $creatorMatches = [];
 
-
+// earch by date
 try {
-    // Accept MM/DD/YYYY format for datetime
     if (!empty($datetime)) {
        $date = DateTime::createFromFormat('m/d/Y', $datetime, new DateTimeZone('UTC'));
 
@@ -61,7 +62,7 @@ try {
         }
     }
 
-    // If query is provided, search by text, title, or creator
+    // Search by text, title, or creator
     if (!empty($searchQuery)) {
         $params = ['query' => $searchQuery];
         $results = $api->searchQuestions($params);
