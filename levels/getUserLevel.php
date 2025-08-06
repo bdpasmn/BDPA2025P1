@@ -30,5 +30,3 @@ function getUserLevel($username) {
         return ['level' => 1];
     }
 }
-
-?>
