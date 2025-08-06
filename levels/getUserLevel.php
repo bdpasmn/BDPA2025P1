@@ -1,4 +1,5 @@
-<?php
+<?php 
+
 function getUserLevel($username) {
     $api = new qOverflowAPI(API_KEY);
 
