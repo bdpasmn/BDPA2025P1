@@ -278,7 +278,7 @@ class qOverflowAPI {
         }
         return $this->request('DELETE', "/questions/$question_id/answers/$answer_id/comments/$comment_id");
     }
-
+  
     public function voteAnswerComment($question_id, $answer_id, $comment_id, $username, $operation, $target) {
         if (empty($question_id) || empty($answer_id) || empty($comment_id) || empty($username)) {
             throw new InvalidArgumentException('Question ID, Answer ID, Comment ID, and username are required');

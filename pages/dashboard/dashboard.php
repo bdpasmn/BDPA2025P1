@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <?php
+  //DASH
   session_start();
 
   require_once '../../Api/api.php';
@@ -80,8 +81,17 @@ $totalAnswerPages = ceil($totalAnswers / $answersPerPage);
 $startAnswerIndex = ($currentAnswerPage - 1) * $answersPerPage;
 $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerPage);
 
-
-  ?>
+//$stmt = $pdo->prepare("SELECT username FROM user_badges WHERE username = $username");
+/*
+$query =  "SELECT badge_name FROM user_badges WHERE username = $username";
+echo "badge_name"
+*/
+/*
+$stmt = $pdo->prepare("SELECT badge_name FROM user_badges WHERE username = $username");
+$stmt->execute(['badge_name' => $badge]);
+echo $badge;
+*/
+?>
 
 
 <head>
@@ -114,6 +124,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
       </p>
         <p>Password:  <span id="passwordDisplay">********</span>
         <i class="fas fa-pen-alt ml-2 pb-4" onclick="openEditModal('password')"></i>
+
       </p>
         <button onclick="openDeleteModal()" class=" bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
           Delete Account
@@ -182,15 +193,38 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
           $rawMarkdown = $UserAnswer['text'] ?? '';
           $questionInfo =  $api->getQuestion($UserAnswer['question_id']);
           $questionName = $questionInfo['question']['title'];
+          $answerId = $UserAnswer['answer_id'] ?? '';
+          $accepted = $UserAnswer['accepted'] ?? false;
           ?>
+          
+         
+          
+            
+
         <a href="/pages/q&a/q&a.php?questionName=<?=urlencode($questionName)?>&questionId=<?= urlencode($UserAnswer['question_id']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700"> <!-- got rid of w-[300px] in the div class -->
           <p class="text-l font-semibold text-blue-400">ANSWER:</p>
       <div class="mt-2 text-sm hover:underline block"  style="display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <?php echo htmlspecialchars($UserAnswer['text']); ?> </div> <!-- Display question title -->
-       <p class="mt-4 text-sm">VOTES:  <?php $Answerupvotes = intval($UserAnswer['upvotes'] ?? 0); $Answerdownvotes = intval($UserAnswer['downvotes'] ?? 0); $Answervotes = $Answerupvotes - $Answerdownvotes;   echo $Answervotes; ?> </p>
+       
+
+      <div class="mt-4 flex items-center space-x-4">
+        <p class="text-sm">VOTES:  <?php $Answerupvotes = intval($UserAnswer['upvotes'] ?? 0); $Answerdownvotes = intval($UserAnswer['downvotes'] ?? 0); $Answervotes = $Answerupvotes - $Answerdownvotes;   echo $Answervotes; ?> </p>
+        <div id="answer-<?=$answerId;?>" class="bg-gray-800 rounded-lg <?= $accepted ? : ''; ?>">
+              <?php if ($accepted): ?>
+                  <div class="bg-green-600 text-white rounded text-xs w-[90px] h-4 text-center ">
+                      Accepted
+                  </div>
+                <?php else: ?>
+                  <div class="bg-red-600 text-white  rounded text-xs w-[100px] h-4 text-center">
+                    Not Accepted
+                  </div>
+              <?php endif; ?>
         </div>
+      </div>
+    </div>
         </a>
       <?php endforeach; ?>
+
     <?php else: ?>
       <p class="text-gray-400">You haven't posted any answers yet.</p><!-- Display message if no answers found --> 
     <?php endif; ?>
