@@ -74,8 +74,16 @@ try {
         $tagList = array_filter(array_map('trim', explode(',', strtolower($pramtags))));
 
         if (!empty($tagList)) {
-        $placeholders = implode(',', array_fill(0, count($tagList), '?'));
-        $sql = "SELECT * FROM questions WHERE tags && ARRAY[$placeholders]::text[] LIMIT 100";
+        $sqlParts = [];
+        $params = [];
+
+        foreach ($tagList as $tag) {
+          $sqlPArts [] = "LOWER(tags) LIKE ?";
+          $params[] = '%' . $tags . '%';
+        }
+
+        
+        $sql = "SELECT * FROM questions WHERE " . implode(" OR ", $sqlParts) . " LIMIT 100 ";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($tagList);
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -304,6 +312,32 @@ try {
           </div>
         </a>
        </li>
+        <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+
+       <?php if ($tagMatches): ?>
+        <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
+        <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center " > Titles of Tag Matches:</h2>
+        <ul class="space-y-2">
+        <?php foreach ($tagMatches as $match): ?>
+          <li>
+          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+            <?= htmlspecialchars($match['title']) ?>
+            <br>
+
+            
+            <div class="flex justify-between mt-2">
+            <small class="text-gray-400">Created on:
+            <?= $match['createdAt'] ? date('m/d/y', (int)($match['createdAt'] / 1000)) : 'Unknown' ?>
+          </small>
+          <br>
+          <small class="text-gray-400">Created by:
+          <?= htmlspecialchars($match['creator']) ?>
+          </small>
+          </div>
+          </a>
+          </li>
         <?php endforeach; ?>
         </div>
       <?php endif; ?>
