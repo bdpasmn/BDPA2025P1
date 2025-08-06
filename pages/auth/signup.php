@@ -71,6 +71,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // Password must be at least 11 characters
     if (strlen($rawPassword) < 11) {
+        //!preg_match("/[A-Z]/", $rawPassword) || // Must upercase include letters
+        //!preg_match("/[a-z]/", $rawPassword) || // Must include lowercase letters
+        //!preg_match("/[0-9]/", $rawPassword) || // Must include numbers
+        //!preg_match("/[\W]/", $rawPassword){ // Must include special characters
         $passworderror = " ";
         $haserror = true;
     }
