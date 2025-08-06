@@ -1,14 +1,27 @@
 <?php
 session_start();
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
   require_once '../Api/api.php';
   require_once '../Api/key.php';
+  require_once __DIR__ . '../../db.php'; 
 
 
 $api = new qOverflowAPI(API_KEY);
 
+// Connect to Database
+    try {
+        $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    } catch (PDOException $e) {
+        $error = "Database connection failed: " . $e->getMessage();
+        $haserror = true;
+    }
 
-  $pramtags = isset($_GET['query']) ? trim($tags['tags']) : '';
+
+  $pramtags = isset($_GET['query']) ? trim($_GET['query']) : '';
   //$searchTags = '';
   //$searchTags = is_array($searchTags) ? reset($searchTags) : trim($searchTags);
 
@@ -70,7 +83,7 @@ try {
     }
 
     // Search by tags 
-    if (!empty($pramtags)) {
+  /*  if (!empty($pramtags)) {
         $tagList = array_filter(array_map('trim', explode(',', strtolower($pramtags))));
 
         if (!empty($tagList)) {
@@ -78,17 +91,17 @@ try {
         $params = [];
 
         foreach ($tagList as $tag) {
-          $sqlPArts [] = "LOWER(tags) LIKE ?";
-          $params[] = '%' . $tags . '%';
+          $sqlParts [] = "LOWER(tags) LIKE ?";
+          $params[] = '%' . $tag . '%';
         }
 
         
-        $sql = "SELECT * FROM questions WHERE " . implode(" OR ", $sqlParts) . " LIMIT 100 ";
+        $sql = "SELECT * FROM questions_tags WHERE " . implode(" OR ", $sqlParts) . " LIMIT 100 ";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($tagList);
+        $stmt->execute($params);
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($tagResults as $question) {
+        foreach ($results as $question) {
         $tagMatches[] = [
         'title' => $question['title'],
         'creator' => $question['creator'] ?? 'Unknown',
@@ -98,6 +111,91 @@ try {
                               }
                             }
                           }
+*/
+
+
+   /* if (!empty($pramtags)) {
+    $tagList = array_filter(array_map('trim', explode(',', strtolower($pramtags))));
+
+    if (!empty($tagList)) {
+        $sqlParts = [];
+        $params = [];
+
+        foreach ($tagList as $tag) {
+            $sqlParts[] = "LOWER(qt.tags) LIKE ?";
+            $params[] = '%' . $tag . '%';
+        }
+
+        $sql = "
+            SELECT DISTINCT q.*
+            FROM questions q
+            JOIN question_tags qt ON q.question_id = qt.question_id
+            WHERE " . implode(" OR ", $sqlParts) . "
+            LIMIT 100
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo "<pre>";
+print_r($results);
+echo "</pre>";
+exit;
+
+
+        foreach ($results as $question) {
+            $tagMatches[] = [
+                'title' => $question['title'],
+                'creator' => $question['creator'] ?? 'Unknown',
+                'createdAt' => $question['createdAt'] ?? null,
+                'question_id' => $question['question_id'] ?? 'Unknown'
+            ];
+        }
+    }
+}
+*/
+
+if (!empty($pramtags)) {
+
+    $tagList = array_filter(array_map('trim', explode(',', strtolower($pramtags))));
+
+    //$tagMatches = [];
+
+    if (!empty($tagList)) {
+        $questionIds = [];
+
+        // Fetch matching question IDs for each tag
+        foreach ($tagList as $tag) {
+            $stmt = $pdo->prepare("SELECT DISTINCT question_id FROM question_tags WHERE LOWER(tags) LIKE ?");
+            $stmt->execute(['%' . $tag . '%']);
+            $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $questionIds = array_merge($questionIds, $ids);
+        }
+
+        $questionIds = array_unique($questionIds);
+
+        // Fetch each question from API by ID
+        foreach ($questionIds as $qId) {
+            $question = $api->getQuestion($qId);
+
+            //if (is_array($result)) {
+                //foreach ($results as $question) {
+                    if (is_array($question) && isset($question['question']['question_id'])) {
+                   
+                        $tagMatches[] = [
+                            'title' => $question['question']['title'],
+                            'creator' => $question['question']['creator'] ?? 'Unknown',
+                            'createdAt' => $question['question']['createdAt'] ?? null,
+                            'question_id' => $question['question']['question_id']
+                        ];
+
+                    }
+                }
+            }
+        }
+    
+
 
     // Search by text, title, creator
     if (!empty($searchQuery)) {
@@ -318,7 +416,7 @@ try {
 
        <?php if ($tagMatches): ?>
         <div class="bg-gray-800 rounded-lg p-6 mx-auto mb-6 w-full max-w-4xl">
-        <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center " > Titles of Tag Matches:</h2>
+        <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 text-center " > 📎 Tag Matches:</h2>
         <ul class="space-y-2">
         <?php foreach ($tagMatches as $match): ?>
           <li>
@@ -326,7 +424,7 @@ try {
             <?= htmlspecialchars($match['title']) ?>
             <br>
 
-            
+
             <div class="flex justify-between mt-2">
             <small class="text-gray-400">Created on:
             <?= $match['createdAt'] ? date('m/d/y', (int)($match['createdAt'] / 1000)) : 'Unknown' ?>
@@ -399,7 +497,7 @@ try {
      
       <?php 
       // Fallback if no matches
-      if (!$titleMatches && !$textMatches && !$creatorMatches && !$dateMatches): ?>
+      if (!$titleMatches && !$textMatches && !$creatorMatches && !$dateMatches && !$tagMatches): ?>
         <div class="bg-gray-800 rounded-lg p-4 w-[500px] h-[100px] mx-auto text-center">
         <p class="mt-6 text-red-400">No matching results found.</p>
         </div>
