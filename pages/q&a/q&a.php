@@ -57,6 +57,11 @@ $questionComments = [];
 $answerComments = [];
 $actualQuestionId = null;
 
+// Storage for edit votes (stored locally in session as requested)
+if (!isset($_SESSION['edit_votes'])) {
+    $_SESSION['edit_votes'] = [];
+}
+
 // --- Helper functions ---
 
 function getUserLevelAndPoints($username) {
@@ -86,7 +91,8 @@ function canPerformAction($action, $userLevel, $userPoints, $isGuest) {
         case 'downvote': return $userLevel >= 4;
         case 'view_vote_breakdown': return $userLevel >= 5;
         case 'protect_vote': return $userLevel >= 6;
-        case 'close_reopen_vote': return $userLevel >= 7;
+        case 'edit_vote': return $userLevel >= 7; // Level 7 (2,000 points) for edit voting
+        case 'close_reopen_vote': return $userLevel >= 8; // Bumped up by 1
         default: return false;
     }
 }
@@ -188,6 +194,120 @@ function incrementQuestionViews($questionId) {
             error_log("[DEBUG] Exception incrementing views: " . $e->getMessage());
         }
     }
+}
+
+// Edit vote management functions (stored locally in session)
+function getEditVoteKey($type, $id, $answerId = null) {
+    if ($type === 'answer') {
+        return "edit_vote_{$type}_{$id}_{$answerId}";
+    }
+    return "edit_vote_{$type}_{$id}";
+}
+
+function createEditVote($type, $id, $newContent, $newTitle = null, $answerId = null) {
+    global $CURRENT_USER;
+    
+    $voteKey = getEditVoteKey($type, $id, $answerId);
+    $editVote = [
+        'type' => $type,
+        'id' => $id,
+        'answer_id' => $answerId,
+        'new_content' => $newContent,
+        'new_title' => $newTitle,
+        'initiator' => $CURRENT_USER,
+        'votes' => [$CURRENT_USER => 'yes'],
+        'created_at' => time(),
+        'expires_at' => time() + (24 * 60 * 60) // 24 hours
+    ];
+    
+    $_SESSION['edit_votes'][$voteKey] = $editVote;
+    return $voteKey;
+}
+
+function voteOnEdit($voteKey, $vote) {
+    global $CURRENT_USER;
+    
+    if (!isset($_SESSION['edit_votes'][$voteKey])) {
+        return false;
+    }
+    
+    $editVote = &$_SESSION['edit_votes'][$voteKey];
+    
+    // Check if vote hasn't expired
+    if (time() > $editVote['expires_at']) {
+        unset($_SESSION['edit_votes'][$voteKey]);
+        return false;
+    }
+    
+    $editVote['votes'][$CURRENT_USER] = $vote;
+    return true;
+}
+
+function checkEditVoteResult($voteKey) {
+    global $api;
+    
+    if (!isset($_SESSION['edit_votes'][$voteKey])) {
+        return null;
+    }
+    
+    $editVote = $_SESSION['edit_votes'][$voteKey];
+    
+    // Check if vote has expired
+    if (time() > $editVote['expires_at']) {
+        unset($_SESSION['edit_votes'][$voteKey]);
+        return 'expired';
+    }
+    
+    $yesVotes = array_count_values($editVote['votes'])['yes'] ?? 0;
+    $noVotes = array_count_values($editVote['votes'])['no'] ?? 0;
+    
+    // Need at least 3 yes votes and more yes than no votes
+    if ($yesVotes >= 3 && $yesVotes > $noVotes) {
+        // Apply the edit
+        $success = false;
+        
+        try {
+            if ($editVote['type'] === 'question') {
+                $updateData = ['body' => $editVote['new_content']];
+                if ($editVote['new_title'] !== null) {
+                    $updateData['title'] = $editVote['new_title'];
+                }
+                $result = $api->updateQuestion($editVote['id'], $updateData);
+                $success = !isset($result['error']);
+            } elseif ($editVote['type'] === 'answer') {
+                $result = $api->updateAnswer($editVote['id'], $editVote['answer_id'], ['text' => $editVote['new_content']]);
+                $success = !isset($result['error']);
+            }
+        } catch (Exception $e) {
+            error_log("[DEBUG] Error applying edit: " . $e->getMessage());
+        }
+        
+        unset($_SESSION['edit_votes'][$voteKey]);
+        return $success ? 'approved' : 'failed';
+    } elseif ($noVotes > $yesVotes && ($yesVotes + $noVotes) >= 3) {
+        // Edit rejected
+        unset($_SESSION['edit_votes'][$voteKey]);
+        return 'rejected';
+    }
+    
+    return 'pending';
+}
+
+function getActiveEditVotes($questionId) {
+    $activeVotes = [];
+    
+    foreach ($_SESSION['edit_votes'] as $voteKey => $editVote) {
+        if (time() > $editVote['expires_at']) {
+            unset($_SESSION['edit_votes'][$voteKey]);
+            continue;
+        }
+        
+        if ($editVote['id'] === $questionId) {
+            $activeVotes[$voteKey] = $editVote;
+        }
+    }
+    
+    return $activeVotes;
 }
 
 /**
@@ -447,7 +567,7 @@ function voteAnswerCommentFixed($api, $questionId, $answerId, $commentId, $usern
     return ['success' => true, 'undone' => false];
 }
 
-// --- AJAX Handling for voting and views ---
+// --- AJAX Handling for voting, views, and edit votes ---
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     header('Content-Type: application/json');
@@ -577,10 +697,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
                 ]);
                 exit;
 
+            case 'initiate_question_edit':
+                if (!canPerformAction('edit_vote', $userLevel, $userPoints, $isGuest)) {
+                    throw new Exception("You need level 7 (2,000 points) to initiate edit votes");
+                }
+
+                $newTitle = trim($_POST['new_title'] ?? '');
+                $newBody = trim($_POST['new_body'] ?? '');
+                
+                if (empty($newTitle) && empty($newBody)) {
+                    throw new Exception("Must provide new title or body content");
+                }
+
+                $voteKey = createEditVote('question', $questionId, $newBody, $newTitle);
+                
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Edit vote initiated. Other users can now vote on your proposed changes.',
+                    'vote_key' => $voteKey
+                ]);
+                exit;
+
+            case 'initiate_answer_edit':
+                if (!canPerformAction('edit_vote', $userLevel, $userPoints, $isGuest)) {
+                    throw new Exception("You need level 7 (2,000 points) to initiate edit votes");
+                }
+
+                $answerId = $_POST['answer_id'] ?? null;
+                $newBody = trim($_POST['new_body'] ?? '');
+                
+                if (!$answerId) {
+                    throw new Exception("Missing answer_id");
+                }
+                
+                if (empty($newBody)) {
+                    throw new Exception("Must provide new body content");
+                }
+
+                $voteKey = createEditVote('answer', $questionId, $newBody, null, $answerId);
+                
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Answer edit vote initiated. Other users can now vote on your proposed changes.',
+                    'vote_key' => $voteKey
+                ]);
+                exit;
+
+            case 'vote_on_edit':
+                if (!canPerformAction('edit_vote', $userLevel, $userPoints, $isGuest)) {
+                    throw new Exception("You need level 7 (2,000 points) to vote on edits");
+                }
+
+                $voteKey = $_POST['vote_key'] ?? '';
+                $vote = $_POST['vote'] ?? ''; // 'yes' or 'no'
+                
+                if (!in_array($vote, ['yes', 'no'])) {
+                    throw new Exception("Invalid vote value");
+                }
+
+                $success = voteOnEdit($voteKey, $vote);
+                if (!$success) {
+                    throw new Exception("Could not record vote (vote may have expired)");
+                }
+
+                // Check if vote is complete
+                $result = checkEditVoteResult($voteKey);
+                
+                $response = ['success' => true, 'vote_recorded' => true];
+                
+                if ($result === 'approved') {
+                    $response['edit_applied'] = true;
+                    $response['message'] = 'Edit approved and applied!';
+                } elseif ($result === 'rejected') {
+                    $response['edit_rejected'] = true;
+                    $response['message'] = 'Edit rejected by community vote.';
+                } elseif ($result === 'failed') {
+                    $response['edit_failed'] = true;
+                    $response['message'] = 'Edit was approved but failed to apply.';
+                }
+                
+                echo json_encode($response);
+                exit;
+
             case 'protect_question':
             case 'close_question':
             case 'reopen_question':
-                $requiredLevel = ($action === 'protect_question') ? 6 : 7;
+                $requiredLevel = ($action === 'protect_question') ? 6 : 8; // Updated level requirement
                 if ($userLevel < $requiredLevel) {
                     throw new Exception("You need level $requiredLevel to perform this action");
                 }
@@ -699,7 +901,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax'])) {
                     $answerId = $_POST['answer_id'] ?? '';
                     $questionResult = $api->getQuestion($actualQuestionId);
                     if (isset($questionResult['error']) || ($questionResult['creator'] ?? '') !== $CURRENT_USER) {
-                      //  throw new Exception('Only the question creator can accept answers');
+                        throw new Exception('Only the question author can accept answers');
                     }
                     $result = $api->updateAnswer($actualQuestionId, $answerId, ['accepted' => true]);
                     if (isset($result['error'])) throw new Exception($result['error']);
@@ -718,7 +920,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax'])) {
                 case 'protect_question':
                 case 'close_question':
                 case 'reopen_question':
-                    $requiredLevel = ($action === 'protect_question') ? 6 : 7;
+                    $requiredLevel = ($action === 'protect_question') ? 6 : 8; // Updated level requirement
                     if ($userLevel < $requiredLevel) {
                         throw new Exception("You need level $requiredLevel to perform this action");
                     }
@@ -836,9 +1038,12 @@ foreach ($answers as $answer) {
     }
 }
 
+// Get active edit votes for this question
+$activeEditVotes = getActiveEditVotes($actualQuestionId);
+
 if (!$question) {
- header("Location: q&aError.php");    
- echo "Question not found";
+    header("Location: q&aError.php");    
+    echo "Question not found";
     exit;
 }
 
@@ -881,6 +1086,8 @@ if (!$question) {
         .level-5 { @apply bg-orange-600 text-white; }
         .level-6 { @apply bg-red-600 text-white; }
         .level-7 { @apply bg-yellow-600 text-black; }
+        .level-8 { @apply bg-pink-600 text-white; }
+        .level-9 { @apply bg-indigo-600 text-white; }
         .gravatar {
             @apply rounded-full border-2 border-gray-600;
         }
@@ -913,7 +1120,23 @@ if (!$question) {
         .disabled { opacity: 0.5; cursor: not-allowed; }
         .vote-processing { opacity: 0.7; pointer-events: none; }
         
-        /* Remove focus outline from tab buttons and other interactive elements */
+        .edit-vote-container {
+            @apply bg-gradient-to-r from-yellow-900 to-orange-900 border border-yellow-600 rounded-lg p-4 mb-4;
+        }
+        
+        .edit-vote-pending {
+            @apply bg-blue-900 border-blue-600;
+        }
+        
+        .edit-vote-approved {
+            @apply bg-green-900 border-green-600;
+        }
+        
+        .edit-vote-rejected {
+            @apply bg-red-900 border-red-600;
+        }
+        
+        /* Remove focus outline from interactive elements */
         .tab-button:focus,
         input:focus,
         textarea:focus,
@@ -922,7 +1145,6 @@ if (!$question) {
             box-shadow: none !important;
         }
         
-        /* Custom focus styles that don't include blue shadow */
         .tab-button:focus {
             @apply ring-2 ring-gray-500 ring-opacity-50;
         }
@@ -982,6 +1204,79 @@ if ($isGuest) {
     </div>
     <?php endif; ?>
 
+    <!-- Active Edit Votes Section -->
+    <?php if (!empty($activeEditVotes)): ?>
+    <section class="mb-6">
+        <h2 class="text-xl font-bold text-white mb-4">🗳️ Active Edit Votes</h2>
+        <?php foreach ($activeEditVotes as $voteKey => $editVote): ?>
+            <?php 
+            $yesVotes = array_count_values($editVote['votes'])['yes'] ?? 0;
+            $noVotes = array_count_values($editVote['votes'])['no'] ?? 0;
+            $totalVotes = $yesVotes + $noVotes;
+            $userVoted = isset($editVote['votes'][$CURRENT_USER ?? '']);
+            $userVote = $editVote['votes'][$CURRENT_USER ?? ''] ?? null;
+            $timeLeft = max(0, $editVote['expires_at'] - time());
+            $hoursLeft = floor($timeLeft / 3600);
+            $minutesLeft = floor(($timeLeft % 3600) / 60);
+            ?>
+            <div class="edit-vote-container edit-vote-pending" id="edit-vote-<?=$voteKey;?>">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h3 class="text-lg font-semibold text-yellow-200">
+                            <?= $editVote['type'] === 'question' ? 'Question Edit' : 'Answer Edit'; ?> 
+                            by <?=htmlspecialchars($editVote['initiator']);?>
+                        </h3>
+                        <p class="text-sm text-gray-300">
+                            Expires in <?=$hoursLeft;?>h <?=$minutesLeft;?>m | 
+                            Votes: <?=$yesVotes;?> Yes, <?=$noVotes;?> No (need 3+ yes votes to pass)
+                        </p>
+                    </div>
+                    <?php if (!$userVoted && canPerformAction('edit_vote', $userLevel, $userPoints, $isGuest)): ?>
+                    <div class="flex space-x-2">
+                        <button class="vote-on-edit bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm" 
+                                data-vote-key="<?=$voteKey;?>" data-vote="yes">✓ Yes</button>
+                        <button class="vote-on-edit bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" 
+                                data-vote-key="<?=$voteKey;?>" data-vote="no">✗ No</button>
+                    </div>
+                    <?php elseif ($userVoted): ?>
+                    <div class="text-sm text-gray-300">
+                        You voted: <span class="<?= $userVote === 'yes' ? 'text-green-400' : 'text-red-400'; ?>">
+                            <?= $userVote === 'yes' ? '✓ Yes' : '✗ No'; ?>
+                        </span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                
+                <div class="bg-gray-800 rounded p-3">
+                    <?php if ($editVote['type'] === 'question'): ?>
+                        <?php if ($editVote['new_title']): ?>
+                        <div class="mb-2">
+                            <h4 class="text-sm font-semibold text-gray-400">Proposed Title:</h4>
+                            <p class="text-white"><?=htmlspecialchars($editVote['new_title']);?></p>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($editVote['new_content']): ?>
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-400">Proposed Body:</h4>
+                            <div class="text-gray-300 max-h-32 overflow-y-auto">
+                                <?=renderMarkdown($editVote['new_content']);?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-400">Proposed Answer Content:</h4>
+                            <div class="text-gray-300 max-h-32 overflow-y-auto">
+                                <?=renderMarkdown($editVote['new_content']);?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </section>
+    <?php endif; ?>
+
     <section class="bg-gray-800 rounded-lg p-6 mb-10 shadow-lg">
         <?php 
         $statusInfo = getStatusDisplay($question['status'] ?? 'open');
@@ -1029,6 +1324,9 @@ if ($isGuest) {
             <?php if (canPerformAction('downvote', $userLevel, $userPoints, $isGuest)): ?>
                 <button id="question-downvote" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors cursor-pointer vote-button">▼ Downvote</button>
             <?php endif; ?>
+            <?php if (canPerformAction('edit_vote', $userLevel, $userPoints, $isGuest)): ?>
+                <button id="question-edit" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition-colors cursor-pointer">✏️ Propose Edit</button>
+            <?php endif; ?>
             <?php if (canPerformAction('protect_vote', $userLevel, $userPoints, $isGuest)): ?>
                 <button id="question-protect" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded transition-colors cursor-pointer">Protect</button>
             <?php endif; ?>
@@ -1069,14 +1367,6 @@ if ($isGuest) {
                         </div>
                     </div>
                     <p class="text-gray-300 text-wrap"><?=renderMarkdown($comment['text'] ?? '');?></p>
-                    <?php if(!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
-                    <div class="flex items-center space-x-2 mt-2">
-                        <?php if (canPerformAction('upvote', $userLevel, $userPoints, $isGuest)): ?>
-                        <?php endif; ?>
-                        <?php if (canPerformAction('downvote', $userLevel, $userPoints, $isGuest)): ?>
-                        <?php endif; ?>
-                    </div>
-                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -1160,6 +1450,10 @@ if ($isGuest) {
                     <button class="answer-downvote bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors cursor-pointer vote-button" 
                             data-answer-id="<?=$answerId;?>">▼ Downvote</button>
                 <?php endif; ?>
+                <?php if (canPerformAction('edit_vote', $userLevel, $userPoints, $isGuest)): ?>
+                    <button class="answer-edit bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition-colors cursor-pointer"
+                            data-answer-id="<?=$answerId;?>">✏️ Propose Edit</button>
+                <?php endif; ?>
 
                 <?php if (($question['creator'] ?? '') === $CURRENT_USER && !$accepted): ?>
                     <form method="POST" class="inline">
@@ -1200,15 +1494,6 @@ if ($isGuest) {
                         </div>
                     </div>
                     <p class="text-sm text-gray-300 text-wrap"><?=renderMarkdown($comment['text'] ?? '');?></p>
-
-                    <?php if (!$isGuest && canUserInteract($question['status'] ?? 'open', $userLevel)): ?>
-                    <div class="flex items-center space-x-2 mt-2">
-                        <?php if (canPerformAction('upvote', $userLevel, $userPoints, $isGuest)): ?>
-                        <?php endif; ?>
-                        <?php if (canPerformAction('downvote', $userLevel, $userPoints, $isGuest)): ?>
-                        <?php endif; ?>
-                    </div>
-                    <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -1265,18 +1550,18 @@ if ($isGuest) {
                             class="w-full bg-gray-700 text-gray-300 border border-gray-600 rounded-lg p-4 resize-vertical"
                             placeholder="Write your answer here... You can use markdown formatting:
 
-**bold text**
-*italic text*
-`inline code`
-```
-code blocks
-```
-![alt text](image-url)
-[link text](url)
-# Headers
-- List items
+                            **bold text**
+                            *italic text*
+                            `inline code`
+                            ```
+                            code blocks
+                            ```
+                            ![alt text](image-url)
+                            [link text](url)
+                            # Headers
+                            - List items
 
-Images and links are supported!" required></textarea>
+                            Images and links are supported!" required></textarea>
                         <div class="text-xs text-gray-400 mt-2">
                             Characters remaining: <span id="answer-chars">3000</span> | 
                             <span class="text-blue-400">Markdown supported</span>
@@ -1331,6 +1616,77 @@ Images and links are supported!" required></textarea>
         </p>
     </section>
     <?php endif; ?>
+</div>
+
+<!-- Edit Modal for Questions -->
+<div id="question-edit-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Propose Question Edit</h3>
+                <button id="close-question-edit" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            
+            <form id="question-edit-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Title (optional)</label>
+                    <input type="text" id="edit-question-title" 
+                           class="w-full bg-gray-700 text-gray-300 border border-gray-600 rounded-lg p-3"
+                           placeholder="Leave empty to keep current title"
+                           value="<?=htmlspecialchars($question['title'] ?? '');?>">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Body Content (optional)</label>
+                    <textarea id="edit-question-body" rows="10"
+                              class="w-full bg-gray-700 text-gray-300 border border-gray-600 rounded-lg p-3 resize-vertical"
+                              placeholder="Leave empty to keep current body"><?=htmlspecialchars($question['body'] ?? $question['text'] ?? '');?></textarea>
+                    <div class="text-xs text-gray-400 mt-1">Markdown supported</div>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancel-question-edit" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded">
+                        Propose Edit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal for Answers -->
+<div id="answer-edit-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Propose Answer Edit</h3>
+                <button id="close-answer-edit" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            
+            <form id="answer-edit-form">
+                <input type="hidden" id="edit-answer-id" value="">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Answer Content</label>
+                    <textarea id="edit-answer-body" rows="10" required
+                              class="w-full bg-gray-700 text-gray-300 border border-gray-600 rounded-lg p-3 resize-vertical"
+                              placeholder="Enter the new answer content"></textarea>
+                    <div class="text-xs text-gray-400 mt-1">Markdown supported</div>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancel-answer-edit" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded">
+                        Propose Edit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -1435,124 +1791,313 @@ $(document).ready(function() {
         }, 500);
     });
 
-    // AJAX voting functionality
-    function handleVote(action, data, button) {
-        const originalText = button.html();
-        button.addClass('vote-processing').html('Processing...');
+    // Edit modal functionality
+    $('#question-edit').on('click', function() {
+        $('#question-edit-modal').removeClass('hidden');
+    });
+
+    $('#close-question-edit, #cancel-question-edit').on('click', function() {
+        $('#question-edit-modal').addClass('hidden');
+    });
+
+    $('.answer-edit').on('click', function() {
+        const answerId = $(this).data('answer-id');
+        const answerText = $(this).closest('article').find('.prose').text().trim();
         
+        $('#edit-answer-id').val(answerId);
+        $('#edit-answer-body').val(answerText);
+        $('#answer-edit-modal').removeClass('hidden');
+    });
+
+    $('#close-answer-edit, #cancel-answer-edit').on('click', function() {
+        $('#answer-edit-modal').addClass('hidden');
+    });
+
+    // Handle edit form submissions
+    $('#question-edit-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const newTitle = $('#edit-question-title').val().trim();
+        const newBody = $('#edit-question-body').val().trim();
+        
+        if (!newTitle && !newBody) {
+            alert('Please provide either a new title or new body content.');
+            return;
+        }
+
+        const button = $(this).find('button[type="submit"]');
+        const originalText = button.text();
+        button.text('Processing...').prop('disabled', true);
+
         $.post(window.location.href, {
             ajax: true,
-            action: action,
-            ...data
+            action: 'initiate_question_edit',
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
+            new_title: newTitle !== '<?=htmlspecialchars($question['title'] ?? '');?>' ? newTitle : '',
+            new_body: newBody !== '<?=htmlspecialchars($question['body'] ?? $question['text'] ?? '');?>' ? newBody : ''
         })
         .done(function(response) {
             if (response.success) {
-                // Update vote count
+                $('#question-edit-modal').addClass('hidden');
+                alert(response.message);
+                location.reload(); // Reload to show the new edit vote
+            } else {
+                alert('Error: ' + (response.message || 'Failed to initiate edit vote'));
+            }
+        })
+        .fail(function() {
+            alert('Network error. Please try again.');
+        })
+        .always(function() {
+            button.text(originalText).prop('disabled', false);
+        });
+    });
+
+    $('#answer-edit-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const answerId = $('#edit-answer-id').val();
+        const newBody = $('#edit-answer-body').val().trim();
+        
+        if (!newBody) {
+            alert('Please provide new answer content.');
+            return;
+        }
+
+        const button = $(this).find('button[type="submit"]');
+        const originalText = button.text();
+        button.text('Processing...').prop('disabled', true);
+
+        $.post(window.location.href, {
+            ajax: true,
+            action: 'initiate_answer_edit',
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
+            answer_id: answerId,
+            new_body: newBody
+        })
+        .done(function(response) {
+            if (response.success) {
+                $('#answer-edit-modal').addClass('hidden');
+                alert(response.message);
+                location.reload(); // Reload to show the new edit vote
+            } else {
+                alert('Error: ' + (response.message || 'Failed to initiate edit vote'));
+            }
+        })
+        .fail(function() {
+            alert('Network error. Please try again.');
+        })
+        .always(function() {
+            button.text(originalText).prop('disabled', false);
+        });
+    });
+
+    // Handle edit vote buttons
+    $('.vote-on-edit').on('click', function() {
+        const voteKey = $(this).data('vote-key');
+        const vote = $(this).data('vote');
+        const button = $(this);
+        const originalText = button.text();
+        
+        button.text('Voting...').prop('disabled', true);
+
+        $.post(window.location.href, {
+            ajax: true,
+            action: 'vote_on_edit',
+            vote_key: voteKey,
+            vote: vote
+        })
+        .done(function(response) {
+            if (response.success) {
+                if (response.edit_applied) {
+                    alert(response.message);
+                    location.reload();
+                } else if (response.edit_rejected) {
+                    alert(response.message);
+                    location.reload();
+                } else if (response.edit_failed) {
+                    alert(response.message);
+                    location.reload();
+                } else {
+                    alert('Vote recorded successfully!');
+                    location.reload();
+                }
+            } else {
+                alert('Error: ' + (response.message || 'Failed to record vote'));
+            }
+        })
+        .fail(function() {
+            alert('Network error. Please try again.');
+        })
+        .always(function() {
+            button.text(originalText).prop('disabled', false);
+        });
+    });
+
+    // Voting functionality
+    function handleVoteClick(element, action, extraData = {}) {
+        if ($(element).hasClass('vote-processing')) return;
+        
+        $(element).addClass('vote-processing');
+        
+        const operation = $(element).hasClass('upvote') || $(element).attr('id').includes('upvote') ? 'upvote' : 'downvote';
+        
+        const postData = {
+            ajax: true,
+            action: action,
+            operation: operation,
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
+            ...extraData
+        };
+
+        $.post(window.location.href, postData)
+        .done(function(response) {
+            if (response.success) {
+                // Update vote count based on action
                 if (action === 'vote_question') {
                     $('#question-points').text(response.votes);
                 } else if (action === 'vote_answer') {
-                    $('.answer-points[data-answer-id="' + data.answer_id + '"]').text(response.votes);
+                    $(`.answer-points[data-answer-id="${extraData.answer_id}"]`).text(response.votes);
                 } else if (action === 'vote_question_comment') {
-                    $('.question-comment-votes[data-comment-id="' + data.comment_id + '"]').text(response.votes);
+                    $(`.question-comment-votes[data-comment-id="${extraData.comment_id}"]`).text(response.votes);
                 } else if (action === 'vote_answer_comment') {
-                    $('.answer-comment-votes[data-answer-id="' + data.answer_id + '"][data-comment-id="' + data.comment_id + '"]').text(response.votes);
+                    $(`.answer-comment-votes[data-answer-id="${extraData.answer_id}"][data-comment-id="${extraData.comment_id}"]`).text(response.votes);
                 }
-                
-                // Visual feedback
-                button.removeClass('vote-processing').html(originalText);
-                
-                // Temporary success indication
-                const originalBg = button.attr('class');
-                button.removeClass('bg-green-600 bg-red-600').addClass('bg-yellow-500');
-                setTimeout(() => {
-                    button.attr('class', originalBg);
-                }, 1000);
             } else {
-                button.removeClass('vote-processing').html(originalText);
                 alert('Error: ' + (response.message || 'Vote failed'));
             }
         })
         .fail(function() {
-            button.removeClass('vote-processing').html(originalText);
             alert('Network error. Please try again.');
+        })
+        .always(function() {
+            $(element).removeClass('vote-processing');
         });
     }
 
     // Question voting
     $('#question-upvote').on('click', function() {
-        handleVote('vote_question', {
-            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
-            operation: 'upvote'
-        }, $(this));
+        handleVoteClick(this, 'vote_question');
     });
 
     $('#question-downvote').on('click', function() {
-        handleVote('vote_question', {
-            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
-            operation: 'downvote'
-        }, $(this));
+        handleVoteClick(this, 'vote_question');
     });
 
     // Answer voting
     $('.answer-upvote').on('click', function() {
         const answerId = $(this).data('answer-id');
-        handleVote('vote_answer', {
-            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
-            answer_id: answerId,
-            operation: 'upvote'
-        }, $(this));
+        handleVoteClick(this, 'vote_answer', { answer_id: answerId });
     });
 
     $('.answer-downvote').on('click', function() {
         const answerId = $(this).data('answer-id');
-        handleVote('vote_answer', {
-            question_id: '<?=htmlspecialchars($actualQuestionId);?>',
-            answer_id: answerId,
-            operation: 'downvote'
-        }, $(this));
+        handleVoteClick(this, 'vote_answer', { answer_id: answerId });
     });
 
-    // Question status buttons
-    $('#question-protect, #question-close, #question-reopen').on('click', function() {
-        const action = $(this).attr('id').replace('question-', '') + '_question';
-        const button = $(this);
-        const originalText = button.html();
-        
-        button.addClass('vote-processing').html('Processing...');
-        
-        $.post(window.location.href, {
-            ajax: true,
-            action: action,
-            question_id: '<?=htmlspecialchars($actualQuestionId);?>'
-        })
-        .done(function(response) {
-            if (response.success) {
-                location.reload(); // Reload to show new status
-            } else {
-                button.removeClass('vote-processing').html(originalText);
-                alert('Error: ' + (response.message || 'Action failed'));
-            }
-        })
-        .fail(function() {
-            button.removeClass('vote-processing').html(originalText);
-            alert('Network error. Please try again.');
-        });
+    // Question status changes
+    $('#question-protect').on('click', function() {
+        if (confirm('Are you sure you want to protect this question?')) {
+            const button = $(this);
+            button.text('Processing...').prop('disabled', true);
+            
+            $.post(window.location.href, {
+                ajax: true,
+                action: 'protect_question',
+                question_id: '<?=htmlspecialchars($actualQuestionId);?>'
+            })
+            .done(function(response) {
+                if (response.success) {
+                    alert(response.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + (response.message || 'Failed to protect question'));
+                }
+            })
+            .fail(function() {
+                alert('Network error. Please try again.');
+            })
+            .always(function() {
+                button.text('Protect').prop('disabled', false);
+            });
+        }
     });
 
-    // Update view count on page load (only once)
-    if (!sessionStorage.getItem('viewed_<?=htmlspecialchars($actualQuestionId);?>')) {
-        $.post(window.location.href, {
-            ajax: true,
-            action: 'update_view',
-            question_id: '<?=htmlspecialchars($actualQuestionId);?>'
-        })
-        .done(function(response) {
-            if (response.success) {
-                $('#question-views').text(response.views);
-                sessionStorage.setItem('viewed_<?=htmlspecialchars($actualQuestionId);?>', 'true');
-            }
-        });
-    }
+    $('#question-close').on('click', function() {
+        if (confirm('Are you sure you want to close this question?')) {
+            const button = $(this);
+            button.text('Processing...').prop('disabled', true);
+            
+            $.post(window.location.href, {
+                ajax: true,
+                action: 'close_question',
+                question_id: '<?=htmlspecialchars($actualQuestionId);?>'
+            })
+            .done(function(response) {
+                if (response.success) {
+                    alert(response.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + (response.message || 'Failed to close question'));
+                }
+            })
+            .fail(function() {
+                alert('Network error. Please try again.');
+            })
+            .always(function() {
+                button.text('Close').prop('disabled', false);
+            });
+        }
+    });
+
+    $('#question-reopen').on('click', function() {
+        if (confirm('Are you sure you want to reopen this question?')) {
+            const button = $(this);
+            button.text('Processing...').prop('disabled', true);
+            
+            $.post(window.location.href, {
+                ajax: true,
+                action: 'reopen_question',
+                question_id: '<?=htmlspecialchars($actualQuestionId);?>'
+            })
+            .done(function(response) {
+                if (response.success) {
+                    alert(response.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + (response.message || 'Failed to reopen question'));
+                }
+            })
+            .fail(function() {
+                alert('Network error. Please try again.');
+            })
+            .always(function() {
+                button.text('Reopen').prop('disabled', false);
+            });
+        }
+    });
+
+    // Update view count
+    $.post(window.location.href, {
+        ajax: true,
+        action: 'update_view',
+        question_id: '<?=htmlspecialchars($actualQuestionId);?>'
+    })
+    .done(function(response) {
+        if (response.success && response.views) {
+            $('#question-views').text(response.views);
+        }
+    });
+
+    // Close modals when clicking outside
+    $(document).on('click', function(e) {
+        if ($(e.target).is('#question-edit-modal')) {
+            $('#question-edit-modal').addClass('hidden');
+        }
+        if ($(e.target).is('#answer-edit-modal')) {
+            $('#answer-edit-modal').addClass('hidden');
+        }
+    });
 });
 </script>
 
