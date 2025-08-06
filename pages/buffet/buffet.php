@@ -1,30 +1,37 @@
 <?php
 session_start();
 
+
 require_once '../../api/key.php';
 require_once '../../api/api.php';
 include '../../levels/getUserLevel.php';
 include '../../levels/updateUserPoints.php';
 
+
 try {
     require_once '../../db.php';
+
 
     $pdo = new PDO($dsn, $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     ]);
 } catch (PDOException $e) {
-    $pdo = null; 
+    $pdo = null;
 }
 
+
 $api = new qOverflowAPI(API_KEY);
+
 
 $sort = $_GET['sort'] ?? 'recent';
 $currentPage = isset($_GET['page']) && intval($_GET['page']) > 0 ? intval($_GET['page']) : 1;
 $perPage = 10;
 $maxItems = 100;
 
+
 $match = [];
 $params = [];
+
 
 switch ($sort) {
     case 'best':
@@ -35,16 +42,18 @@ switch ($sort) {
         $match['answers'] = 0;
         break;
     case 'hottest':
-        $params['sort'] = 'uvac'; 
+        $params['sort'] = 'uvac';
         $match['hasAcceptedAnswer'] = false;
         break;
     default:
         break;
 }
 
+
 if (!empty($match)) {
     $params['match'] = json_encode($match);
 }
+
 
 // Posting a question
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -53,13 +62,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       $text = trim($_POST['text']);
       $username = $_SESSION['username'];
 
+
       $question = $api->createQuestion($username, $title, $text);
+
 
       if (isset($question['question']['question_id'])) {
           $questionId = $question['question']['question_id'];
 
+
           if (!empty($_POST['tags'])) {
               $tags = trim($_POST['tags']);
+
 
               try {
                   $stmt = $pdo->prepare("INSERT INTO question_tags (question_id, tags) VALUES (:qid, :tags)");
@@ -72,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
               }
           }
 
+
           updateUserPoints($username, 1);
           header("Location: buffet.php?sort=$sort&page=$currentPage");
           exit();
@@ -81,44 +95,57 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
   }
 }
 
+
 $all = [];
 $after = null;
 
+
 $totalPagesEstimate = ceil($maxItems / $perPage);
 
+
 $neededItems = $currentPage * $perPage;
+
 
 for ($page = 1; $page <= $totalPagesEstimate && count($all) < $neededItems; $page++) {
     if ($after !== null) {
         $params['after'] = $after;
     }
 
+
     $res = $api->searchQuestions($params);
     $batch = $res['questions'] ?? [];
 
+
     if (empty($batch)) break;
+
 
     $all = array_merge($all, $batch);
     $after = end($batch)['question_id'];
 }
 
+
 $startIndex = ($currentPage - 1) * $perPage;
 $questions = array_slice($all, $startIndex, $perPage);
 
+
 $totalCount = min(count($all), $maxItems);
 
+
 $totalPages = max(ceil($totalCount / $perPage), 1);
+
 
 if ($currentPage > $totalPages) {
     header("Location: buffet.php?sort=$sort&page=$totalPages");
     exit();
 }
 
+
 // User-friendly timestamp
 function format_relative_time($timestamp_ms) {
     $time = $timestamp_ms / 1000;
     $now = time();
     $diff = $now - $time;
+
 
     if ($diff < 60) return 'Just now';
     if ($diff < 3600) return floor($diff / 60) . ' minute' . (floor($diff / 60) == 1 ? '' : 's') . ' ago';
@@ -149,10 +176,11 @@ function format_relative_time($timestamp_ms) {
   </style>
 </head>
 
+
 <body class="min-h-screen font-sans flex flex-col">
   <!-- Including NavBar -->
   <div class="mb-6">
-    <?php 
+    <?php
       if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
         include '../../components/navBarLogOut.php';
       } else {
@@ -161,12 +189,13 @@ function format_relative_time($timestamp_ms) {
     ?>
   </div>
 
+
   <!-- Welcome + Ask Question/Login/Signup (Phone/Tablet View) -->
   <div class="md:hidden px-4 py-5 bg-gray-800 border border-gray-700 rounded-xl mx-4 my-4 shadow-md">
     <div class="flex justify-between items-center">
       <div class="text-3xl text-white font-semibold">
         <?php $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest'; ?>
-        Welcome 
+        Welcome
         <span class="text-blue-400 text-4xl block truncate max-w-[12rem] sm:max-w-[16rem]" title="<?= htmlspecialchars($username) ?>">
           <?= htmlspecialchars($username) ?>
         </span>
@@ -184,6 +213,7 @@ function format_relative_time($timestamp_ms) {
     </div>
   </div>
 
+
   <!-- Welcome + Ask Question/Login/Signup (Computer) View) -->
   <div class="flex-1 flex flex-col md:flex-row max-h-[84vh] w-full h-full px-5 md:px-5 gap-5 md:gap-5">
     <aside class="hidden md:flex w-80 bg-gray-800 rounded-2xl p-6 flex-col max-h-[calc(100vh-3rem)] sticky top-6 border border-gray-700">
@@ -197,6 +227,7 @@ function format_relative_time($timestamp_ms) {
         </div>
       </h1>
 
+
       <?php if (isset($_SESSION['username'])): ?>
         <button class="mt-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold transition duration-200 shadow-md" onclick="document.getElementById('modal').classList.remove('hidden')">Ask Question</button>
       <?php else: ?>
@@ -206,6 +237,7 @@ function format_relative_time($timestamp_ms) {
         </div>
       <?php endif; ?>
     </aside>
+
 
     <!-- Main content (Questions + Tabs) -->
     <main class="flex-1 flex flex-col overflow-y-auto hide-scrollbar">
@@ -227,10 +259,11 @@ function format_relative_time($timestamp_ms) {
           <?php endforeach; ?>
         </ul>
       </form>
-      
+     
       <div id="spinner" class="flex justify-center items-center py-20">
         <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
+
 
       <!-- Question Boxes -->
       <div id="question-list" class="space-y-6 hidden">
@@ -245,8 +278,10 @@ function format_relative_time($timestamp_ms) {
           $isClosed = $status == 'closed';
           $isProtected = $status == 'protected';
 
+
           $viewerLevel = isset($_SESSION['username']) ? getUserLevel($_SESSION['username'])['level'] : 0;
           $canAccessClosed = !$isClosed || $viewerLevel >= 7;
+
 
           $tags = null;
           if ($pdo) {
@@ -262,25 +297,30 @@ function format_relative_time($timestamp_ms) {
         ?>
         <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-gray-500 transition" data-id="<?= $q['question_id'] ?>">
           <div class="flex justify-between flex-wrap items-center gap-2">
-            <div class="flex flex-wrap items-center gap-2 max-w-[75%]">
-              <?php if ($canAccessClosed): ?>
-                <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words"
-                  href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>&questionId=<?= urlencode($q['question_id']) ?>">
-                  <?= htmlspecialchars($q['title']) ?>
-                </a>
-              <?php else: ?>
-                <span class="text-lg sm:text-xl font-semibold text-blue-400 break-words cursor-not-allowed" title="Closed - Level 7+ required">
-                  <?= htmlspecialchars($q['title']) ?>
-                </span>
-              <?php endif; ?>
+          <div class="flex flex-wrap items-center gap-2 max-w-[75%]">
+            <?php if ($canAccessClosed): ?>
+              <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words"
+                href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>&questionId=<?= urlencode($q['question_id']) ?>">
+                <?= htmlspecialchars($q['title']) ?>
+              </a>
+            <?php else: ?>
+              <span class="text-lg sm:text-xl font-semibold text-blue-400 break-words cursor-not-allowed" title="Closed - Level 7+ required">
+                <?= htmlspecialchars($q['title']) ?>
+              </span>
+            <?php endif; ?>
 
-              <?php if ($isClosed): ?>
-                <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Closed</span>
-              <?php endif; ?>
-              <?php if ($isProtected): ?>
-                <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Protected</span>
-              <?php endif; ?>
-            </div>
+
+            <?php if ($isClosed): ?>
+              <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Closed</span>
+            <?php endif; ?>
+            <?php if ($isProtected): ?>
+              <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Protected</span>
+            <?php endif; ?>
+            <?php if (!empty($q['hasAcceptedAnswer'])): ?>
+              <span class="text-xs border border-green-600 text-green-400 bg-gray-700 px-1 py-0.5 rounded-md">Answer Accepted</span>
+            <?php endif; ?>
+          </div>
+
 
             <div class="flex flex-wrap gap-1 items-center max-w-[24%] justify-end">
               <?php if ($tags && count($tags) > 0): ?>
@@ -295,7 +335,9 @@ function format_relative_time($timestamp_ms) {
             </div>
           </div>
 
+
           <div id="md-box-<?= $q['question_id'] ?>" class="mt-1 px-3 py-2 bg-gray-700 rounded-md text-white prose prose-invert max-w-full font-sans leading-relaxed text-sm sm:text-base break-words" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"></div>
+
 
           <div class="text-sm text-gray-400 flex flex-wrap gap-4 mt-2">
             <?php $upvotes = intval($q['upvotes'] ?? 0); $downvotes = intval($q['downvotes'] ?? 0); $votes = $upvotes - $downvotes; ?>
@@ -303,6 +345,7 @@ function format_relative_time($timestamp_ms) {
             <span class="answer-count"><?= intval($q['answers'] ?? 0) ?> answer<?= intval($q['answers'] ?? 0) == 1 ? '' : 's' ?></span>
             <span class="view-count"><?= intval($q['views'] ?? 0) ?> view<?= intval($q['views'] ?? 0) == 1 ? '' : 's' ?></span>
           </div>
+
 
           <div class="flex justify-between text-sm mt-2 text-gray-300 flex-wrap">
             <?php
@@ -327,7 +370,8 @@ function format_relative_time($timestamp_ms) {
           </div>
         </div>
         <?php endforeach; ?>
-        </div>
+      </div>
+
 
       <!-- Pagination -->
       <?php if ($totalCount > $perPage): ?>
@@ -348,6 +392,7 @@ function format_relative_time($timestamp_ms) {
       <?php endif; ?>
     </main>
   </div>
+
 
   <!-- Ask Question Modal -->
   <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 md:p-10 hidden z-[70] overflow-auto">
@@ -382,6 +427,7 @@ function format_relative_time($timestamp_ms) {
     </form>
   </div>
 
+
   <!-- Markdown Preview Modal -->
   <div id="previewModal" class="fixed inset-0 bg-black/30 flex items-center justify-center p-4 md:p-10 hidden z-[90] overflow-auto">
     <div class="bg-gray-800 w-full max-w-2xl p-6 md:p-8 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
@@ -393,6 +439,7 @@ function format_relative_time($timestamp_ms) {
     </div>
   </div>
 
+
   <script>
     // Markdown stuff
     function decodeHTMLEntities(text) {
@@ -401,6 +448,7 @@ function format_relative_time($timestamp_ms) {
       return textarea.value;
     }
 
+
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('[data-markdown]').forEach(el => {
         const rawMarkdown = decodeHTMLEntities(el.getAttribute('data-markdown') || '');
@@ -408,6 +456,7 @@ function format_relative_time($timestamp_ms) {
         el.innerHTML = DOMPurify.sanitize(html);
       });
     });
+
 
     // Preview markdown function
     function previewMarkdown() {
@@ -418,9 +467,11 @@ function format_relative_time($timestamp_ms) {
       document.getElementById('previewModal').classList.remove('hidden');
     }
 
+
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('spinner').classList.add('hidden');
       document.getElementById('question-list').classList.remove('hidden');
+
 
       const sortButtons = document.querySelectorAll('.sort-btn');
       sortButtons.forEach(button => {
@@ -429,9 +480,11 @@ function format_relative_time($timestamp_ms) {
       });
     });
 
+
     // Disable sort buttons
     document.addEventListener('DOMContentLoaded', () => {
       const sortButtons = document.querySelectorAll('form button[name="sort"]');
+
 
       sortButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -446,9 +499,11 @@ function format_relative_time($timestamp_ms) {
       });
     });
 
+
     // Disable pagination buttons
     document.addEventListener('DOMContentLoaded', () => {
       const paginationButtons = document.querySelectorAll('form button[name="page"]');
+
 
       paginationButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -462,12 +517,15 @@ function format_relative_time($timestamp_ms) {
       });
     });
 
+
     // Ajax - Update question info
     function updateQuestionStats() {
       const questionElements = document.querySelectorAll('#question-list [data-id]');
       const ids = Array.from(questionElements).map(el => el.getAttribute('data-id')).filter(Boolean);
 
+
       if (ids.length === 0) return;
+
 
       fetch(`../../api/getQuestionStats.php?ids=${ids.join(',')}&action=batch`)
         .then(res => res.text())
@@ -477,6 +535,7 @@ function format_relative_time($timestamp_ms) {
             ids.forEach(id => {
               const container = document.querySelector(`[data-id="${id}"]`);
               if (!container || !data[id]) return;
+
 
               container.querySelector('.view-count').textContent = `${data[id].views} view${data[id].views == 1 ? '' : 's'}`;
               const upvotes = data[id].upvotes || 0;
@@ -491,9 +550,11 @@ function format_relative_time($timestamp_ms) {
         });
     }
 
+
     document.addEventListener('DOMContentLoaded', () => {
       setInterval(updateQuestionStats, 10000);
     });
+
 
     function validateTags() {
       const tagsInput = document.getElementById('tagsInput');
@@ -502,16 +563,19 @@ function format_relative_time($timestamp_ms) {
       const askForm = document.getElementById('askForm');
       const postBtn = askForm?.querySelector('button[type="submit"]');
 
+
       if (!rawTags) {
         errorMsg.classList.add('hidden');
       } else {
         const tags = rawTags.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
+
 
         if (tags.length > 5) {
           errorMsg.textContent = 'Please enter no more than 5 tags.';
           errorMsg.classList.remove('hidden');
           return false;
         }
+
 
         const tagRegex = /^[a-z0-9]+$/;
         for (const tag of tags) {
@@ -526,11 +590,13 @@ function format_relative_time($timestamp_ms) {
         errorMsg.classList.add('hidden');
       }
 
+
       if (postBtn) {
         postBtn.disabled = true;
         postBtn.textContent = 'Posting...';
         postBtn.classList.add('opacity-50', 'cursor-not-allowed');
       }
+
 
       return true;
     }
