@@ -7,6 +7,15 @@ session_start();
 
 $api = new qOverflowAPI(API_KEY);
 
+<<<<<<< HEAD
+=======
+
+  $pramtags = isset($_GET['query']) ? trim($tags['tags']) : '';
+  //$searchTags = '';
+  //$searchTags = is_array($searchTags) ? reset($searchTags) : trim($searchTags);
+
+
+>>>>>>> a6231ad8b244d666f3f9a50eb0f50ae2944efada
 // Gets user input from URL
 $query = isset($_GET['query']) ? trim($_GET['query']) : '';
 $searchQuery = '';
@@ -27,8 +36,13 @@ $dateMatches = [];
 $titleMatches = [];
 $textMatches = [];
 $creatorMatches = [];
+$tagMatches = [];
 
+<<<<<<< HEAD
 // earch by date
+=======
+// Search by date
+>>>>>>> a6231ad8b244d666f3f9a50eb0f50ae2944efada
 try {
     if (!empty($datetime)) {
        $date = DateTime::createFromFormat('m/d/Y', $datetime, new DateTimeZone('UTC'));
@@ -62,7 +76,33 @@ try {
         }
     }
 
+<<<<<<< HEAD
     // Search by text, title, or creator
+=======
+    // Search by tags 
+    if (!empty($pramtags)) {
+        $tagList = array_filter(array_map('trim', explode(',', strtolower($pramtags))));
+
+        if (!empty($tagList)) {
+        $placeholders = implode(',', array_fill(0, count($tagList), '?'));
+        $sql = "SELECT * FROM questions WHERE tags && ARRAY[$placeholders]::text[] LIMIT 100";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($tagList);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($tagResults as $question) {
+        $tagMatches[] = [
+        'title' => $question['title'],
+        'creator' => $question['creator'] ?? 'Unknown',
+        'createdAt' => $question['createdAt'] ?? null,
+        'question_id' => $question['question_id'] ?? 'Unknown'
+                                ];
+                              }
+                            }
+                          }
+
+    // Search by text, title, creator
+>>>>>>> a6231ad8b244d666f3f9a50eb0f50ae2944efada
     if (!empty($searchQuery)) {
         $params = ['query' => $searchQuery];
         $results = $api->searchQuestions($params);
@@ -179,10 +219,21 @@ try {
         return ($b['createdAt'] ?? 0) <=> ($a['createdAt'] ?? 0);
     }
 
-    // Sort the matches
+    if (isset($question['tags']) && strpos(strtolower($question['text']), $searchQueryLower) !== false) {
+                                  $textMatches[] = [
+                                  'snippet' => $question['text'],
+                                  'title' => $question['title'],
+                                  'creator' => $question['creator'] ?? 'Unknown',
+                                  'createdAt' => $question['createdAt'] ?? null,
+                                  'question_id' => $subval['question_id'] ?? 'Unknown'
+                                ];
+                              }
+
+    // Sort the matches by date descending. Latest results appear first
     usort($titleMatches, 'sortByCreatedAtDesc');
     usort($textMatches, 'sortByCreatedAtDesc');
     usort($creatorMatches, 'sortByCreatedAtDesc');
+    usort($tagMatches, 'sortByCreatedAtDesc');
 
     ?>
     <!DOCTYPE html>
@@ -196,16 +247,15 @@ try {
       <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-900 text-white font-sans">
-
     <div class="mb-6">
+    
     <?php 
-   
+      // which navbar should be displayed
       if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
         include 'navBarLogOut.php';
       } else {
         include 'navBarLogIn.php';
-      }
-     
+      } 
     ?>
   </div>
     
@@ -321,11 +371,14 @@ try {
         </div>
       <?php endif; ?>
 
-
-      <?php if (!$titleMatches && !$textMatches && !$creatorMatches && !$dateMatches): ?>
+     
+      <?php 
+      // Fallback if no matches
+      if (!$titleMatches && !$textMatches && !$creatorMatches && !$dateMatches): ?>
         <div class="bg-gray-800 rounded-lg p-4 w-[500px] h-[100px] mx-auto text-center">
         <p class="mt-6 text-red-400">No matching results found.</p>
         </div>
+
       <?php endif; ?>
       <script>
           function decodeHTMLEntities(text) {
@@ -333,6 +386,7 @@ try {
             textarea.innerHTML = text;
             return textarea.value;
           }
+          // Markdown
           document.addEventListener('DOMContentLoaded', () => {
           document.querySelectorAll('[data-markdown]').forEach(el => {
               const rawMarkdown = decodeHTMLEntities(el.getAttribute('data-markdown') || '');
