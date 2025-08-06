@@ -80,8 +80,16 @@ $totalAnswerPages = ceil($totalAnswers / $answersPerPage);
 $startAnswerIndex = ($currentAnswerPage - 1) * $answersPerPage;
 $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerPage);
 
-// $accepted = $api->getAnswers($questionId);
-//$accepted = $api->getAnswers($JustUserAnswer);
+//$stmt = $pdo->prepare("SELECT username FROM user_badges WHERE username = $username");
+/*
+$query =  "SELECT badge_name FROM user_badges WHERE username = $username";
+echo "badge_name"
+*/
+/*
+$stmt = $pdo->prepare("SELECT badge_name FROM user_badges WHERE username = $username");
+$stmt->execute(['badge_name' => $badge]);
+echo $badge;
+*/
 ?>
 
 
