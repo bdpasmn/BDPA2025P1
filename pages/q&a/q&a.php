@@ -1309,6 +1309,15 @@ if ($isGuest) {
                 </div>
             </div>
         </div>
+        
+        <!-- Share Question Button -->
+        <div class="mb-4">
+            <button id="share-question" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors cursor-pointer" 
+                    data-question-id="<?=htmlspecialchars($actualQuestionId);?>"
+                    title="Share this question">
+                📤 Share Question
+            </button>
+        </div>
 
         <h1 class="text-white text-3xl font-bold mb-5 text-wrap"><?=htmlspecialchars($question['title'] ?? 'Untitled Question');?></h1>
 
@@ -1434,6 +1443,16 @@ if ($isGuest) {
                         <span class="level-badge level-<?=$answererLevel;?>">Level <?=$answererLevel;?></span>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Share Answer Button -->
+            <div class="mb-4">
+                <button class="share-answer bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors cursor-pointer" 
+                        data-question-id="<?=htmlspecialchars($actualQuestionId);?>"
+                        data-answer-id="<?=htmlspecialchars($answerId);?>"
+                        title="Share this answer">
+                    📤 Share Answer
+                </button>
             </div>
 
             <div class="prose prose-invert bg-gray-700 p-6 rounded-lg mb-6 leading-relaxed text-gray-300 shadow-inner text-wrap code-wrap">
@@ -1995,110 +2014,77 @@ $(document).ready(function() {
         handleVoteClick(this, 'vote_answer', { answer_id: answerId });
     });
 
-    // Question status changes
-    $('#question-protect').on('click', function() {
-        if (confirm('Are you sure you want to protect this question?')) {
-            const button = $(this);
-            button.text('Processing...').prop('disabled', true);
-            
-            $.post(window.location.href, {
-                ajax: true,
-                action: 'protect_question',
-                question_id: '<?=htmlspecialchars($actualQuestionId);?>'
-            })
-            .done(function(response) {
-                if (response.success) {
-                    alert(response.message);
-                    location.reload();
-                } else {
-                    alert('Error: ' + (response.message || 'Failed to protect question'));
-                }
-            })
-            .fail(function() {
-                alert('Network error. Please try again.');
-            })
-            .always(function() {
-                button.text('Protect').prop('disabled', false);
-            });
-        }
+    // Question status buttons
+    $('#question-protect, #question-close, #question-reopen').on('click', function() {
+        const action = $(this).attr('id').replace('question-', '') + '_question';
+        const button = $(this);
+        const originalText = button.html();
+        
+        button.addClass('vote-processing').html('Processing...');
+        
+        $.post(window.location.href, {
+            ajax: true,
+            action: action,
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>'
+        })
+        .done(function(response) {
+            if (response.success) {
+                location.reload(); // Reload to show new status
+            } else {
+                button.removeClass('vote-processing').html(originalText);
+                alert('Error: ' + (response.message || 'Action failed'));
+            }
+        })
+        .fail(function() {
+            button.removeClass('vote-processing').html(originalText);
+            alert('Network error. Please try again.');
+        });
     });
 
-    $('#question-close').on('click', function() {
-        if (confirm('Are you sure you want to close this question?')) {
-            const button = $(this);
-            button.text('Processing...').prop('disabled', true);
-            
-            $.post(window.location.href, {
-                ajax: true,
-                action: 'close_question',
-                question_id: '<?=htmlspecialchars($actualQuestionId);?>'
-            })
-            .done(function(response) {
-                if (response.success) {
-                    alert(response.message);
-                    location.reload();
-                } else {
-                    alert('Error: ' + (response.message || 'Failed to close question'));
-                }
-            })
-            .fail(function() {
-                alert('Network error. Please try again.');
-            })
-            .always(function() {
-                button.text('Close').prop('disabled', false);
-            });
-        }
-    });
-
-    $('#question-reopen').on('click', function() {
-        if (confirm('Are you sure you want to reopen this question?')) {
-            const button = $(this);
-            button.text('Processing...').prop('disabled', true);
-            
-            $.post(window.location.href, {
-                ajax: true,
-                action: 'reopen_question',
-                question_id: '<?=htmlspecialchars($actualQuestionId);?>'
-            })
-            .done(function(response) {
-                if (response.success) {
-                    alert(response.message);
-                    location.reload();
-                } else {
-                    alert('Error: ' + (response.message || 'Failed to reopen question'));
-                }
-            })
-            .fail(function() {
-                alert('Network error. Please try again.');
-            })
-            .always(function() {
-                button.text('Reopen').prop('disabled', false);
-            });
-        }
-    });
-
-    // Update view count
-    $.post(window.location.href, {
-        ajax: true,
-        action: 'update_view',
-        question_id: '<?=htmlspecialchars($actualQuestionId);?>'
-    })
-    .done(function(response) {
-        if (response.success && response.views) {
-            $('#question-views').text(response.views);
-        }
-    });
-
-    // Close modals when clicking outside
-    $(document).on('click', function(e) {
-        if ($(e.target).is('#question-edit-modal')) {
-            $('#question-edit-modal').addClass('hidden');
-        }
-        if ($(e.target).is('#answer-edit-modal')) {
-            $('#answer-edit-modal').addClass('hidden');
-        }
-    });
+    // Update view count on page load (only once)
+    if (!sessionStorage.getItem('viewed_<?=htmlspecialchars($actualQuestionId);?>')) {
+        $.post(window.location.href, {
+            ajax: true,
+            action: 'update_view',
+            question_id: '<?=htmlspecialchars($actualQuestionId);?>'
+        })
+        .done(function(response) {
+            if (response.success) {
+                $('#question-views').text(response.views);
+                sessionStorage.setItem('viewed_<?=htmlspecialchars($actualQuestionId);?>', 'true');
+            }
+        });
+    }
 });
+// Simple share functionality
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            alert('Link copied to clipboard!');
+        }).catch(function() {
+            // Fallback
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('Link copied to clipboard!');
+        });
+    }
+
+    // Share buttons
+    $('#share-question').on('click', function() {
+        const questionId = $(this).data('question-id');
+        const shareUrl = window.location.origin + '/pages/q&a/q&a.php?questionName=' + encodeURIComponent(questionId);
+        copyToClipboard(shareUrl);
+    });
+
+    $('.share-answer').on('click', function() {
+        const questionId = $(this).data('question-id');
+        const answerId = $(this).data('answer-id');
+        const shareUrl = window.location.origin + '/pages/q&a/q&a.php?questionName=' + encodeURIComponent(questionId) + '#answer-' + answerId;
+        copyToClipboard(shareUrl);
+    });
 </script>
 
 </body>
