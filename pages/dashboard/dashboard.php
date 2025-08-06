@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <?php
+  //DASH
   session_start();
 
   require_once '../../Api/api.php';
@@ -80,8 +81,25 @@ $totalAnswerPages = ceil($totalAnswers / $answersPerPage);
 $startAnswerIndex = ($currentAnswerPage - 1) * $answersPerPage;
 $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerPage);
 
+//$stmt = $pdo->prepare("SELECT username FROM user_badges WHERE username = $username");
+/*
+$query =  "SELECT badge_name FROM user_badges WHERE username = $username";
+echo "badge_name"
+*/
+/*
+$stmt = $pdo->prepare("SELECT badge_name FROM user_badges WHERE username = $username");
+$stmt->execute(['badge_name' => $badge]);
+echo $badge;
+*/
 
-  ?>
+//$stmt = $pdo->prepare("SELECT badge_name FROM user_badges WHERE username = $username");
+
+
+$stmt = $pdo->prepare("SELECT badge_name, tier FROM user_badges WHERE username = ?");
+$column_values = $stmt->fetchAll(PDO::FETCH_COLUMN);
+$stmt->execute([$username]);
+$badges = $stmt->fetchAll(PDO::FETCH_ASSOC);
+?>
 
 
 <head>
@@ -132,6 +150,10 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
      <button onclick="showAnswers()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm">
         Answers
       </button>
+
+      <button onclick="showBadges()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm">
+        Badges
+      </button>
     </div>
     
     
@@ -139,15 +161,37 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 px-4 sm:px-6 lg:px-10" id="questions">
     <?php if (!empty($JustUserQuestions)): ?> <!-- Check if there are user questions -->
-      <?php foreach ($paginatedQuestions as $UserQuestion): ?> <!-- Loop through each paginated user question for that page-->
+      <?php foreach ($paginatedQuestions as $UserQuestion):
+          $tags = null;
+          if ($pdo) {
+            $stmt = $pdo->prepare("SELECT tags FROM question_tags WHERE question_id = :qid LIMIT 1");
+            $stmt->execute([':qid' => $UserQuestion['question_id']]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty(trim($row['tags']))) {
+              $tags = explode(',', $row['tags']);
+              //$tags = array_map('trim', $tags);
+              //$tags = array_filter($tags, fn($tag) => $tag !== '');
+            }
+          }
+        ?> <!-- Loop through each paginated user question for that page-->
         <a href="../q&a/q&a.php?questionName=<?= urlencode($UserQuestion['title']) ?>&questionId=<?= urlencode($UserQuestion['question_id']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700 "> <!-- got rid of w-[300px] in the div class -->
         <p class="text-l font-semibold text-blue-400">QUESTION TITLE:</p>
           <p class="mt-2 text-sm hover:underline block truncate"><?php echo htmlspecialchars($UserQuestion['title']); ?></p> <!-- Display question title -->
-         
-         
-           <p class="mt-4 text-sm">VOTES:  <?php $Questionupvotes = intval($UserQuestion['upvotes'] ?? 0); $Questiondownvotes = intval($UserQuestion['downvotes'] ?? 0); $Questionvotes = $Questionupvotes - $Questiondownvotes;   echo $Questionvotes; ?> </p>
-        
+          <div class="mt-4 flex items-center space-x-4">
+          <p class="text-sm">VOTES:  <?php $Questionupvotes = intval($UserQuestion['upvotes'] ?? 0); $Questiondownvotes = intval($UserQuestion['downvotes'] ?? 0); $Questionvotes = $Questionupvotes - $Questiondownvotes;   echo $Questionvotes; ?> </p>
+           <div class="space-x-1">
+              <?php if ($tags && count($tags) > 0): ?>
+                <?php foreach ($tags as $tag): ?>
+                  <span class="text-xs text-gray-200 bg-gray-700 px-2 py-0.5 rounded-md border border-gray-600 truncate max-w-full" title="<?= htmlspecialchars($tag) ?>">
+                    <?= htmlspecialchars($tag) ?>
+                  </span>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <!-- Nothing if no tags -->
+              <?php endif; ?>
+            </div>
+          </div>
         </div>
         </a>
       <?php endforeach; ?>
@@ -182,15 +226,33 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
           $rawMarkdown = $UserAnswer['text'] ?? '';
           $questionInfo =  $api->getQuestion($UserAnswer['question_id']);
           $questionName = $questionInfo['question']['title'];
+          $answerId = $UserAnswer['answer_id'] ?? '';
+          $accepted = $UserAnswer['accepted'] ?? false;
           ?>
         <a href="/pages/q&a/q&a.php?questionName=<?=urlencode($questionName)?>&questionId=<?= urlencode($UserAnswer['question_id']) ?>">
         <div class="bg-gray-800 rounded-lg p-6 flex flex-col shadow-md border border-gray-700"> <!-- got rid of w-[300px] in the div class -->
           <p class="text-l font-semibold text-blue-400">ANSWER:</p>
       <div class="mt-2 text-sm hover:underline block"  style="display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;" data-markdown="<?= htmlspecialchars($rawMarkdown, ENT_QUOTES) ?>"> <?php echo htmlspecialchars($UserAnswer['text']); ?> </div> <!-- Display question title -->
-       <p class="mt-4 text-sm">VOTES:  <?php $Answerupvotes = intval($UserAnswer['upvotes'] ?? 0); $Answerdownvotes = intval($UserAnswer['downvotes'] ?? 0); $Answervotes = $Answerupvotes - $Answerdownvotes;   echo $Answervotes; ?> </p>
+       
+
+      <div class="mt-4 flex items-center space-x-4">
+        <p class="text-sm">VOTES:  <?php $Answerupvotes = intval($UserAnswer['upvotes'] ?? 0); $Answerdownvotes = intval($UserAnswer['downvotes'] ?? 0); $Answervotes = $Answerupvotes - $Answerdownvotes;   echo $Answervotes; ?> </p>
+        <div id="answer-<?=$answerId;?>" class="bg-gray-800 rounded-lg <?= $accepted ? : ''; ?>">
+              <?php if ($accepted): ?>
+                  <div class="bg-green-600 text-white rounded text-xs w-[90px] h-4 text-center ">
+                      Accepted
+                  </div>
+                <?php else: ?>
+                  <div class="bg-red-600 text-white  rounded text-xs w-[100px] h-4 text-center">
+                    Not Accepted
+                  </div>
+              <?php endif; ?>
         </div>
+      </div>
+    </div>
         </a>
       <?php endforeach; ?>
+
     <?php else: ?>
       <p class="text-gray-400">You haven't posted any answers yet.</p><!-- Display message if no answers found --> 
     <?php endif; ?>
@@ -217,6 +279,46 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
 
   <?php endif; ?>
 
+    <div class="hidden bg-gray-800 rounded-lg mx-10 mt-10 p-6  shadow-md flex-wrap border border-gray-700"id="badges">
+      <?php if (empty($badges)): ?>
+          <p class="text-gray-400" >No badges earned yet.</p>
+          <br>
+          <p class = "text-xl font-semibold">All Possible Bages:<?//php htmlspecialchars($badges) ?> </p> 
+          <div class="mt-4 flex items-center space-x-4 bg-yellow-500 rounded w-[500px]">  
+          <p class="text-xl"> 🥇</p>
+          <p>"Great Question"</p>
+          <p>"Great Answer"</p>
+          <p>"Socratic"</p> 
+          <p>"Zombie"</p> 
+          </div>
+          <br>
+          <div class="mt-4 flex items-center space-x-4 bg-gray-400 rounded w-[500px]"> 
+          <p class="text-xl">🥈</p>
+          <p>"Good Question"</p>
+          <p>"Good Answer"</p>
+          <p>"Inquisitive"</p>
+          <p>"Protected"</p>
+          </div>
+          <br>
+          <div class="mt-4 flex items-center space-x-4 bg-yellow-800 rounded w-[500px]"> 
+          <p class="text-xl">🥉</p>
+          <p>"Nice Question"</p>
+          <p>"Nice Answer"</p>
+          <p>"Curious"</p>
+          <p>"Scholar"</p>
+          </div>
+      <?php else: ?>
+        <h2 class="text-xl font-semibold">Badges Earned</h2>
+          <ul>
+              <?php foreach ($badges as $badge): ?>
+                  <li>
+                      <?= htmlspecialchars($badge['badge_name']) ?> - <?= htmlspecialchars($badge['tier']) ?>
+                      <p> Possible Bages:<?php htmlspecialchars($badge) ?> </p>
+                  </li>
+              <?php endforeach; ?>
+          </ul>
+      <?php endif; ?>
+</div>
 
   <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
     <div class="bg-gray-800 p-6 rounded-lg w-96">
@@ -331,6 +433,7 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
   function showQuestions() { //function to show questions
   document.getElementById("questions").classList.remove("hidden"); // show the questions section
   document.getElementById("answers").classList.add("hidden");// hide the answers section
+  document.getElementById("badges").classList.add("hidden");
 
   const questionPagination = document.getElementById("questionPagination");
   const answerPagination = document.getElementById("answerPagination");
@@ -340,14 +443,24 @@ $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerP
   }
 
   function showAnswers() { //function to show answers
-  document.getElementById("questions").classList.add("hidden");//show the questions section
-  document.getElementById("answers").classList.remove("hidden");//hide the answers section
+  document.getElementById("questions").classList.add("hidden");//show the answers section
+  document.getElementById("badges").classList.add("hidden");
+  document.getElementById("answers").classList.remove("hidden");//hide the questions section
 
   const questionPagination = document.getElementById("questionPagination");
   const answerPagination = document.getElementById("answerPagination");
 
   if (questionPagination) questionPagination.classList.add("hidden");
   if (answerPagination) answerPagination.classList.remove("hidden");
+  }
+
+  function showBadges() { //function to show answers
+  document.getElementById("badges").classList.remove("hidden");
+  document.getElementById("questions").classList.add("hidden");//show the badges section
+  document.getElementById("answers").classList.add("hidden");//hide the answers section
+
+  if (questionPagination) questionPagination.classList.add("hidden");
+  if (answerPagination) answerPagination.classList.add("hidden");
   }
 
 //deleting account modal 
