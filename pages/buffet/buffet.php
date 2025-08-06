@@ -311,10 +311,10 @@ function format_relative_time($timestamp_ms) {
 
 
             <?php if ($isClosed): ?>
-              <span class="text-xs border border-gray-600 text-gray-300 bg-gray-700 text-white px-1 py-0.5 rounded-md">Closed</span>
+              <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Closed</span>
             <?php endif; ?>
             <?php if ($isProtected): ?>
-              <span class="text-xs border border-gray-600 text-gray-300 bg-gray-700 text-white px-1 py-0.5 rounded-md">Protected</span>
+              <span class="text-xs border border-gray-600 text-gray-400 bg-gray-700 text-white px-1 py-0.5 rounded-md">Protected</span>
             <?php endif; ?>
             <?php if (!empty($q['hasAcceptedAnswer'])): ?>
               <span class="text-xs border border-green-600 text-green-400 bg-gray-700 px-1 py-0.5 rounded-md">Answer Accepted</span>

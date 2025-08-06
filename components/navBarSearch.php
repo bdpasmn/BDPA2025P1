@@ -7,15 +7,12 @@ session_start();
 
 $api = new qOverflowAPI(API_KEY);
 
-<<<<<<< HEAD
-=======
 
   $pramtags = isset($_GET['query']) ? trim($tags['tags']) : '';
   //$searchTags = '';
   //$searchTags = is_array($searchTags) ? reset($searchTags) : trim($searchTags);
 
 
->>>>>>> a6231ad8b244d666f3f9a50eb0f50ae2944efada
 // Gets user input from URL
 $query = isset($_GET['query']) ? trim($_GET['query']) : '';
 $searchQuery = '';
@@ -38,11 +35,7 @@ $textMatches = [];
 $creatorMatches = [];
 $tagMatches = [];
 
-<<<<<<< HEAD
-// earch by date
-=======
 // Search by date
->>>>>>> a6231ad8b244d666f3f9a50eb0f50ae2944efada
 try {
     if (!empty($datetime)) {
        $date = DateTime::createFromFormat('m/d/Y', $datetime, new DateTimeZone('UTC'));
@@ -76,9 +69,6 @@ try {
         }
     }
 
-<<<<<<< HEAD
-    // Search by text, title, or creator
-=======
     // Search by tags 
     if (!empty($pramtags)) {
         $tagList = array_filter(array_map('trim', explode(',', strtolower($pramtags))));
@@ -102,7 +92,6 @@ try {
                           }
 
     // Search by text, title, creator
->>>>>>> a6231ad8b244d666f3f9a50eb0f50ae2944efada
     if (!empty($searchQuery)) {
         $params = ['query' => $searchQuery];
         $results = $api->searchQuestions($params);
@@ -328,6 +317,8 @@ try {
         <?php foreach ($creatorMatches as $match): ?>
           <li>
           <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
+            <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
+          <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
             <?= htmlspecialchars($match['title']) ?>
             <br>
             <div class="flex justify-between mt-2">
@@ -354,7 +345,7 @@ try {
         <?php foreach ($dateMatches as $match): ?>
           <li>
           <a  href="../pages/q&a/q&a.php?questionName=<?= urlencode($match['title']) ?>&questionId=<?= urlencode($match['question_id']) ?>" class="block px-4 py-2 rounded-md bg-gray-700 hover:bg-blue-600 transition hover:underline block break-words">
-            <?= htmlspecialchars($match['title']) ?>
+            <?= htmlspecialchars($match['title']) ?> - made by <?= htmlspecialchars($match['creator']) ?>
             <br>
             <div class="flex justify-between mt-2">
             <small class="text-gray-400">Created on:
