@@ -240,7 +240,7 @@ $badges = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div id="answer-<?=$answerId;?>" class="bg-gray-800 rounded-lg <?= $accepted ? : ''; ?>">
               <?php if ($accepted): ?>
                   <div class="bg-green-600 text-white rounded text-xs w-[90px] h-4 text-center ">
-                      Accepted
+                    Accepted
                   </div>
                 <?php else: ?>
                   <div class="bg-red-600 text-white  rounded text-xs w-[100px] h-4 text-center">
@@ -313,10 +313,34 @@ $badges = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <?php foreach ($badges as $badge): ?>
                   <li>
                       <?= htmlspecialchars($badge['badge_name']) ?> - <?= htmlspecialchars($badge['tier']) ?>
-                      <p> Possible Bages:<?php htmlspecialchars($badge) ?> </p>
                   </li>
               <?php endforeach; ?>
           </ul>
+          <br>
+          <p class = "text-xl font-semibold">All Possible Bages:<?//php htmlspecialchars($badges) ?> </p> 
+          <div class="mt-4 flex items-center space-x-4 bg-yellow-500 rounded w-[500px]">  
+          <p class="text-xl"> 🥇</p>
+          <p>"Great Question"</p>
+          <p>"Great Answer"</p>
+          <p>"Socratic"</p> 
+          <p>"Zombie"</p> 
+          </div>
+          <br>
+          <div class="mt-4 flex items-center space-x-4 bg-gray-400 rounded w-[500px]"> 
+          <p class="text-xl">🥈</p>
+          <p>"Good Question"</p>
+          <p>"Good Answer"</p>
+          <p>"Inquisitive"</p>
+          <p>"Protected"</p>
+          </div>
+          <br>
+          <div class="mt-4 flex items-center space-x-4 bg-yellow-800 rounded w-[500px]"> 
+          <p class="text-xl">🥉</p>
+          <p>"Nice Question"</p>
+          <p>"Nice Answer"</p>
+          <p>"Curious"</p>
+          <p>"Scholar"</p>
+          </div>
       <?php endif; ?>
 </div>
 
