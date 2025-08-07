@@ -28,20 +28,40 @@ if (isset($_SESSION['username'])) {
     }
 }
 
-  // Gravatar
-  if ($pdo) {
-      $stmt = $pdo->prepare("SELECT email FROM users WHERE username = :username LIMIT 1");
-      $stmt->execute(['username' => ($_SESSION['username'])]);
-      $row = $stmt->fetch(PDO::FETCH_ASSOC);
-      if ($row && !empty($row['email'])) {
-          $email = trim(strtolower($row['email']));
-      }
-  }
-  
+// Gravatar
+if ($pdo) {
+    $stmt = $pdo->prepare("SELECT email FROM users WHERE username = :username LIMIT 1");
+    $stmt->execute(['username' => ($_SESSION['username'])]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row && !empty($row['email'])) {
+        $email = trim(strtolower($row['email']));
+    }
+}
+
 // Generate a hashed email for Gravatar
 $hashedEmail = md5($email);
 $gravatarUrl = "https://www.gravatar.com/avatar/$hashedEmail?d=identicon";
 $levelInfo = getUserLevel($_SESSION['username']);
+
+// Fetch badge counts grouped by tier for the logged-in user
+$badgeCounts = ['gold' => 0, 'silver' => 0, 'bronze' => 0];
+if (isset($_SESSION['username'])) {
+    $stmt = $pdo->prepare("
+        SELECT tier, COUNT(*) AS count
+        FROM user_badges
+        WHERE username = ?
+        GROUP BY tier
+    ");
+    $stmt->execute([$_SESSION['username']]);
+    $rawCounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rawCounts as $row) {
+        $tier = strtolower($row['tier']);
+        if (isset($badgeCounts[$tier])) {
+            $badgeCounts[$tier] = (int)$row['count'];
+        }
+    }
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -152,11 +172,16 @@ $levelInfo = getUserLevel($_SESSION['username']);
       
   <div class="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
   <div class="flex items-center gap-4">
+    
+  <!-- Badges Count Display -->
+  <div class="flex flex-col text-blue-400 text-sm font-semibold sm:items-start mt-1">
+    <?= $badgeCounts['gold'] ?> Gold 🥇|  <?= $badgeCounts['silver'] ?> Silver 🥈| <?= $badgeCounts['bronze'] ?> Bronze 🥉
+  </div>
 
   <!-- Points and Level -->
   <div class="flex flex-col text-blue-400 text-sm font-semibold sm:items-start">
-    <span>Points: <span class="text-blue-400"><?php echo htmlspecialchars($_SESSION['points']); ?></span></span>
     <span>Level: <span class="text-blue-400"><?php echo htmlspecialchars($levelInfo['level']); ?></span></span>
+    <span>Points: <span class="text-blue-400"><?php echo htmlspecialchars($_SESSION['points']); ?></span></span>
   </div>
 
  <!-- Moblie profile image -->
