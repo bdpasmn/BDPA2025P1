@@ -296,13 +296,11 @@ function format_relative_time($timestamp_ms) {
           }
         ?>
         <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-gray-500 transition" data-id="<?= $q['question_id'] ?>">
-          <div class="flex flex-wrap items-center gap-2">
-            <?php if ($isClosed): ?>
-              <span class="text-lg sm:text-xl font-semibold text-blue-400 break-words cursor-not-allowed">
-                <?= htmlspecialchars($q['title']) ?>
-              </span>
-            <?php else: ?>
-              <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words" href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>&questionId=<?= urlencode($q['question_id']) ?>">
+          <div class="flex justify-between flex-wrap items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2 max-w-[75%]">
+            <?php if ($canAccessClosed): ?>
+              <a class="text-lg sm:text-xl font-semibold text-blue-400 hover:underline break-words"
+                href="../q&a/q&a.php?questionName=<?= urlencode($q['title']) ?>&questionId=<?= urlencode($q['question_id']) ?>">
                 <?= htmlspecialchars($q['title']) ?>
               </a>
             <?php else: ?>
