@@ -2,6 +2,7 @@
 
 require_once(__DIR__ . '/../db.php'); 
 require_once(__DIR__ . '/../levels/getUserLevel.php'); 
+require_once(__DIR__ . '/../badges/updateBadges.php');
 
 // Defult values for unauthoterized users
 $points = 1;
@@ -9,6 +10,9 @@ $level = 1;
 $email = '';
 
 if (isset($_SESSION['username'])) {
+
+  updateBadges($_SESSION['username']);
+
     try {
         $pdo = new PDO($dsn, $user, $pass, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
