@@ -81,19 +81,7 @@ $totalAnswerPages = ceil($totalAnswers / $answersPerPage);
 $startAnswerIndex = ($currentAnswerPage - 1) * $answersPerPage;
 $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerPage);
 
-//$stmt = $pdo->prepare("SELECT username FROM user_badges WHERE username = $username");
-/*
-$query =  "SELECT badge_name FROM user_badges WHERE username = $username";
-echo "badge_name"
-*/
-/*
-$stmt = $pdo->prepare("SELECT badge_name FROM user_badges WHERE username = $username");
-$stmt->execute(['badge_name' => $badge]);
-echo $badge;
-*/
-
-//$stmt = $pdo->prepare("SELECT badge_name FROM user_badges WHERE username = $username");
-
+//badges
 $allPossibleBadges = [
     ['badge_name' => 'Great Question', 'tier' => 'gold'],
     ['badge_name' => 'Great Answer', 'tier' => 'gold'],
