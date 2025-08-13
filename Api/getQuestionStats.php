@@ -28,6 +28,7 @@ if ($action == 'batch') {
         } catch (Exception $e) {
             continue; 
         }
+        sleep(0.5);
     }
 
     echo json_encode($result);
