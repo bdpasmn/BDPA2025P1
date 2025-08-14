@@ -87,8 +87,8 @@
             }
         }        
 
-        $insertStmt = $pdo->prepare("INSERT INTO user_badges (username, badge_name, tier) VALUES (?, ?, ?)");
         foreach ($newBadges as $badge) {
+            $insertStmt = $pdo->prepare("INSERT INTO user_badges (username, badge_name, tier) VALUES (?, ?, ?)");
             $insertStmt->execute([$username, $badge['badge_name'], $badge['tier']]);
         }
 

@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['CONTENT_TYPE']) && 
                 require_once __DIR__ . '/../../db.php';
                 $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
                 
-                // Use PostgreSQL's ON CONFLICT instead of MySQL's ON DUPLICATE KEY UPDATE
+                // Use PostgreSQL
                 $stmt = $pdo->prepare("INSERT INTO mail_status (message_id, recipient, is_read, read_at) 
                                       VALUES (?, ?, TRUE, NOW()) 
                                       ON CONFLICT (message_id, recipient) 
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['CONTENT_TYPE']) && 
 }
 
 // Handle sending a new message
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_SERVER['CONTENT_TYPE'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_SERVER['CONTENT_TYPE']) || strpos($_SERVER['CONTENT_TYPE'], 'application/json') === false)) {
     $recipient = trim($_POST['recipient'] ?? '');
     $subject = trim($_POST['subject'] ?? '');
     $body = trim($_POST['body'] ?? '');
