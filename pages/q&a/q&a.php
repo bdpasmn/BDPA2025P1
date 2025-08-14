@@ -133,7 +133,7 @@ function canPerformAction($action, $userLevel, $userPoints, $isGuest) {
         case 'protect_vote': return $userLevel >= 6;
         case 'edit_vote': return $userLevel >= 7; // Level 7 (2,000 points) for edit voting
         case 'close_reopen_vote': return $userLevel >= 8; // Bumped up by 1
-        case 'add_bounty': return $userLevel >= 9 && $userPoints >= 75; // New level 9 for bounties
+        case 'add_bounty': return $userLevel >= 4 && $userPoints >= 75; // New level 9 for bounties
         default: return false;
     }
 }
@@ -942,7 +942,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
 
             case 'add_bounty':
                 if (!canPerformAction('add_bounty', $userLevel, $userPoints, $isGuest)) {
-                    throw new Exception("You need level 9 and at least 75 points to add bounties");
+                    throw new Exception("You need level 4 and at least 75 points to add bounties");
                 }
 
                 $amount = intval($_POST['bounty_amount'] ?? 0);
@@ -1653,50 +1653,42 @@ if ($isGuest) {
 <?php endif; ?>
 
         <!-- Question Comments -->
-        <?php if (!empty($questionComments)): ?>
-        <div class="mt-6 bg-gray-700 rounded-lg p-4">
-            <h3 class="text-lg font-semibold mb-4 text-white">Comments</h3>
-            <?php foreach ($questionComments as $comment): ?>
-                <?php 
-                $cid = $comment['comment_id'] ?? '';
-                $commenterData = getUserLevelAndPoints($comment['creator'] ?? '');
-                $commenterLevel = $commenterData['level'];
-                $commenterEmail = getUserEmail($comment['creator'] ?? '');
-                ?>
-                <div id="question-comment-<?=$cid;?>" class="mb-4 pb-4 border-b border-gray-600 last:border-b-0">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="user-info">
-                            <img src="<?=getGravatarUrl($commenterEmail, 24);?>" alt="<?=htmlspecialchars($comment['creator'] ?? 'Unknown');?>" class="gravatar w-6 h-6 rounded-full" />
-                            <div>
-                                <strong class="text-wrap"><?=htmlspecialchars($comment['creator'] ?? 'Unknown');?></strong>
-                                <span class="level-badge level-<?=$commenterLevel;?>">Level <?=$commenterLevel;?></span>
+                    <?php if (!empty($questionComments)): ?>
+            <div class="mt-6 bg-gray-700 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-4 text-white">Comments</h3>
+                <?php foreach ($questionComments as $comment): ?>
+                    <?php 
+                    $cid = $comment['comment_id'] ?? '';
+                    $commenterData = getUserLevelAndPoints($comment['creator'] ?? '');
+                    $commenterLevel = $commenterData['level'];
+                    $commenterEmail = getUserEmail($comment['creator'] ?? '');
+                    ?>
+                    <div id="question-comment-<?=$cid;?>" class="mb-4 pb-4 border-b border-gray-600 last:border-b-0">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="user-info">
+                                <img src="<?=getGravatarUrl($commenterEmail, 24);?>" alt="<?=htmlspecialchars($comment['creator'] ?? 'Unknown');?>" class="gravatar w-6 h-6 rounded-full" />
+                                <div>
+                                    <strong class="text-wrap"><?=htmlspecialchars($comment['creator'] ?? 'Unknown');?></strong>
+                                    <span class="level-badge level-<?=$commenterLevel;?>">Level <?=$commenterLevel;?></span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs text-gray-400"><?=formatDate($comment['createdAt'] ?? time());?></span>
-                            <span class="text-xs text-gray-400">Points: <span class="question-comment-votes" data-comment-id="<?=$cid;?>"><?=intval(($comment['upvotes'] ?? 0) - ($comment['downvotes'] ?? 0));?></span></span>
-                        </div>
-                                        <span class="text-xs text-gray-400">Points: <span class="question-comment-votes" data-comment-id="<?=$cid;?>"><?=intval(($comment['upvotes'] ?? 0) - ($comment['downvotes'] ?? 0));?></span></span>
-                                <div class="flex items-center space-x-2">
+                            <div class="flex items-center space-x-2">
                                 <span class="text-xs text-gray-400"><?=formatDate($comment['createdAt'] ?? time());?></span>
                                 <span class="text-xs text-gray-400">Points: <span class="question-comment-votes" data-comment-id="<?=$cid;?>"><?=intval(($comment['upvotes'] ?? 0) - ($comment['downvotes'] ?? 0));?></span></span>
                                 <?php if (!$isGuest && canPerformAction('upvote', $userLevel, $userPoints, $isGuest)): ?>
-                                    <button class="question-comment-upvote vote-button bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
-                                        data-comment-id="<?=$cid;?>"
-                                        title="Upvote Comment">▲</button>
+                                    <button class="question-comment-upvote vote-button bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs" data-comment-id="<?=$cid;?>" title="Upvote Comment">▲</button>
                                 <?php endif; ?>
                                 <?php if (!$isGuest && canPerformAction('downvote', $userLevel, $userPoints, $isGuest)): ?>
-                                    <button class="question-comment-downvote vote-button bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
-                                        data-comment-id="<?=$cid;?>"
-                                        title="Downvote Comment">▼</button>
+                                    <button class="question-comment-downvote vote-button bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs" data-comment-id="<?=$cid;?>" title="Downvote Comment">▼</button>
                                 <?php endif; ?>
                             </div>
+                        </div>
+                        <p class="text-gray-300 text-wrap"><?=renderMarkdown($comment['text'] ?? '');?></p>
                     </div>
-                    <p class="text-gray-300 text-wrap"><?=renderMarkdown($comment['text'] ?? '');?></p>
-                </div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
 
         <!-- Add Question Comment Form -->
         <?php 
@@ -1811,35 +1803,47 @@ if ($isGuest) {
             <?php endif; ?>
 
             <!-- Answer Comments -->
-            <?php if (!empty($comments)): ?>
-            <div class="bg-gray-700 rounded-lg p-4 mb-4">
-                <h4 class="text-md font-semibold mb-3 text-white">Comments</h4>
-                <?php foreach ($comments as $comment):
-                    $cid = $comment['comment_id'] ?? '';
-                    $commenterData = getUserLevelAndPoints($comment['creator'] ?? '');
-                    $commenterLevel = $commenterData['level'];
-                    $commenterEmail = getUserEmail($comment['creator'] ?? '');
-                    $voteCount = intval(($comment['upvotes'] ?? 0) - ($comment['downvotes'] ?? 0));
-                ?>
-                <div id="answer-comment-<?=$answerId;?>-<?=$cid;?>" class="mb-3 pb-3 border-b border-gray-600 last:border-b-0">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="user-info">
-                            <img src="<?=getGravatarUrl($commenterEmail, 20);?>" alt="<?=htmlspecialchars($comment['creator'] ?? 'Unknown');?>" class="gravatar w-5 h-5 rounded-full" />
-                            <div>
-                                <strong class="text-sm text-wrap"><?=htmlspecialchars($comment['creator'] ?? 'Unknown');?></strong>
-                                <span class="level-badge level-<?=$commenterLevel;?> text-xs">Level <?=$commenterLevel;?></span>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs text-gray-400"><?=formatDate($comment['createdAt'] ?? time());?></span>
-                            <span class="text-xs text-gray-400">Points: <span class="answer-comment-votes" data-answer-id="<?=$answerId;?>" data-comment-id="<?=$cid;?>"><?=$voteCount;?></span></span>
+                    <?php if (!empty($comments)): ?>
+        <div class="bg-gray-700 rounded-lg p-4 mb-4">
+            <h4 class="text-md font-semibold mb-3 text-white">Comments</h4>
+            <?php foreach ($comments as $comment):
+                $cid = $comment['comment_id'] ?? '';
+                $commenterData = getUserLevelAndPoints($comment['creator'] ?? '');
+                $commenterLevel = $commenterData['level'];
+                $commenterEmail = getUserEmail($comment['creator'] ?? '');
+                $voteCount = intval(($comment['upvotes'] ?? 0) - ($comment['downvotes'] ?? 0));
+            ?>
+            <div id="answer-comment-<?=$answerId;?>-<?=$cid;?>" class="mb-3 pb-3 border-b border-gray-600 last:border-b-0">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="user-info">
+                        <img src="<?=getGravatarUrl($commenterEmail, 20);?>" alt="<?=htmlspecialchars($comment['creator'] ?? 'Unknown');?>" class="gravatar w-5 h-5 rounded-full" />
+                        <div>
+                            <strong class="text-sm text-wrap"><?=htmlspecialchars($comment['creator'] ?? 'Unknown');?></strong>
+                            <span class="level-badge level-<?=$commenterLevel;?> text-xs">Level <?=$commenterLevel;?></span>
                         </div>
                     </div>
-                    <p class="text-sm text-gray-300 text-wrap"><?=renderMarkdown($comment['text'] ?? '');?></p>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs text-gray-400"><?=formatDate($comment['createdAt'] ?? time());?></span>
+                        <span class="text-xs text-gray-400">Points: <span class="answer-comment-votes" data-answer-id="<?=$answerId;?>" data-comment-id="<?=$cid;?>"><?=$voteCount;?></span></span>
+                        <?php if (!$isGuest && canPerformAction('upvote', $userLevel, $userPoints, $isGuest)): ?>
+                            <button class="answer-comment-upvote vote-button bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs" 
+                                    data-answer-id="<?=$answerId;?>" 
+                                    data-comment-id="<?=$cid;?>" 
+                                    title="Upvote Comment">▲</button>
+                        <?php endif; ?>
+                        <?php if (!$isGuest && canPerformAction('downvote', $userLevel, $userPoints, $isGuest)): ?>
+                            <button class="answer-comment-downvote vote-button bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs" 
+                                    data-answer-id="<?=$answerId;?>" 
+                                    data-comment-id="<?=$cid;?>" 
+                                    title="Downvote Comment">▼</button>
+                        <?php endif; ?>
+                    </div>
                 </div>
-                <?php endforeach; ?>
+                <p class="text-sm text-gray-300 text-wrap"><?=renderMarkdown($comment['text'] ?? '');?></p>
             </div>
-            <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
 
             <!-- Add Answer Comment Form -->
             <?php
@@ -1892,18 +1896,18 @@ if ($isGuest) {
                             class="w-full bg-gray-700 text-gray-300 border border-gray-600 rounded-lg p-4 resize-vertical"
                             placeholder="Write your answer here... You can use markdown formatting:
 
-**bold text**
-*italic text*
-\`inline code\`
-\`\`\`
-code blocks
-\`\`\`
-![alt text](image-url)
-[link text](url)
-# Headers
-- List items
+                                **bold text**
+                                *italic text*
+                                \`inline code\`
+                                \`\`\`
+                                code blocks
+                                \`\`\`
+                                ![alt text](image-url)
+                                [link text](url)
+                                # Headers
+                                - List items
 
-Images and links are supported!" required></textarea>
+                                Images and links are supported!" required></textarea>
                         <div class="text-xs text-gray-400 mt-2">
                             Characters remaining: <span id="answer-chars">3000</span> | 
                             <span class="text-blue-400">Markdown supported</span>
@@ -2093,7 +2097,76 @@ $(document).ready(function() {
 
     setupCharCounter('#question-comment-text', '#question-comment-chars', 150);
     setupCharCounter('#answer-text', '#answer-chars', 3000);
-   
+                                function handleVoteClick(element, action, operation) {
+                                    const $btn = $(element);
+                                    const data = {
+                                        action: action,
+                                        operation: operation,
+                                        question_id: '<?=htmlspecialchars($actualQuestionId);?>'
+                                    };
+
+                                    // Add answer_id for answer-related votes
+                                    if (action.includes('answer')) {
+                                        const answerId = $btn.data('answer-id');
+                                        if (!answerId && action === 'vote_answer_comment') {
+                                            // Extract answer ID from the DOM structure
+                                            const answerElement = $btn.closest('article[id^="answer-"]');
+                                            if (answerElement.length) {
+                                                data.answer_id = answerElement.attr('id').replace('answer-', '');
+                                            } else {
+                                                console.error('Could not find answer ID for comment vote');
+                                                showMessage('Error: Could not identify answer', 'error');
+                                                return;
+                                            }
+                                        } else {
+                                            data.answer_id = answerId;
+                                        }
+                                    }
+
+                                    // Add comment_id for comment votes
+                                    if (action.includes('comment')) {
+                                        data.comment_id = $btn.data('comment-id');
+                                    }
+
+                                    console.log('Vote data:', data); // Debug log
+
+                                    $btn.addClass('vote-processing');
+                                    
+                                    performAjaxAction(data, function(result) {
+                                        $btn.removeClass('vote-processing');
+                                        
+                                        if (result.votes !== undefined) {
+                                            if (action === 'vote_question') {
+                                                $('#question-points').text(result.votes);
+                                            } else if (action === 'vote_answer') {
+                                                $(`.answer-points[data-answer-id="${data.answer_id}"]`).text(result.votes);
+                                            } else if (action === 'vote_question_comment') {
+                                                $(`.question-comment-votes[data-comment-id="${data.comment_id}"]`).text(result.votes);
+                                            } else if (action === 'vote_answer_comment') {
+                                                $(`.answer-comment-votes[data-answer-id="${data.answer_id}"][data-comment-id="${data.comment_id}"]`).text(result.votes);
+                                            }
+                                        }
+                                    });
+                                }
+
+                $('.question-comment-upvote').on('click', function() {
+                handleVoteClick(this, 'vote_question_comment', 'upvote');
+            });
+                
+            $('.question-comment-downvote').on('click', function() {
+                handleVoteClick(this, 'vote_question_comment', 'downvote');
+            });
+
+            // Answer comment voting  
+            $('.answer-comment-upvote').on('click', function() {
+                handleVoteClick(this, 'vote_answer_comment', 'upvote');
+            });
+
+            $('.answer-comment-downvote').on('click', function() {
+                handleVoteClick(this, 'vote_answer_comment', 'downvote');
+            });
+
+            
     $('.answer-comment-textarea').each(function(index) {
         const $textarea = $(this);
         const $counter = $textarea.closest('form').find('.answer-comment-chars');
@@ -2294,6 +2367,7 @@ $(document).ready(function() {
         });
     });
 
+    
     $('#answer-edit-form').on('submit', function(e) {
         e.preventDefault();
        
@@ -2365,7 +2439,7 @@ function checkBountyConditions() {
     
     if (!canAddBounty) {
         if (<?=$userLevel;?> < 9) {
-            console.log('Need level 9, current level:', <?=$userLevel;?>);
+            console.log('Need level 4, current level:', <?=$userLevel;?>);
         }
         if (<?=$userPoints;?> < 75) {
             console.log('Need 75+ points, current points:', <?=$userPoints;?>);
@@ -2403,7 +2477,8 @@ $(document).ready(function() {
         }, function(result) {
             setTimeout(() => location.reload(), 1000);
         });
-    });
+    }); 
+    
 
     // Share functionality
     $('#share-question').on('click', function() {
@@ -2438,6 +2513,7 @@ $(document).ready(function() {
             });
         }
     });
+    
 
     // Update view count
     setTimeout(function() {
@@ -2449,7 +2525,7 @@ $(document).ready(function() {
                 $('#question-views').text(result.views);
             }
         });
-    }, 3000);
+    }, 2000);
 });
 </script>
 
