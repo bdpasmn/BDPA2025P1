@@ -1,7 +1,6 @@
 <?php 
 // Include required dependencies
-require_once __DIR__ . '/../Api/key.php';
-require_once __DIR__ . '/../Api/api.php';
+
 
 function updateBadges($username) {
         $api = new qOverflowAPI(API_KEY);
