@@ -327,7 +327,7 @@ foreach($allPossibleBadges as $Onebadge){
     <?php foreach($badges as $badge):?>
         <?php  if ($badge['tier']==='gold'):?>
           <li>
-            <span class="rounded bg-yellow-500 pl-1"> <?= htmlspecialchars($badge['tier']) ?> - <?= htmlspecialchars($badge['badge_name']) ?> </span> 
+            <span class="rounded bg-yellow-500 pl-1 pr-1 mr-1"> <?= htmlspecialchars($badge['tier']) ?> </span> - <?= htmlspecialchars($badge['badge_name']) ?>
           </li>
         <?php endif; ?>
       <?php endforeach; ?>
