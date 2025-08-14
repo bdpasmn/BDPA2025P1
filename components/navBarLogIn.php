@@ -11,13 +11,18 @@ $email = '';
 
 if (isset($_SESSION['username'])) {
 
+  // Only check badges occasionally (every 10th page load) to reduce API calls
+  // but still allow deleted badges to be restored
+  $badgeCheckCounter = $_SESSION['badge_check_counter'] ?? 0;
+  if ($badgeCheckCounter % 10 == 0) {
+    updateBadges($_SESSION['username']);
+  }
+  $_SESSION['badge_check_counter'] = $badgeCheckCounter + 1;
+
     try {
-        // Only create PDO connection if one doesn't already exist
-        if (!isset($pdo) || !($pdo instanceof PDO)) {
-            $pdo = new PDO($dsn, $user, $pass, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            ]);
-        }
+        $pdo = new PDO($dsn, $user, $pass, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]);
 
         // Fetch user points and level from API
         $stmt = $pdo->prepare("SELECT points, level FROM users WHERE username = :username");
@@ -31,48 +36,15 @@ if (isset($_SESSION['username'])) {
     } catch (PDOException $e) {
         error_log("Error updating user points: " . $e->getMessage());
     }
-    
-    // Smart badge caching - only update every 5 minutes to prevent API rate limiting
-    try {
-        // Get last badge update time from database
-        $stmt = $pdo->prepare("SELECT badge_last_update FROM users WHERE username = ?");
-        $stmt->execute([$_SESSION['username']]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $lastBadgeUpdate = $user['badge_last_update'] ?? 0;
-        $badgeCacheExpiry = 300; // 5 minutes
-        
-        if (time() - $lastBadgeUpdate > $badgeCacheExpiry) {
-            error_log("Updating badges for user: " . $_SESSION['username'] . " (cache expired)");
-            updateBadges($_SESSION['username']);
-            
-            // Update cache timestamp in database
-            $updateStmt = $pdo->prepare("UPDATE users SET badge_last_update = ? WHERE username = ?");
-            $updateStmt->execute([time(), $_SESSION['username']]);
-            
-            error_log("Badge cache updated in database for user: " . $_SESSION['username']);
-        } else {
-            error_log("Using cached badges for user: " . $_SESSION['username'] . " (cache valid for " . ($badgeCacheExpiry - (time() - $lastBadgeUpdate)) . " more seconds)");
-        }
-    } catch (PDOException $e) {
-        error_log("Error with badge caching: " . $e->getMessage());
-        // Fallback: update badges anyway if caching fails
-        updateBadges($_SESSION['username']);
-    }
 }
 
 // Gravatar
 if ($pdo) {
-    try {
-        $stmt = $pdo->prepare("SELECT email FROM users WHERE username = :username LIMIT 1");
-        $stmt->execute(['username' => ($_SESSION['username'])]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row && !empty($row['email'])) {
-            $email = trim(strtolower($row['email']));
-        }
-    } catch (PDOException $e) {
-        error_log("Error fetching email: " . $e->getMessage());
-        $email = '';
+    $stmt = $pdo->prepare("SELECT email FROM users WHERE username = :username LIMIT 1");
+    $stmt->execute(['username' => ($_SESSION['username'])]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row && !empty($row['email'])) {
+        $email = trim(strtolower($row['email']));
     }
 }
 
@@ -84,24 +56,19 @@ $levelInfo = getUserLevel($_SESSION['username']);
 // Fetch badge counts grouped by tier for the logged-in user
 $badgeCounts = ['gold' => 0, 'silver' => 0, 'bronze' => 0];
 if (isset($_SESSION['username'])) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT tier, COUNT(*) AS count
-            FROM user_badges
-            WHERE username = ?
-            GROUP BY tier
-        ");
-        $stmt->execute([$_SESSION['username']]);
-        $rawCounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rawCounts as $row) {
-            $tier = strtolower($row['tier']);
-            if (isset($badgeCounts[$tier])) {
-                $badgeCounts[$tier] = (int)$row['count'];
-            }
+    $stmt = $pdo->prepare("
+        SELECT tier, COUNT(*) AS count
+        FROM user_badges
+        WHERE username = ?
+        GROUP BY tier
+    ");
+    $stmt->execute([$_SESSION['username']]);
+    $rawCounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rawCounts as $row) {
+        $tier = strtolower($row['tier']);
+        if (isset($badgeCounts[$tier])) {
+            $badgeCounts[$tier] = (int)$row['count'];
         }
-    } catch (PDOException $e) {
-        error_log("Error fetching badge counts: " . $e->getMessage());
-        // Keep default values if query fails
     }
 }
 
