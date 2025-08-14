@@ -152,8 +152,7 @@ foreach($allPossibleBadges as $Onebadge){
     </div>
   </div>
 </br>
-    
-    <div class="pl-10 flex space-x-5">
+    <div class="pl-10 flex flex-wrap gap-2">
      <button  onclick="showQuestions()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm">
         Questions
       </button>
@@ -212,7 +211,7 @@ foreach($allPossibleBadges as $Onebadge){
   </div>
 
   <?php if ($totalQuestionsPages > 1): ?> <!-- Check if there are multiple pages -->
-  <div id="questionPagination" class="mt-4 flex justify-center space-x-2 text-sm  mb-4 ">
+  <div id="questionPagination" class="mt-4 flex justify-center space-x-2 text-sm  mb-4 flex flex-wrap gap-2">
 
     <?php if ($currentQuestionsPage > 1): ?>
         <a href="?page=<?= $currentQuestionsPage - 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">Previous</a>
@@ -270,7 +269,7 @@ foreach($allPossibleBadges as $Onebadge){
   </div>  
 
   <?php if ($totalAnswerPages > 1): ?>
-  <div id="answerPagination" class="mt-6 flex justify-center space-x-2 text-sm mb-4 hidden">
+  <div id="answerPagination" class="mt-6 flex justify-center space-x-2 text-sm mb-4 hidden flex flex-wrap gap-2">
 
     <?php if ($currentAnswerPage > 1): ?>
         <a href="?answer_page=<?= $currentAnswerPage - 1 ?>" class="px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">Previous</a>
@@ -290,7 +289,7 @@ foreach($allPossibleBadges as $Onebadge){
 
   <?php endif; ?>
 
-    <div class="hidden bg-gray-800 rounded-lg mx-10 mt-10 p-6  shadow-md flex-wrap border border-gray-700"id="badges">
+    <div class="hidden bg-gray-800 rounded-lg mx-10 mt-10 p-6 shadow-md flex-wrap border border-gray-700 mb-6"id="badges">
       <?php if (empty($badges)): ?>
           <p class="text-gray-400" >No badges earned yet.</p>
           <br>
@@ -351,10 +350,10 @@ foreach($allPossibleBadges as $Onebadge){
   </ul>
 
   <br>
-          <div class="max-md:rounded-lg max-md:flex  max-md:flex-wrap">
+          <div class="max-md:flex  max-md:flex-wrap">
           <p class = "text-xl font-semibold">Bages You Have Left:<?//php htmlspecialchars($badges) ?> </p> 
           <?php if(count(array_filter($missingBadges, fn($b) => $b['tier']=== 'gold'))>0):?>
-          <div class="mt-4 flex items-center space-x-4 bg-yellow-500 rounded w-[500px]">  
+          <div class="mt-4 flex items-center space-x-4 bg-yellow-500 rounded w-[500px] flex-wrap ">  
           <p class="text-xl"> 🥇</p>
           <?php foreach ($missingBadges as $badge): ?>
           <?php  if ($badge['tier'] === 'gold'):  ?>
@@ -365,7 +364,7 @@ foreach($allPossibleBadges as $Onebadge){
           <?php endif; ?>
           <br>
           <?php if(count(array_filter($missingBadges, fn($b) => $b['tier']=== 'silver'))>0):?>
-           <div class="mt-4 flex items-center space-x-4 bg-gray-400 rounded w-[500px]"> 
+           <div class="mt-4 flex items-center space-x-4 bg-gray-400 rounded w-[500px] flex-wrap"> 
              <p class="text-xl">🥈</p>
             <?php foreach ($missingBadges as $badge): ?>
             <?php if ($badge['tier'] === 'silver'): ?>
@@ -376,7 +375,7 @@ foreach($allPossibleBadges as $Onebadge){
            <?php endif; ?>
           <br>
            <?php if(count(array_filter($missingBadges, fn($b) => $b['tier']=== 'bronze'))>0):?>
-           <div class="mt-4 flex items-center space-x-4 bg-yellow-800 rounded w-[500px]"> 
+           <div class="mt-4 flex items-center space-x-4 bg-yellow-800 rounded w-[500px] flex-wrap"> 
             <p class="text-xl">🥉</p>
            <?php foreach ($missingBadges as $badge): ?>
           <?php if ($badge['tier'] === 'bronze'): ?>
