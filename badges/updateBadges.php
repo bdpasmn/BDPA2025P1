@@ -1,5 +1,9 @@
 <?php 
-    function updateBadges($username) {
+// Include required dependencies
+require_once __DIR__ . '/../Api/key.php';
+require_once __DIR__ . '/../Api/api.php';
+
+function updateBadges($username) {
         $api = new qOverflowAPI(API_KEY);
         $userData = $api->getUser($username);
 
@@ -93,15 +97,16 @@
         }
 
         $existingBadges = getUserBadges($pdo, $username);
+        return $existingBadges;
     }
 
     function getUserBadges(PDO $pdo, $username): array {
         $stmt = $pdo->prepare("
-            SELECT badge_name
+            SELECT badge_name, tier
             FROM user_badges
             WHERE username = ?
         ");
         $stmt->execute([$username]);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 ?>

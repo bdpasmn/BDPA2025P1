@@ -11,12 +11,13 @@ $email = '';
 
 if (isset($_SESSION['username'])) {
 
-  updateBadges($_SESSION['username']);
-
     try {
-        $pdo = new PDO($dsn, $user, $pass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        ]);
+        // Only create PDO connection if one doesn't already exist
+        if (!isset($pdo) || !($pdo instanceof PDO)) {
+            $pdo = new PDO($dsn, $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ]);
+        }
 
         // Fetch user points and level from API
         $stmt = $pdo->prepare("SELECT points, level FROM users WHERE username = :username");
@@ -29,6 +30,34 @@ if (isset($_SESSION['username'])) {
         }
     } catch (PDOException $e) {
         error_log("Error updating user points: " . $e->getMessage());
+    }
+    
+    // Smart badge caching - only update every 5 minutes to prevent API rate limiting
+    try {
+        // Get last badge update time from database
+        $stmt = $pdo->prepare("SELECT badge_last_update FROM users WHERE username = ?");
+        $stmt->execute([$_SESSION['username']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $lastBadgeUpdate = $user['badge_last_update'] ?? 0;
+        $badgeCacheExpiry = 300; // 5 minutes
+        
+        if (time() - $lastBadgeUpdate > $badgeCacheExpiry) {
+            error_log("Updating badges for user: " . $_SESSION['username'] . " (cache expired)");
+            updateBadges($_SESSION['username']);
+            
+            // Update cache timestamp in database
+            $updateStmt = $pdo->prepare("UPDATE users SET badge_last_update = ? WHERE username = ?");
+            $updateStmt->execute([time(), $_SESSION['username']]);
+            
+            error_log("Badge cache updated in database for user: " . $_SESSION['username']);
+        } else {
+            error_log("Using cached badges for user: " . $_SESSION['username'] . " (cache valid for " . ($badgeCacheExpiry - (time() - $lastBadgeUpdate)) . " more seconds)");
+        }
+    } catch (PDOException $e) {
+        error_log("Error with badge caching: " . $e->getMessage());
+        // Fallback: update badges anyway if caching fails
+        updateBadges($_SESSION['username']);
     }
 }
 
