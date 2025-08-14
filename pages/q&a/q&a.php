@@ -2483,7 +2483,8 @@ $(document).ready(function() {
     // Share functionality
     $('#share-question').on('click', function() {
         const questionId = $(this).data('question-id');
-        const url = `${window.location.origin}${window.location.pathname}?questionName=${encodeURIComponent(questionId)}`;
+        const questionName = '<?=htmlspecialchars($question['title'] ?? '');?>';
+        const url = `${window.location.origin}${window.location.pathname}?questionName=${encodeURIComponent(questionName)}&questionId=${encodeURIComponent(questionId)}`;
        
         navigator.clipboard.writeText(url).then(function() {
             showMessage('Question link copied to clipboard!', 'success');
@@ -2502,7 +2503,8 @@ $(document).ready(function() {
     $('.share-answer').on('click', function() {
         const questionId = $(this).data('question-id');
         const answerId = $(this).data('answer-id');
-        const url = `${window.location.origin}${window.location.pathname}?questionName=${encodeURIComponent(questionId)}#answer-${answerId}`;
+        const questionName = '<?=htmlspecialchars($question['title'] ?? '');?>';
+        const url = `${window.location.origin}${window.location.pathname}?questionName=${encodeURIComponent(questionName)}&questionId=${encodeURIComponent(questionId)}#answer-${answerId}`;
        
         navigator.clipboard.writeText(url).then(function() {
             showMessage('Answer link copied to clipboard!', 'success');
@@ -2540,7 +2542,7 @@ $(document).ready(function() {
             setTimeout(() => {
                 answerElement.scrollIntoView({ 
                     behavior: 'smooth', 
-                    block: 'start' 
+                    block: 'center' 
                 });
                 
                 // Add a brief highlight effect
