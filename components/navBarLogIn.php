@@ -34,11 +34,16 @@ if (isset($_SESSION['username'])) {
 
 // Gravatar
 if ($pdo) {
-    $stmt = $pdo->prepare("SELECT email FROM users WHERE username = :username LIMIT 1");
-    $stmt->execute(['username' => ($_SESSION['username'])]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($row && !empty($row['email'])) {
-        $email = trim(strtolower($row['email']));
+    try {
+        $stmt = $pdo->prepare("SELECT email FROM users WHERE username = :username LIMIT 1");
+        $stmt->execute(['username' => ($_SESSION['username'])]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && !empty($row['email'])) {
+            $email = trim(strtolower($row['email']));
+        }
+    } catch (PDOException $e) {
+        error_log("Error fetching email: " . $e->getMessage());
+        $email = '';
     }
 }
 
@@ -50,19 +55,24 @@ $levelInfo = getUserLevel($_SESSION['username']);
 // Fetch badge counts grouped by tier for the logged-in user
 $badgeCounts = ['gold' => 0, 'silver' => 0, 'bronze' => 0];
 if (isset($_SESSION['username'])) {
-    $stmt = $pdo->prepare("
-        SELECT tier, COUNT(*) AS count
-        FROM user_badges
-        WHERE username = ?
-        GROUP BY tier
-    ");
-    $stmt->execute([$_SESSION['username']]);
-    $rawCounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($rawCounts as $row) {
-        $tier = strtolower($row['tier']);
-        if (isset($badgeCounts[$tier])) {
-            $badgeCounts[$tier] = (int)$row['count'];
+    try {
+        $stmt = $pdo->prepare("
+            SELECT tier, COUNT(*) AS count
+            FROM user_badges
+            WHERE username = ?
+            GROUP BY tier
+        ");
+        $stmt->execute([$_SESSION['username']]);
+        $rawCounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rawCounts as $row) {
+            $tier = strtolower($row['tier']);
+            if (isset($badgeCounts[$tier])) {
+                $badgeCounts[$tier] = (int)$row['count'];
+            }
         }
+    } catch (PDOException $e) {
+        error_log("Error fetching badge counts: " . $e->getMessage());
+        // Keep default values if query fails
     }
 }
 
