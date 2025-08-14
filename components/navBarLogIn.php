@@ -11,7 +11,13 @@ $email = '';
 
 if (isset($_SESSION['username'])) {
 
-  updateBadges($_SESSION['username']);
+  // Only check badges occasionally (every 3rd page load) to reduce API calls
+  // but still allow deleted badges to be restored
+  $badgeCheckCounter = $_SESSION['badge_check_counter'] ?? 0;
+  if ($badgeCheckCounter % 3 == 0) {
+    updateBadges($_SESSION['username']);
+  }
+  $_SESSION['badge_check_counter'] = $badgeCheckCounter + 1;
 
     try {
         $pdo = new PDO($dsn, $user, $pass, [

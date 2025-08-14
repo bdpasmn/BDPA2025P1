@@ -11,68 +11,60 @@
 
         $existingBadges = getUserBadges($pdo, $username);
         $newBadges = [];
+        $badgesToRestore = [];
 
-        // Question Badges
-
+        // Question Badges - Check if they should exist and restore if missing
         foreach ($questions['questions'] as $q) {
             $votes = $q['upvotes'] - $q['downvotes'];
 
-            if (!in_array('Nice Question', $existingBadges) && $votes >= 10) {
-                $newBadges[] = ['badge_name' => 'Nice Question', 'tier' => 'bronze'];
-                break;
+            if ($votes >= 10 && !in_array('Nice Question', $existingBadges)) {
+                $badgesToRestore[] = ['badge_name' => 'Nice Question', 'tier' => 'bronze'];
             }
     
-            if (!in_array('Good Question', $existingBadges) && $votes >= 25) {
-                $newBadges[] = ['badge_name' => 'Good Question', 'tier' => 'silver'];
-                break;
+            if ($votes >= 25 && !in_array('Good Question', $existingBadges)) {
+                $badgesToRestore[] = ['badge_name' => 'Good Question', 'tier' => 'silver'];
             }
 
-            if (!in_array('Great Question', $existingBadges) && $votes >= 100) {
-                $newBadges[] = ['badge_name' => 'Great Question', 'tier' => 'gold'];
-                break;
+            if ($votes >= 100 && !in_array('Great Question', $existingBadges)) {
+                $badgesToRestore[] = ['badge_name' => 'Great Question', 'tier' => 'gold'];
             }
         }
 
-        // Answer Badges
-
+        // Answer Badges - Check if they should exist and restore if missing
         foreach ($answers['answers'] as $a) {
             $votes = ($a['upvotes'] ?? 0) - ($a['downvotes'] ?? 0);
 
-            if (!in_array('Nice Answer', $existingBadges) && $votes >= 10) {
-                $newBadges[] = ['badge_name' => 'Nice Answer', 'tier' => 'bronze'];
-                break;
+            if ($votes >= 10 && !in_array('Nice Answer', $existingBadges)) {
+                $badgesToRestore[] = ['badge_name' => 'Nice Answer', 'tier' => 'bronze'];
             }
 
-            if (!in_array('Good Answer', $existingBadges) && $votes >= 25) {
-                $newBadges[] = ['badge_name' => 'Good Answer', 'tier' => 'silver'];
-                break;
+            if ($votes >= 25 && !in_array('Good Answer', $existingBadges)) {
+                $badgesToRestore[] = ['badge_name' => 'Good Answer', 'tier' => 'silver'];
             }
 
-            if (!in_array('Great Answer', $existingBadges) && $votes >= 100) {
-                $newBadges[] = ['badge_name' => 'Great Answer', 'tier' => 'gold'];
-                break;
+            if ($votes >= 100 && !in_array('Great Answer', $existingBadges)) {
+                $badgesToRestore[] = ['badge_name' => 'Great Answer', 'tier' => 'gold'];
             }
         }
         
-        // Point Badges
-
-        if (!in_array('Curious', $existingBadges) && $points >= 100) {
-            $newBadges[] = ['badge_name' => 'Curious', 'tier' => 'bronze'];
+        // Point Badges - Check if they should exist and restore if missing
+        if ($points >= 100 && !in_array('Curious', $existingBadges)) {
+            $badgesToRestore[] = ['badge_name' => 'Curious', 'tier' => 'bronze'];
         }
 
-        if (!in_array('Inquisitive', $existingBadges) && $points >= 3000) {
-            $newBadges[] = ['badge_name' => 'Inquisitive', 'tier' => 'silver'];
+        if ($points >= 3000 && !in_array('Inquisitive', $existingBadges)) {
+            $badgesToRestore[] = ['badge_name' => 'Inquisitive', 'tier' => 'silver'];
         }
 
-        if (!in_array('Socratic', $existingBadges) && $points >= 10000) {
-            $newBadges[] = ['badge_name' => 'Socratic', 'tier' => 'gold'];
+        if ($points >= 10000 && !in_array('Socratic', $existingBadges)) {
+            $badgesToRestore[] = ['badge_name' => 'Socratic', 'tier' => 'gold'];
         }
 
-        // Status Badges
+        // Status Badges - Check if they should exist and restore if missing
         if (!in_array('Scholar', $existingBadges)) {
             foreach ($questions['questions'] as $q) {
                 if ($q['hasAcceptedAnswer']) {
-                    $newBadges[] = ['badge_name' => 'Scholar', 'tier' => 'bronze'];
+                    $badgesToRestore[] = ['badge_name' => 'Scholar', 'tier' => 'bronze'];
                     break;
                 }
             }
@@ -81,18 +73,28 @@
         if (!in_array('Protected', $existingBadges)) {
             foreach ($questions['questions'] as $q) {
                 if ($q['status'] == 'protected') {
-                    $newBadges[] = ['badge_name' => 'Protected', 'tier' => 'silver'];
+                    $badgesToRestore[] = ['badge_name' => 'Protected', 'tier' => 'silver'];
                     break;
                 }
             }
         }        
 
-        foreach ($newBadges as $badge) {
+        // Insert all missing badges (both new and restored)
+        if (!empty($badgesToRestore)) {
             $insertStmt = $pdo->prepare("INSERT INTO user_badges (username, badge_name, tier) VALUES (?, ?, ?)");
-            $insertStmt->execute([$username, $badge['badge_name'], $badge['tier']]);
+            foreach ($badgesToRestore as $badge) {
+                try {
+                    $insertStmt->execute([$username, $badge['badge_name'], $badge['tier']]);
+                } catch (PDOException $e) {
+                    // Ignore duplicate key errors (badge already exists)
+                    if ($e->getCode() != '23505') { // PostgreSQL duplicate key error code
+                        error_log("Error inserting badge: " . $e->getMessage());
+                    }
+                }
+            }
         }
 
-        $existingBadges = getUserBadges($pdo, $username);
+        return $badgesToRestore;
     }
 
     function getUserBadges(PDO $pdo, $username): array {

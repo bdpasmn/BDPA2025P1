@@ -2485,16 +2485,18 @@ $(document).ready(function() {
         const questionId = $(this).data('question-id');
         const url = `${window.location.origin}${window.location.pathname}?questionName=${encodeURIComponent(questionId)}`;
        
-        if (navigator.share) {
-            navigator.share({
-                title: '<?=htmlspecialchars($question['title'] ?? 'Question');?>',
-                url: url
-            });
-        } else {
-            navigator.clipboard.writeText(url).then(function() {
-                showMessage('Question link copied to clipboard!', 'success');
-            });
-        }
+        navigator.clipboard.writeText(url).then(function() {
+            showMessage('Question link copied to clipboard!', 'success');
+        }).catch(function() {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showMessage('Question link copied to clipboard!', 'success');
+        });
     });
 
     $('.share-answer').on('click', function() {
@@ -2502,16 +2504,18 @@ $(document).ready(function() {
         const answerId = $(this).data('answer-id');
         const url = `${window.location.origin}${window.location.pathname}?questionName=${encodeURIComponent(questionId)}#answer-${answerId}`;
        
-        if (navigator.share) {
-            navigator.share({
-                title: 'Answer to: <?=htmlspecialchars($question['title'] ?? 'Question');?>',
-                url: url
-            });
-        } else {
-            navigator.clipboard.writeText(url).then(function() {
-                showMessage('Answer link copied to clipboard!', 'success');
-            });
-        }
+        navigator.clipboard.writeText(url).then(function() {
+            showMessage('Answer link copied to clipboard!', 'success');
+        }).catch(function() {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showMessage('Answer link copied to clipboard!', 'success');
+        });
     });
     
 
@@ -2526,6 +2530,28 @@ $(document).ready(function() {
             }
         });
     }, 2000);
+
+    // Check if there's a hash fragment to scroll to a specific answer
+    if (window.location.hash && window.location.hash.startsWith('#answer-')) {
+        const answerId = window.location.hash.substring(8); // Remove '#answer-' prefix
+        const answerElement = document.getElementById(`answer-${answerId}`);
+        if (answerElement) {
+            // Wait a bit for the page to fully load, then scroll to the answer
+            setTimeout(() => {
+                answerElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+                
+                // Add a brief highlight effect
+                answerElement.style.transition = 'box-shadow 0.3s ease';
+                answerElement.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.8)';
+                setTimeout(() => {
+                    answerElement.style.boxShadow = '';
+                }, 3000);
+            }, 1000);
+        }
+    }
 });
 </script>
 

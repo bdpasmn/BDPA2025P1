@@ -597,7 +597,6 @@ function format_relative_time($timestamp_ms) {
         postBtn.classList.add('opacity-50', 'cursor-not-allowed');
       }
 
-
       return true;
     }
   </script>
