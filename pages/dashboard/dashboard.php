@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <?php
-  //DASH
+  //NEW NEW DASH
   session_start();
 
   require_once '../../Api/api.php';
@@ -81,24 +81,35 @@ $totalAnswerPages = ceil($totalAnswers / $answersPerPage);
 $startAnswerIndex = ($currentAnswerPage - 1) * $answersPerPage;
 $paginatedAnswers = array_slice($JustUserAnswer, $startAnswerIndex, $answersPerPage);
 
-//$stmt = $pdo->prepare("SELECT username FROM user_badges WHERE username = $username");
-/*
-$query =  "SELECT badge_name FROM user_badges WHERE username = $username";
-echo "badge_name"
-*/
-/*
-$stmt = $pdo->prepare("SELECT badge_name FROM user_badges WHERE username = $username");
-$stmt->execute(['badge_name' => $badge]);
-echo $badge;
-*/
-
-//$stmt = $pdo->prepare("SELECT badge_name FROM user_badges WHERE username = $username");
+//badges
+$allPossibleBadges = [
+    ['badge_name' => 'Great Question', 'tier' => 'gold'],
+    ['badge_name' => 'Great Answer', 'tier' => 'gold'],
+    ['badge_name' => 'Socratic', 'tier' => 'gold'],
+    ['badge_name' => 'Zombie', 'tier' => 'gold'],
+    ['badge_name' => 'Good Question', 'tier' => 'silver'],
+    ['badge_name' => 'Good Answer', 'tier' => 'silver'],
+    ['badge_name' => 'Inquisitive', 'tier' => 'silver'],
+    ['badge_name' => 'Protected', 'tier' => 'silver'],
+    ['badge_name' => 'Nice Question', 'tier' => 'bronze'],
+    ['badge_name' => 'Nice Answer', 'tier' => 'bronze'],
+    ['badge_name' => 'Curious', 'tier' => 'bronze'],
+    ['badge_name' => 'Scholar', 'tier' => 'bronze'],
+];
 
 
 $stmt = $pdo->prepare("SELECT badge_name, tier FROM user_badges WHERE username = ?");
 $column_values = $stmt->fetchAll(PDO::FETCH_COLUMN);
 $stmt->execute([$username]);
 $badges = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$usersBadges = array_column($badges, 'badge_name');
+$missingBadges = [];
+
+foreach($allPossibleBadges as $Onebadge){
+  if(!in_array($Onebadge['badge_name'], $usersBadges)){
+  $missingBadges[] = $Onebadge;
+  }
+}
 ?>
 
 
@@ -283,7 +294,9 @@ $badges = $stmt->fetchAll(PDO::FETCH_ASSOC);
       <?php if (empty($badges)): ?>
           <p class="text-gray-400" >No badges earned yet.</p>
           <br>
-          <p class = "text-xl font-semibold">All Possible Bages:<?//php htmlspecialchars($badges) ?> </p> 
+           <p class = "text-xl font-semibold">All Possible Badges:</p> 
+          <div class="max-md:rounded-lg max-md:flex  max-md:flex-wrap">
+          <p class = "text-xl font-semibold"><?//php htmlspecialchars($badges) ?> </p> 
           <div class="mt-4 flex items-center space-x-4 bg-yellow-500 rounded w-[500px]">  
           <p class="text-xl"> 🥇</p>
           <p>"Great Question"</p>
@@ -307,41 +320,76 @@ $badges = $stmt->fetchAll(PDO::FETCH_ASSOC);
           <p>"Curious"</p>
           <p>"Scholar"</p>
           </div>
+      </div>
       <?php else: ?>
-        <h2 class="text-xl font-semibold">Badges Earned</h2>
-          <ul>
-              <?php foreach ($badges as $badge): ?>
-                  <li>
-                      <?= htmlspecialchars($badge['badge_name']) ?> - <?= htmlspecialchars($badge['tier']) ?>
-                  </li>
-              <?php endforeach; ?>
-          </ul>
-          <br>
-          <p class = "text-xl font-semibold">All Possible Bages:<?//php htmlspecialchars($badges) ?> </p> 
+
+  <h2 class="text-xl font-semibold pb-2">Badges Earned</h2>
+  <ul>
+    <?php foreach($badges as $badge):?>
+        <?php  if ($badge['tier']==='gold'):?>
+          <li>
+            <span class="rounded bg-yellow-500 pl-1"> <?= htmlspecialchars($badge['tier']) ?> - <?= htmlspecialchars($badge['badge_name']) ?> </span> 
+          </li>
+        <?php endif; ?>
+      <?php endforeach; ?>
+
+       <?php foreach($badges as $badge):?>
+        <?php  if ($badge['tier']==='silver'):?>
+          <li>
+            <span class="rounded bg-gray-400 pl-1 pr-1 mr-1"> <?= htmlspecialchars($badge['tier']) ?> </span> - <?= htmlspecialchars($badge['badge_name']) ?>
+          </li>
+        <?php endif; ?>
+      <?php endforeach; ?>
+
+      <?php foreach($badges as $badge):?>
+        <?php  if ($badge['tier']==='bronze'): ?>
+          <li>
+             <span class="rounded bg-yellow-800 pl-1 pr-1 mr-1">  <?= htmlspecialchars($badge['tier']) ?> </span> - <?= htmlspecialchars($badge['badge_name']) ?>
+          </li>
+        <?php endif; ?>
+      <?php endforeach; ?>
+  </ul>
+
+  <br>
+          <div class="max-md:rounded-lg max-md:flex  max-md:flex-wrap">
+          <p class = "text-xl font-semibold">Bages You Have Left:<?//php htmlspecialchars($badges) ?> </p> 
+          <?php if(count(array_filter($missingBadges, fn($b) => $b['tier']=== 'gold'))>0):?>
           <div class="mt-4 flex items-center space-x-4 bg-yellow-500 rounded w-[500px]">  
           <p class="text-xl"> 🥇</p>
-          <p>"Great Question"</p>
-          <p>"Great Answer"</p>
-          <p>"Socratic"</p> 
-          <p>"Zombie"</p> 
+          <?php foreach ($missingBadges as $badge): ?>
+          <?php  if ($badge['tier'] === 'gold'):  ?>
+            <p>"<?= htmlspecialchars($badge['badge_name']) ?>"</p>
+            <?php endif; ?>
+            <?php endforeach; ?>
           </div>
+          <?php endif; ?>
           <br>
-          <div class="mt-4 flex items-center space-x-4 bg-gray-400 rounded w-[500px]"> 
-          <p class="text-xl">🥈</p>
-          <p>"Good Question"</p>
-          <p>"Good Answer"</p>
-          <p>"Inquisitive"</p>
-          <p>"Protected"</p>
+          <?php if(count(array_filter($missingBadges, fn($b) => $b['tier']=== 'silver'))>0):?>
+           <div class="mt-4 flex items-center space-x-4 bg-gray-400 rounded w-[500px]"> 
+             <p class="text-xl">🥈</p>
+            <?php foreach ($missingBadges as $badge): ?>
+            <?php if ($badge['tier'] === 'silver'): ?>
+            <p>"<?= htmlspecialchars($badge['badge_name']) ?>"</p>
+             <?php endif; ?>
+            <?php endforeach; ?>
           </div>
+           <?php endif; ?>
           <br>
-          <div class="mt-4 flex items-center space-x-4 bg-yellow-800 rounded w-[500px]"> 
-          <p class="text-xl">🥉</p>
-          <p>"Nice Question"</p>
-          <p>"Nice Answer"</p>
-          <p>"Curious"</p>
-          <p>"Scholar"</p>
+           <?php if(count(array_filter($missingBadges, fn($b) => $b['tier']=== 'bronze'))>0):?>
+           <div class="mt-4 flex items-center space-x-4 bg-yellow-800 rounded w-[500px]"> 
+            <p class="text-xl">🥉</p>
+           <?php foreach ($missingBadges as $badge): ?>
+          <?php if ($badge['tier'] === 'bronze'): ?>
+            <p>"<?= htmlspecialchars($badge['badge_name']) ?>"</p>
+             <?php endif; ?>
+            <?php endforeach; ?>
           </div>
-      <?php endif; ?>
+          <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+
+      
 </div>
 
   <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">

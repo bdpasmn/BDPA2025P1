@@ -552,7 +552,7 @@ function format_relative_time($timestamp_ms) {
 
 
     document.addEventListener('DOMContentLoaded', () => {
-      setInterval(updateQuestionStats, 10000);
+      setInterval(updateQuestionStats, 30000);
     });
 
 
