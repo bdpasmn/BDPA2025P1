@@ -2449,7 +2449,7 @@ $(document).ready(function() {
                 $('#question-views').text(result.views);
             }
         });
-    }, 2000);
+    }, 3000);
 });
 </script>
 
