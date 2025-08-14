@@ -11,10 +11,10 @@ $email = '';
 
 if (isset($_SESSION['username'])) {
 
-  // Only check badges occasionally (every 3rd page load) to reduce API calls
+  // Only check badges every 2nd page load to reduce API calls
   // but still allow deleted badges to be restored
   $badgeCheckCounter = $_SESSION['badge_check_counter'] ?? 0;
-  if ($badgeCheckCounter % 3 == 0) {
+  if ($badgeCheckCounter % 2 == 0) {
     updateBadges($_SESSION['username']);
   }
   $_SESSION['badge_check_counter'] = $badgeCheckCounter + 1;

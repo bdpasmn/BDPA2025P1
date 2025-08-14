@@ -351,7 +351,7 @@ foreach($allPossibleBadges as $Onebadge){
 
   <br>
           <div class="max-md:flex  max-md:flex-wrap">
-          <p class = "text-xl font-semibold">Bages You Have Left:<?//php htmlspecialchars($badges) ?> </p> 
+          <p class = "text-xl font-semibold">Badges You Have Left:<?//php htmlspecialchars($badges) ?> </p> 
           <?php if(count(array_filter($missingBadges, fn($b) => $b['tier']=== 'gold'))>0):?>
           <div class="mt-4 flex items-center space-x-4 bg-yellow-500 rounded w-[500px] flex-wrap ">  
           <p class="text-xl"> 🥇</p>
